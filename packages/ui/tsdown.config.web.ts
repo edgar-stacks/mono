@@ -8,16 +8,7 @@ export default defineConfig({
     svgr({
       typescript: true,
       svgoConfig: {
-        plugins: [
-          {
-            name: 'preset-default',
-            params: {
-              overrides: {
-                removeViewBox: false,
-              },
-            },
-          },
-        ],
+        plugins: [{ name: 'preset-default' }],
       },
     }),
     copy({
