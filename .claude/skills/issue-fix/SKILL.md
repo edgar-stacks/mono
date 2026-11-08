@@ -149,8 +149,11 @@ are left out with a note, so the brief must carry what an outside report says), 
 `tmp/issue-fix/notes.md`, writes `apps/extension/.env` from the `PUBLIC_*` repository variables,
 installs Chromium for Playwright (the browser cache is restored, never saved) and runs the fixer
 with `.github/prompts/issue-fix.md`. The fixer can build the extension in test mode and run its
-end-to-end specs under `xvfb-run` with the `EXTENSION_INTEGRATION_TEST_MNEMONIC` test wallet, and
-read issues, pull requests and code through the read-only GitHub MCP server.
+end-to-end specs under `xvfb-run` with the `EXTENSION_INTEGRATION_TEST_MNEMONIC` test wallet. It has
+no GitHub MCP server and is told not to fetch issues or pull requests itself, so its only view of the
+issue is the filtered `issue.md`; on a public repository a fixer with network access could still
+fetch public issue text, which the prompt, auto mode's classifier and the pull request job's checks
+are what stand against.
 
 The fix runs in up to three rounds of the composite action `.github/actions/issue-fix-round`, each
 fix → verify → review:
