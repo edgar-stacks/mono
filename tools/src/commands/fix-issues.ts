@@ -16,6 +16,7 @@ import {
   verifyRound,
 } from '../fix-issues/rounds.js';
 import { captureScreenshots, previewScreenshots } from '../fix-issues/screenshots.js';
+import { stripForbiddenPaths } from '../fix-issues/strip.js';
 import { verifyFix } from '../fix-issues/verify.js';
 
 interface RoundOptions {
@@ -156,6 +157,23 @@ export function registerFixIssuesCommands(program: Command): void {
       console.log(`fix-round: finished with outcome ${outcome}`);
     })
   );
+
+  fixIssues
+    .command('strip-forbidden')
+    .description(
+      'Remove changes outside the allowed paths and block the status with a question naming them'
+    )
+    .action(() =>
+      guard('strip-forbidden', () => {
+        const stripped = stripForbiddenPaths(paths());
+        writeStepOutputs({ stripped: stripped.length });
+        console.log(
+          stripped.length === 0
+            ? 'strip-forbidden: every change is under the allowed paths'
+            : `strip-forbidden: removed ${stripped.length} changes outside the allowed paths:\n  ${stripped.join('\n  ')}`
+        );
+      })
+    );
 
   const screenshots = fixIssues
     .command('screenshots')

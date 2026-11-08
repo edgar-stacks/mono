@@ -121,6 +121,9 @@ jobs:
       - name: finish-rounds
         run: pnpm lt fix-issues round finish
 
+      - name: strip-forbidden
+        run: pnpm lt fix-issues strip-forbidden
+
       - name: capture-screenshots
         run: pnpm lt fix-issues screenshots capture
 

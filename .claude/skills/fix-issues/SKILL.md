@@ -169,7 +169,12 @@ Each round is kept in `tmp/fix-issue/rounds/<n>/` and recorded in `tmp/fix-issue
 uploaded with the patch); `pnpm lt fix-issues round finish` adds one `Round <n>: …` entry per round
 to `tested`. A round that is clean ends the loop; a fixer that sets `"state": "blocked"` ends it
 too. If round 3 still fails, the status becomes `blocked` with a question naming what still fails,
-so the result is a draft pull request.
+so the result is a draft pull request. Then
+`pnpm lt fix-issues strip-forbidden` removes every change outside the allowed paths (restoring
+tracked files, deleting new ones) and, when it removed any, sets the status to `blocked` with a
+question that names the paths and says to treat the run as suspect unless the issue asked for them.
+The patch therefore only ever holds allowed paths, and a fixer that touched `.github/` produces a
+draft pull request with that question instead of a refused, empty run.
 
 For a change that alters what an extension screen shows, the fixer writes throwaway Playwright
 specs in `tmp/fix-issue/screenshot-specs/` that save one PNG per state, and lists the states under

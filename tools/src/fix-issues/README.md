@@ -10,7 +10,8 @@ only call these commands and Claude; everything they decide lives here.
 dispatch (issue, brief)
   │
   ▼  job fix-issue: read-only token, runs the fixer's code
-fetch-issue ─▶ round 1 ─▶ round 2? ─▶ round 3? ─▶ round finish ─▶ screenshots capture ─▶ patch
+fetch-issue ─▶ round 1 ─▶ round 2? ─▶ round 3? ─▶ round finish ─▶ strip-forbidden
+  ─▶ screenshots capture ─▶ patch
                  │
                  └─ fix (Claude) ─▶ round begin ─▶ round verify ─▶ round snapshot
                                      ─▶ review (Claude) ─▶ round check-review ─▶ round end
@@ -21,7 +22,10 @@ open-pull-request ─▶ signed commit on bot/fix-<n> ─▶ pull request (or a 
 
 A round ends `clean` (next: finish), `failed` (next round, up to three) or `blocked` (finish).
 After the last round `round finish` adds one entry per round to `tested`, and turns a run that
-still fails into `blocked` with a question, so it becomes a draft pull request.
+still fails into `blocked` with a question, so it becomes a draft pull request. `strip-forbidden`
+then removes any change outside the allowed paths and, if it removed one, blocks the status with a
+question naming each path and flagging the run as suspect, so the patch only ever holds allowed
+paths and the result is a draft pull request instead of a refused one.
 
 ## Files in `tmp/fix-issue/`
 
@@ -45,6 +49,7 @@ still fails into `blocked` with a question, so it becomes a draft pull request.
 | `review.ts`       | the review schema                                                              |
 | `git.ts`          | changed paths, allowed paths, tree snapshots, blob hashes                      |
 | `verify.ts`       | the verification gate                                                          |
+| `strip.ts`        | removing changes outside the allowed paths, with a blocking question           |
 | `rounds.ts`       | round begin, verify, review check, end and finish                              |
 | `screenshots.ts`  | capture before and after, PNG checks                                           |
 | `issue.ts`        | fetch and render the issue                                                     |
