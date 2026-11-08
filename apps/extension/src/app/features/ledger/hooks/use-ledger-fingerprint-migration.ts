@@ -37,9 +37,7 @@ export function useLedgerFingerprintMigration() {
 
         void dispatch(migrateLedgerStacksFingerprint({ fingerprint: actualFingerprint }));
 
-        logger.info(
-          `Successfully migrated Ledger fingerprint: ${assumedZeroFingerprint} → ${actualFingerprint}`
-        );
+        logger.info('Successfully migrated Ledger fingerprint');
       } catch (error) {
         logger.error('Failed to migrate Ledger fingerprint:', error);
       }
