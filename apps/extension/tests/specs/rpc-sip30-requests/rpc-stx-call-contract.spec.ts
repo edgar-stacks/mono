@@ -9,6 +9,7 @@ import {
 import { requestLeatherProvider } from '@tests/leather-provider';
 import { TEST_ACCOUNT_2_STX_ADDRESS } from '@tests/mocks/constants';
 import { getConnectedTestAppPermissionsState } from '@tests/page-object-models/onboarding.page';
+import { PostConditionSelectors } from '@tests/selectors/requests.selectors';
 import { SharedComponentsSelectors } from '@tests/selectors/shared-component.selectors';
 
 import type { RpcParams, stxCallContract } from '@leather.io/rpc';
@@ -89,6 +90,9 @@ test.describe('RPC: stx_callContract', () => {
           popup.getByText('This transaction can transfer any of your assets', { exact: true })
         )
         .toBeVisible();
+      await test
+        .expect(popup.getByTestId(PostConditionSelectors.PostConditionModeBadge))
+        .toHaveText('Allow');
       const btn = popup.getByText('Confirm', { exact: true });
 
       if (buttonToPress === 'Confirm') {
@@ -96,6 +100,19 @@ test.describe('RPC: stx_callContract', () => {
       } else {
         await popup.close();
       }
+    };
+  }
+
+  function checkVisiblePostConditionModeWithNoPostConditions(context: BrowserContext) {
+    return async (expected: { badge: string; copy: string }) => {
+      const popup = await context.waitForEvent('page');
+      await test
+        .expect(popup.getByTestId(PostConditionSelectors.PostConditionModeBadge))
+        .toHaveText(expected.badge);
+      await test
+        .expect(popup.getByTestId(PostConditionSelectors.NoPostConditions))
+        .toHaveText(expected.copy);
+      await popup.close();
     };
   }
 
@@ -153,6 +170,53 @@ test.describe('RPC: stx_callContract', () => {
         message: RpcErrorMessage.UserRejectedOperation,
       },
     });
+  });
+
+  test.describe('post condition mode with no post conditions', () => {
+    const nameTransferArgs: ClarityValue[] = [
+      bufferCVFromString('id'),
+      bufferCVFromString('test'),
+      standardPrincipalCV(TEST_ACCOUNT_2_STX_ADDRESS),
+      noneCV(),
+    ];
+
+    const cases = [
+      {
+        postConditionMode: 'deny',
+        badge: 'Deny',
+        copy: 'Only fees will be transferred from your account or the transaction will abort.',
+      },
+      {
+        postConditionMode: 'originator',
+        badge: 'Originator',
+        copy: 'Only fees will be transferred from your account. Contracts this transaction calls can still move their own assets.',
+      },
+    ] as const;
+
+    for (const { postConditionMode, badge, copy } of cases) {
+      test(`shows the ${postConditionMode} mode badge and copy`, async ({ page, context }) => {
+        const [result] = await Promise.all([
+          initiateSip30RpcCallContract(page)({
+            contract: 'SP000000000000000000002Q6VF78.bns',
+            functionName: 'name-transfer',
+            functionArgs: nameTransferArgs.map(arg => serializeCV(arg)),
+            postConditions: [],
+            postConditionMode,
+          }),
+          checkVisiblePostConditionModeWithNoPostConditions(context)({ badge, copy }),
+        ]);
+
+        delete result.id;
+
+        test.expect(result).toEqual({
+          jsonrpc: '2.0',
+          error: {
+            code: 4001,
+            message: RpcErrorMessage.UserRejectedOperation,
+          },
+        });
+      });
+    }
   });
 
   test('call contract shows warning for post condition mode', async ({ page, context }) => {

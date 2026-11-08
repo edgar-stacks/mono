@@ -20,6 +20,9 @@ export type RequestSelectors = (typeof RequestSelectors)[keyof typeof RequestSel
 
 export const PostConditionSelectors = {
   PostConditionItem: 'post-condition-item',
+  PostConditionModeBadge: 'post-condition-mode-badge',
+  NoPostConditions: 'no-post-conditions',
+  OriginatorModeNote: 'originator-mode-note',
 } as const;
 export type PostConditionSelectors =
   (typeof PostConditionSelectors)[keyof typeof PostConditionSelectors];
