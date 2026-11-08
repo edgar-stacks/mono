@@ -56,6 +56,12 @@ jobs:
           NOTES: ${{ inputs.notes }}
         run: printf '%s\n' "$NOTES" > tmp/fix-issue/notes.md
 
+      - name: install-bubblewrap
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends bubblewrap socat
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+
       - name: fix-issue
         uses: anthropics/claude-code-action@ae68417a745a5df4b2124873632bd73a2255e6f6 # v1.0.259
         env:
