@@ -154,32 +154,36 @@ fix → verify → review:
 
 - **Fix.** Round 1 follows `.github/prompts/fix-issue.md`; later rounds follow
   `.github/prompts/fix-round.md` and fix only what the previous round reported.
-- **Verify.** `fix-issue-verify.sh` in report mode: `pnpm format` must change nothing, then lint,
-  typecheck, knip, the extension's unused exports and the unit tests of every changed package and
-  its dependents. A failure is written to `verify.md` with the tail of the failing output and sends
-  the change back to fix; the review is skipped.
-- **Review.** A separate Claude pass with `.github/prompts/review-fix.md` writes `review.md`:
-  confirmed `critical`, `blocker` and `regression` findings under `## Blocking`, anything smaller
-  under `## Minor`. Later rounds see earlier reviews and only re-raise unfixed or newly introduced
-  findings. The run fails if the review touched any file. Blocking findings send the change back to
-  fix; minor ones are left for the human review.
+- **Verify.** `pnpm lt fix-issues round verify`: the status in `status.json` must be valid, every
+  change must be under the allowed paths, `pnpm format` must change nothing, then lint, typecheck,
+  knip, the extension's unused exports and the unit tests of every changed package and its
+  dependents. A failure is written to `verify.md` with the tail of the failing output and sends the
+  change back to fix; the review is skipped.
+- **Review.** A separate Claude pass with `.github/prompts/review-fix.md` writes `review.json`:
+  confirmed `critical`, `blocker` and `regression` findings under `blocking`, anything smaller under
+  `minor`. Later rounds see earlier reviews and only re-raise unfixed or newly introduced findings.
+  The run fails if the review touched any file. Blocking findings send the change back to fix; minor
+  ones are left for the human review.
 
-`fix-issue-round.sh` keeps each round in `tmp/fix-issue/rounds/<n>/` (uploaded with the patch) and,
-at the end, adds one `Round <n>: …` bullet per round under `TESTED`. A round that is clean ends the
-loop; a fixer that writes `STATE: blocked` ends it too. If round 3 still fails, the status becomes
-`blocked` with a question naming what still fails, so the result is a draft pull request.
+Each round is kept in `tmp/fix-issue/rounds/<n>/` and recorded in `tmp/fix-issue/run.json` (both
+uploaded with the patch); `pnpm lt fix-issues round finish` adds one `Round <n>: …` entry per round
+to `tested`. A round that is clean ends the loop; a fixer that sets `"state": "blocked"` ends it
+too. If round 3 still fails, the status becomes `blocked` with a question naming what still fails,
+so the result is a draft pull request.
 
 For a change that alters what an extension screen shows, the fixer writes throwaway Playwright
 specs in `tmp/fix-issue/screenshot-specs/` that save one PNG per state, and lists the states under
-`SCREENSHOTS:` in the status. `fix-issue-screenshots.sh capture` builds the test extension and runs
-them on the fix, stashes the fix, builds and runs them on `dev`, then restores the fix and fails the
-run if it did not come back intact. A failed build or spec only leaves that cell empty.
+`screenshots` in the status. `pnpm lt fix-issues screenshots capture` builds the test extension and
+runs them on the fix, stashes the fix, builds and runs them on `dev`, then restores the fix and
+fails the run if it did not come back intact. A failed build or spec only leaves that cell empty.
 `open-pull-request` checks each image (a real PNG, at most 1 MB, a lowercase hyphenated name, 12 at
 most), commits them to the `bot/screenshots` branch under `<issue>/<run>-<attempt>/`, and adds a
 `## Screenshots` table with one row per state and `Before` and `After` images linked by commit.
 
-Job `open-pull-request` gets only the patch and the status file, refuses any path outside `apps/`,
-`packages/`, `tools/` and `pnpm-lock.yaml`, and writes the signed commit to `bot/fix-<n>`. `done`
+Job `open-pull-request` builds `tools` from `dev`, gets only the patch and the status file, applies
+the patch in a separate git worktree, refuses any path outside `apps/`, `packages/`, `tools/` and
+`pnpm-lock.yaml`, and writes the signed commit to `bot/fix-<n>` (`pnpm lt fix-issues
+open-pull-request`). `done`
 opens a pull request; `blocked` with changes opens a draft whose body lists the questions;
 `blocked` with no changes comments the questions on the issue.
 

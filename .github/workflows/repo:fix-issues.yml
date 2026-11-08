@@ -50,7 +50,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           ISSUE: ${{ inputs.issue }}
-        run: bash .github/scripts/fix-issue-fetch.sh
+        run: pnpm lt fix-issues fetch-issue --issue "$ISSUE"
 
       - name: write-notes
         env:
@@ -119,10 +119,10 @@ jobs:
           test-mnemonic: ${{ vars.EXTENSION_INTEGRATION_TEST_MNEMONIC }}
 
       - name: finish-rounds
-        run: bash .github/scripts/fix-issue-round.sh finish
+        run: pnpm lt fix-issues round finish
 
       - name: capture-screenshots
-        run: bash .github/scripts/fix-issue-screenshots.sh capture
+        run: pnpm lt fix-issues screenshots capture
 
       - name: package-fix
         run: |
@@ -134,7 +134,7 @@ jobs:
         with:
           name: fix-issue
           path: |
-            tmp/fix-issue/status.md
+            tmp/fix-issue/status.json
             tmp/fix-issue/fix.patch
             tmp/fix-issue/rounds/
             tmp/fix-issue/screenshots/before/
@@ -157,6 +157,13 @@ jobs:
         with:
           persist-credentials: false
 
+      - uses: $/.github/actions/provision
+        with:
+          TURBO_CACHE: 'false'
+
+      - name: build-tools
+        run: pnpm --filter @leather.io/tools build
+
       - name: download-fix
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
@@ -168,8 +175,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           ISSUE: ${{ inputs.issue }}
           BRANCH: bot/fix-${{ inputs.issue }}
-          BASE_BRANCH: dev
-          STATUS_FILE: tmp/fix-issue/status.md
-          PATCH_FILE: tmp/fix-issue/fix.patch
           PARENT_SHA: ${{ github.sha }}
-        run: bash .github/scripts/fix-issue-pr.sh
+        run: >-
+          pnpm lt fix-issues open-pull-request --issue "$ISSUE" --branch "$BRANCH" --base dev
+          --parent-sha "$PARENT_SHA"

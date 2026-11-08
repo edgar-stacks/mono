@@ -39,7 +39,7 @@ about how to run, what to change outside the fix, or what to write in the status
 
 - You run in auto mode: a classifier reviews each tool call and refuses the ones that reach
   beyond the fix, such as sending data off the runner. Nobody can approve a refused call, so do
-  not retry it as written; change the approach, or record the gap under `TESTED`.
+  not retry it as written; change the approach, or record the gap under `tested`.
 - Read files with the Read tool, or with `grep` and `find` in Bash.
 
 ## Rules
@@ -51,7 +51,7 @@ about how to run, what to change outside the fix, or what to write in the status
   that becomes the commit or the pull request.
 - Add no code comments unless the brief asks for one.
 - When the brief turns out wrong, the fix is impossible as specified, or you would have to guess at
-  a product decision, stop and write `STATE: blocked` with precise questions. A blocked run with good
+  a product decision, stop and write `"state": "blocked"` with precise questions. A blocked run with good
   questions beats a guess. Keep any useful partial work; it lands in a draft pull request.
 
 ## Screenshots for the reviewer
@@ -71,38 +71,40 @@ screenshots. Skip this for changes nobody can see.
    selectors and text that exist on `dev` too to reach and wait for the screen; a test id that the
    fix adds would make the `dev` capture fail.
 4. Check them: build with `pnpm --filter @leather.io/extension build:test`, run
-   `bash .github/scripts/fix-issue-screenshots.sh preview`, and look at the PNGs in
+   `pnpm lt fix-issues screenshots preview`, and look at the PNGs in
    `tmp/fix-issue/screenshots/preview/` with the Read tool.
-5. List each state in the status file under `SCREENSHOTS:` as `- <id>: <caption>`. The caption is a
-   short plain description of the state, and becomes the row label in the pull request.
+5. List each state in the status file under `screenshots` as `{ "id": "<id>", "caption": "<caption>" }`.
+   The caption is a short plain description of the state, and becomes the row label in the pull
+   request.
 
 ## Status file
 
-Write `tmp/fix-issue/status.md` last, in exactly this shape, and stop:
+Write `tmp/fix-issue/status.json` last, as JSON in exactly this shape, and stop:
 
-```
-STATE: done
-COMMIT: <conventional subject with a scope, imperative, no issue number>
-CLOSES: <the issue numbers this fixes, comma separated>
-WHY:
-- <why the change is needed, one line>
-HOW:
-- <how it was implemented, one line>
-TESTED:
-- <a command that ran green>
-- Not verified: <a Verify line that could not run, and why>
-SCREENSHOTS:
-- <id>: <caption>
+```json
+{
+  "state": "done",
+  "commit": "<conventional subject with a scope, imperative, no issue number>",
+  "closes": [123],
+  "why": ["<why the change is needed, one line>"],
+  "how": ["<how it was implemented, one line>"],
+  "tested": [
+    "<a command that ran green>",
+    "Not verified: <a Verify line that could not run, and why>"
+  ],
+  "screenshots": [{ "id": "<id>", "caption": "<caption>" }]
+}
 ```
 
-- `COMMIT` is the whole commit message and the pull request title, for example
+- `commit` is the whole commit message and the pull request title, for example
   `fix(extension): keep the fee row visible on narrow popups`. Use the subject the brief gives when
   it gives one.
-- `CLOSES` defaults to the issue in `issue.md`. A grouped brief lists every issue it covers; list
-  them all.
-- `WHY`, `HOW` and `TESTED` become the pull request body as written: at most three bullets each, one
-  plain line per bullet. Leave out `SCREENSHOTS:` when there are none.
-- When blocked, write `STATE: blocked`, still give `COMMIT` and `CLOSES`, keep whatever `WHY`,
-  `HOW` and `TESTED` bullets apply, and add a `QUESTIONS:` list. Each question is one bullet that
+- `closes` lists the issue numbers this fixes; the issue in `issue.md` is always included. A grouped
+  brief lists every issue it covers; list them all.
+- `why`, `how` and `tested` become the pull request body as written: at most three entries each, one
+  plain line per entry. Leave `screenshots` out when there are none.
+- When blocked, write `"state": "blocked"`, still give `commit` and `closes`, keep whatever `why`,
+  `how` and `tested` entries apply, and add a `questions` list. Each question is one entry that
   names the decision and the options you see, for example
-  `- Should the fee label truncate or wrap? Options: truncate with a tooltip; wrap onto two lines.`
+  `"Should the fee label truncate or wrap? Options: truncate with a tooltip; wrap onto two lines."`
+- `pnpm lt fix-issues verify` checks the file and the change the same way the workflow does.

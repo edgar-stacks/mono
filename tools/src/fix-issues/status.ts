@@ -1,0 +1,108 @@
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { z } from 'zod';
+
+const subjectPattern =
+  /^(build|chore|ci|docs|feat|fix|perf|refactor|revert|style|test)\([a-z0-9][a-z0-9-]*\)!?: \S/;
+const issueNumberPattern = /#\d/;
+const maxSubjectLength = 100;
+const maxScreenshots = 12;
+const screenshotIdPattern = /^[a-z0-9][a-z0-9-]{0,62}$/;
+
+const lineSchema = z
+  .string()
+  .trim()
+  .min(1, 'is empty')
+  .refine(value => !value.includes('\n'), 'must be a single line');
+
+const screenshotSchema = z.object({
+  id: z.string().regex(screenshotIdPattern, 'must be lowercase and hyphenated'),
+  caption: lineSchema,
+});
+
+export function subjectProblem(subject: string): string | null {
+  if (subject === '') return 'commit: is empty';
+  if (!subjectPattern.test(subject)) {
+    return `commit: '${subject}' is not a conventional subject with a scope, like fix(extension): keep the fee row visible`;
+  }
+  if (issueNumberPattern.test(subject)) {
+    return `commit: '${subject}' names an issue number; the pull request body closes the issue`;
+  }
+  if (subject.length > maxSubjectLength) {
+    return `commit: '${subject}' is longer than ${maxSubjectLength} characters`;
+  }
+  return null;
+}
+
+type ListKey = 'why' | 'how' | 'tested' | 'questions';
+const requiredWhenDone: readonly ListKey[] = ['why', 'how', 'tested'];
+const requiredWhenBlocked: readonly ListKey[] = ['questions'];
+
+const fixStatusSchema = z
+  .object({
+    state: z.enum(['done', 'blocked']),
+    commit: z.string().trim(),
+    closes: z.array(z.number().int().positive()).default([]),
+    why: z.array(lineSchema).default([]),
+    how: z.array(lineSchema).default([]),
+    tested: z.array(lineSchema).default([]),
+    questions: z.array(lineSchema).default([]),
+    screenshots: z.array(screenshotSchema).max(maxScreenshots).default([]),
+  })
+  .superRefine((status, context) => {
+    const subject = subjectProblem(status.commit);
+    if (subject) context.addIssue({ code: 'custom', message: subject });
+    const required = status.state === 'done' ? requiredWhenDone : requiredWhenBlocked;
+    for (const key of required) {
+      if (status[key].length === 0)
+        context.addIssue({ code: 'custom', message: `${key}: has no entries` });
+    }
+  });
+
+export type FixStatus = z.infer<typeof fixStatusSchema>;
+export type FixState = FixStatus['state'];
+
+type StatusResult =
+  | { readonly ok: true; readonly status: FixStatus }
+  | { readonly ok: false; readonly problems: readonly string[] };
+
+function describeIssue(issue: z.core.$ZodIssue): string {
+  const where = issue.path.map(String).join('.');
+  return where ? `${where}: ${issue.message}` : issue.message;
+}
+
+export function parseStatus(raw: unknown): StatusResult {
+  const result = fixStatusSchema.safeParse(raw);
+  if (result.success) return { ok: true, status: result.data };
+  return { ok: false, problems: result.error.issues.map(describeIssue) };
+}
+
+export function readStatus(file: string): StatusResult {
+  if (!existsSync(file)) return { ok: false, problems: [`${file} does not exist`] };
+  try {
+    return parseStatus(JSON.parse(readFileSync(file, 'utf8')));
+  } catch (error) {
+    return { ok: false, problems: [`${file} is not valid JSON: ${String(error)}`] };
+  }
+}
+
+export function readState(file: string): FixState | null {
+  const result = readStatus(file);
+  if (result.ok) return result.status.state;
+  if (!existsSync(file)) return null;
+  try {
+    const state = z
+      .object({ state: z.enum(['done', 'blocked']) })
+      .safeParse(JSON.parse(readFileSync(file, 'utf8')));
+    return state.success ? state.data.state : null;
+  } catch {
+    return null;
+  }
+}
+
+export function writeStatus(file: string, status: FixStatus): void {
+  writeFileSync(file, `${JSON.stringify(status, null, 2)}\n`);
+}
+
+export function closesNumbers(status: FixStatus, issue: number): number[] {
+  return [...new Set([issue, ...status.closes])];
+}

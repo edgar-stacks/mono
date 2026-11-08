@@ -88,7 +88,7 @@ interview and the advisory overlaps from section 5 that another dispatch owns.
 and E2E name a runnable command and a spec file; E2E comes from the feature-map entry for the
 screen. The workflow does not run E2E (the pull request's own checks do), and its runner has no
 device, Speculos, funded account or `.env`. Needs is what a line requires to run end to end; when
-the runner lacks it, that line becomes a `Not verified:` bullet under `TESTED:` in the status file
+the runner lacks it, that line becomes a `Not verified:` entry in `tested` in the status file
 and in the PR body.
 
 **Done when**: the issue's own boxes when it has them, otherwise research's, one to three, each
@@ -98,5 +98,5 @@ checkable by someone else: a spec that passes, a visible string, a number.
 the issue: a bug is `fix`, a change is `feat` or `refactor` by its nature, matching the examples in
 `CLAUDE.md` (`feat(mobile)`, `refactor(web)`, `fix(utils)`). The scope stays the platform or
 package (`extension`, `mobile`, `web`, `<package>`). It is what the
-fixer writes to `COMMIT:`, the whole commit message with no body or trailers, and the pull request
+fixer writes to `commit`, the whole commit message with no body or trailers, and the pull request
 title.

@@ -48,7 +48,7 @@ runs:
       shell: bash
       env:
         ROUND: ${{ inputs.round }}
-      run: bash .github/scripts/fix-issue-round.sh begin "$ROUND"
+      run: pnpm lt fix-issues round begin --round "$ROUND"
 
     - name: verify
       id: verify
@@ -56,12 +56,12 @@ runs:
       shell: bash
       env:
         ROUND: ${{ inputs.round }}
-      run: bash .github/scripts/fix-issue-round.sh verify "$ROUND"
+      run: pnpm lt fix-issues round verify --round "$ROUND"
 
     - name: snapshot
       if: steps.verify.outputs.verified == 'true'
       shell: bash
-      run: bash .github/scripts/fix-issue-round.sh snapshot
+      run: pnpm lt fix-issues round snapshot
 
     - name: review
       if: steps.verify.outputs.verified == 'true'
@@ -82,11 +82,11 @@ runs:
       shell: bash
       env:
         ROUND: ${{ inputs.round }}
-      run: bash .github/scripts/fix-issue-round.sh check-review "$ROUND"
+      run: pnpm lt fix-issues round check-review --round "$ROUND"
 
     - name: end-round
       id: end-round
       shell: bash
       env:
         ROUND: ${{ inputs.round }}
-      run: bash .github/scripts/fix-issue-round.sh end "$ROUND"
+      run: pnpm lt fix-issues round end --round "$ROUND"
