@@ -182,8 +182,12 @@ specs in `tmp/issue-fix/screenshot-specs/` that save one PNG per state, and list
 runs them on the fix, stashes the fix, builds and runs them on `dev`, then restores the fix and
 fails the run if it did not come back intact. A failed build or spec only leaves that cell empty.
 `open-pull-request` checks each image (a real PNG, at most 1 MB, a lowercase hyphenated name, 12 at
-most), commits them to the `bot/screenshots` branch under `<issue>/<run>-<attempt>/`, and adds a
-`## Screenshots` table with one row per state and `Before` and `After` images linked by commit.
+most), commits them to the issue's own `bot/screenshots-<issue>` branch under
+`<issue>/<run>-<attempt>/` (created on the issue's first run, added to after that; runs for one
+issue never overlap, so the branch never races), and adds a `## Screenshots` table with one row per
+state and `Before` and `After` images linked by commit. A failure to publish them is logged and the
+pull request opens without the table; screenshots never cost the fix. Delete a
+`bot/screenshots-<issue>` branch once its issue is closed if you want the branch list tidy.
 
 Job `open-pull-request` builds `tools` from `dev`, gets only the patch and the status file, applies
 the patch in a separate git worktree, refuses any path outside `apps/`, `packages/`, `tools/` and

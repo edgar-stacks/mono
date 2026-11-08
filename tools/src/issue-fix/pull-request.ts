@@ -20,7 +20,6 @@ interface OpenPullRequestOptions {
   readonly runId?: string;
   readonly runAttempt?: string;
   readonly serverUrl?: string;
-  readonly screenshotsBranch?: string;
   readonly coAuthor?: string;
   log?(line: string): void;
 }
@@ -69,7 +68,6 @@ function commitMessage(subject: string, trailer: string | null): string {
   return trailer ? `${subject}\n\n${trailer}\n` : subject;
 }
 
-const defaultScreenshotsBranch = 'bot/screenshots';
 const executableMode = '100755';
 const fileMode = '100644';
 
@@ -255,7 +253,7 @@ async function publishScreenshots(
   }
   if (entries.length === 0) return null;
 
-  const branch = options.screenshotsBranch ?? defaultScreenshotsBranch;
+  const branch = `bot/screenshots-${issue}`;
   const head = await findRef(client, repo, branch);
   const commit = await commitTree(client, repo, `Screenshots for #${issue}`, entries, head);
   if (head) {
@@ -364,7 +362,12 @@ export async function openPullRequest(options: OpenPullRequestOptions): Promise<
 
     const existing = await findOpenPullRequest(options);
     const branchHead = await findRef(client, repo, branch);
-    const table = await publishScreenshots(options, status.status, log);
+    const table = await publishScreenshots(options, status.status, log).catch((error: unknown) => {
+      log(
+        `open-pull-request: skipping screenshots: ${error instanceof Error ? error.message : String(error)}`
+      );
+      return null;
+    });
     const body = renderBody(status.status, closesNumbers(status.status, issue), table);
     const title = status.status.commit;
     const trailer = await coAuthorTrailer(client, options.coAuthor);

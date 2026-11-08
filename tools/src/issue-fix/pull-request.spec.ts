@@ -438,7 +438,7 @@ describe('openPullRequest', () => {
         ],
       });
       expect(callsTo(client, 'POST', '/git/refs')[0]?.body).toEqual({
-        ref: 'refs/heads/bot/screenshots',
+        ref: 'refs/heads/bot/screenshots-12',
         sha: 'new-commit-sha',
       });
       const base = 'https://raw.githubusercontent.com/leather-io/mono/new-commit-sha/12/777-1';
@@ -457,15 +457,33 @@ describe('openPullRequest', () => {
       setup(withScreenshots);
       shoot('after', 'fee-row-narrow');
       const { client, result } = open((_method, path) =>
-        path.includes('/git/matching-refs/heads/bot/screenshots')
-          ? [{ ref: 'refs/heads/bot/screenshots', object: { sha: 'shots-head' } }]
+        path.includes('/git/matching-refs/heads/bot/screenshots-12')
+          ? [{ ref: 'refs/heads/bot/screenshots-12', object: { sha: 'shots-head' } }]
           : undefined
       );
       await result;
       expect(callsTo(client, 'POST', '/git/trees')[0]?.body).toMatchObject({
         base_tree: 'base-tree-sha',
       });
-      expect(callsTo(client, 'PATCH', '/git/refs/heads/bot/screenshots')[0]?.body).toEqual({
+      expect(callsTo(client, 'PATCH', '/git/refs/heads/bot/screenshots-12')[0]?.body).toEqual({
+        sha: 'new-commit-sha',
+      });
+    });
+
+    test('still opens the pull request, without screenshots, when publishing them fails', async () => {
+      setup(withScreenshots);
+      shoot('after', 'fee-row-narrow');
+      const { client, result } = open((method, path, body) => {
+        const ref = typeof body === 'object' && body !== null && 'ref' in body ? body.ref : null;
+        if (method === 'POST' && ref === 'refs/heads/bot/screenshots-12') {
+          throw new Error('Reference update failed');
+        }
+        return undefined;
+      });
+      await expect(result).resolves.toBe('https://github.com/leather-io/mono/pull/101');
+      expect(callsTo(client, 'POST', '/pulls')[0]?.body).toMatchObject({ body: doneBody });
+      expect(callsTo(client, 'POST', '/git/refs').map(call => call.body)).toContainEqual({
+        ref: 'refs/heads/bot/issue-fix-12-777',
         sha: 'new-commit-sha',
       });
     });
@@ -475,7 +493,7 @@ describe('openPullRequest', () => {
       shoot('after', 'fee-row-narrow', Buffer.from('<svg onload=alert(1)>'));
       const { client, result } = open();
       await result;
-      expect(client.calls.some(call => call.path.includes('bot/screenshots'))).toBe(false);
+      expect(client.calls.some(call => call.path.includes('bot/screenshots-12'))).toBe(false);
       expect(callsTo(client, 'POST', '/pulls')[0]?.body).toMatchObject({ body: doneBody });
     });
   });
