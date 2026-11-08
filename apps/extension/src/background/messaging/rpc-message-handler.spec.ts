@@ -20,6 +20,8 @@ import {
   supportedMethods,
 } from '@leather.io/rpc';
 
+import { logger } from '@shared/logger';
+
 import { createMockPort } from './create-mock-port';
 import { methodsRequiringConnectedWallet } from './methods-requiring-connected-wallet';
 import { rpcMessageHandler } from './rpc-message-handler';
@@ -204,6 +206,15 @@ describe('rpcMessageHandler', () => {
     await handleRequest('constructor');
 
     expectRejectedAsUnknownMethod();
+  });
+
+  test('logs only the method and id of a request', async () => {
+    await handleRequest(signPsbt.method);
+
+    expect(logger.info).toHaveBeenCalledWith(expect.any(String), {
+      method: signPsbt.method,
+      id: 'req-1',
+    });
   });
 
   test('rejects a method that is not a string', async () => {
