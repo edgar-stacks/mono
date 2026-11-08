@@ -89,65 +89,37 @@ jobs:
         working-directory: apps/extension
         run: pnpm playwright install chromium --no-shell --with-deps
 
-      - name: fix-issue
-        uses: anthropics/claude-code-action@ae68417a745a5df4b2124873632bd73a2255e6f6 # v1.0.259
-        env:
-          EXTENSION_INTEGRATION_TEST_MNEMONIC: ${{ vars.EXTENSION_INTEGRATION_TEST_MNEMONIC }}
+      - name: round-1
+        id: round-1
+        uses: $/.github/actions/fix-issue-round
         with:
-          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          github_token: ${{ github.token }}
-          claude_args: >-
-            --model opus
-            --permission-mode auto
-            --permission-prompts none
-            --allowedTools mcp__github
-          show_full_output: true
-          prompt: |
-            Follow the instructions in .github/prompts/fix-issue.md.
+          round: '1'
+          claude-code-oauth-token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          github-token: ${{ github.token }}
+          test-mnemonic: ${{ vars.EXTENSION_INTEGRATION_TEST_MNEMONIC }}
 
-      - name: snapshot-fix
-        id: snapshot
-        run: bash .github/scripts/fix-issue-review.sh snapshot
-
-      - name: review-fix
-        if: steps.snapshot.outputs.state == 'done'
-        uses: anthropics/claude-code-action@ae68417a745a5df4b2124873632bd73a2255e6f6 # v1.0.259
+      - name: round-2
+        id: round-2
+        if: steps.round-1.outputs.continue == 'true'
+        uses: $/.github/actions/fix-issue-round
         with:
-          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          github_token: ${{ github.token }}
-          claude_args: >-
-            --model opus
-            --permission-mode auto
-            --permission-prompts none
-            --allowedTools mcp__github
-          show_full_output: true
-          prompt: |
-            Follow the instructions in .github/prompts/review-fix.md.
+          round: '2'
+          claude-code-oauth-token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          github-token: ${{ github.token }}
+          test-mnemonic: ${{ vars.EXTENSION_INTEGRATION_TEST_MNEMONIC }}
 
-      - name: check-review
-        id: review
-        if: steps.snapshot.outputs.state == 'done'
-        run: bash .github/scripts/fix-issue-review.sh check
-
-      - name: fix-review-findings
-        if: steps.review.outputs.blocking != '' && steps.review.outputs.blocking != '0'
-        uses: anthropics/claude-code-action@ae68417a745a5df4b2124873632bd73a2255e6f6 # v1.0.259
-        env:
-          EXTENSION_INTEGRATION_TEST_MNEMONIC: ${{ vars.EXTENSION_INTEGRATION_TEST_MNEMONIC }}
+      - name: round-3
+        id: round-3
+        if: steps.round-2.outputs.continue == 'true'
+        uses: $/.github/actions/fix-issue-round
         with:
-          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          github_token: ${{ github.token }}
-          claude_args: >-
-            --model opus
-            --permission-mode auto
-            --permission-prompts none
-            --allowedTools mcp__github
-          show_full_output: true
-          prompt: |
-            Follow the instructions in .github/prompts/fix-review-findings.md.
+          round: '3'
+          claude-code-oauth-token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          github-token: ${{ github.token }}
+          test-mnemonic: ${{ vars.EXTENSION_INTEGRATION_TEST_MNEMONIC }}
 
-      - name: verify-fix
-        run: bash .github/scripts/fix-issue-verify.sh
+      - name: finish-rounds
+        run: bash .github/scripts/fix-issue-round.sh finish
 
       - name: package-fix
         run: |
@@ -161,7 +133,7 @@ jobs:
           path: |
             tmp/fix-issue/status.md
             tmp/fix-issue/fix.patch
-            tmp/fix-issue/review.md
+            tmp/fix-issue/rounds/
           if-no-files-found: error
           retention-days: 3
 

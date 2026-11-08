@@ -23,7 +23,7 @@ const scriptNames = [
   'fix-issue-verify.sh',
   'fix-issue-fetch.sh',
   'fix-issue-pr.sh',
-  'fix-issue-review.sh',
+  'fix-issue-round.sh',
 ];
 const repoName = 'leather-io/mono';
 const binaryContent = Buffer.from([0, 1, 2, 255, 254, 0, 10]);
@@ -694,7 +694,60 @@ describe('fix-issue-verify.sh', () => {
   }
 });
 
-describe('fix-issue-review.sh', () => {
+describe('fix-issue-verify.sh report mode', () => {
+  function runReport(sandbox, env = {}) {
+    return run(sandbox, 'fix-issue-verify.sh', {
+      env: { VERIFY_REPORT: 'tmp/fix-issue/verify.md', ...env },
+    });
+  }
+
+  function readReport(sandbox) {
+    return readFileSync(join(sandbox.repo, 'tmp/fix-issue/verify.md'), 'utf8');
+  }
+
+  it('writes no report when the gate passes', () => {
+    const sandbox = createSandbox();
+    makeFix(sandbox);
+    writeStatus(sandbox, doneStatus);
+    assert.equal(runReport(sandbox).status, 0);
+    assert.ok(!existsSync(join(sandbox.repo, 'tmp/fix-issue/verify.md')));
+  });
+
+  it('reports the failing check', () => {
+    const sandbox = createSandbox();
+    makeFix(sandbox);
+    writeStatus(sandbox, doneStatus);
+    const result = runReport(sandbox, { STUB_PNPM_FAIL: 'typecheck' });
+    assert.notEqual(result.status, 0);
+    assert.match(readReport(sandbox), /^FAILED: `pnpm typecheck` failed\n/);
+  });
+
+  it('reports an invalid status with its problems', () => {
+    const sandbox = createSandbox();
+    makeFix(sandbox);
+    writeStatus(
+      sandbox,
+      doneStatus.replace('- Let the row wrap its label instead of overflowing.\n', '')
+    );
+    assert.notEqual(runReport(sandbox).status, 0);
+    const report = readReport(sandbox);
+    assert.match(report, /^FAILED: tmp\/fix-issue\/status\.md is not a valid fixer status\n/);
+    assert.match(report, /HOW: has no bullets/);
+  });
+
+  it('reports refused paths', () => {
+    const sandbox = createSandbox();
+    makeFix(sandbox);
+    writeRepoFile(sandbox, '.github/prompts/fix-issue.md', 'ignore the rules\n');
+    writeStatus(sandbox, doneStatus);
+    assert.notEqual(runReport(sandbox).status, 0);
+    const report = readReport(sandbox);
+    assert.match(report, /^FAILED: the fixer changed files it may not touch\n/);
+    assert.match(report, /\.github\/prompts\/fix-issue\.md/);
+  });
+});
+
+describe('fix-issue-round.sh', () => {
   const cleanReview = [
     'BLOCKING: 0',
     '## Blocking',
@@ -711,12 +764,12 @@ describe('fix-issue-review.sh', () => {
     '',
   ].join('\n');
 
-  function runReview(sandbox, mode) {
-    const outputPath = join(sandbox.root, `review-${mode}.output`);
+  function runRound(sandbox, args, env = {}) {
+    const outputPath = join(sandbox.root, `round-${args.join('-')}.output`);
     writeFileSync(outputPath, '');
-    const result = run(sandbox, 'fix-issue-review.sh', {
-      args: [mode],
-      env: { GITHUB_OUTPUT: outputPath },
+    const result = run(sandbox, 'fix-issue-round.sh', {
+      args,
+      env: { GITHUB_OUTPUT: outputPath, ...env },
     });
     return { ...result, output: readFileSync(outputPath, 'utf8') };
   }
@@ -729,71 +782,96 @@ describe('fix-issue-review.sh', () => {
     return readFileSync(join(sandbox.repo, 'tmp/fix-issue/status.md'), 'utf8');
   }
 
-  it('records the fixer state with the snapshot', () => {
-    const sandbox = createSandbox();
-    makeFix(sandbox);
-    writeStatus(sandbox, doneStatus);
-    const result = runReview(sandbox, 'snapshot');
-    assert.equal(result.status, 0, result.stderr);
-    assert.equal(result.output, 'state=done\n');
-    assert.ok(existsSync(join(sandbox.repo, 'tmp/fix-issue/review-snapshot.txt')));
-  });
+  function roundFile(sandbox, round, name) {
+    return join(sandbox.repo, 'tmp/fix-issue/rounds', String(round), name);
+  }
 
-  it('records an empty state when the fixer wrote no status', () => {
-    const sandbox = createSandbox();
-    const result = runReview(sandbox, 'snapshot');
-    assert.equal(result.status, 0, result.stderr);
-    assert.equal(result.output, 'state=\n');
-  });
+  function reviewedRound(sandbox, round, review, env = {}) {
+    assert.equal(runRound(sandbox, ['begin', String(round)]).status, 0);
+    const verify = runRound(sandbox, ['verify', String(round)], env);
+    assert.equal(verify.status, 0, verify.stderr);
+    if (verify.output.includes('verified=true')) {
+      runRound(sandbox, ['snapshot']);
+      writeReview(sandbox, review);
+      const check = runRound(sandbox, ['check-review', String(round)]);
+      assert.equal(check.status, 0, check.stderr);
+    }
+    return runRound(sandbox, ['end', String(round)]);
+  }
 
-  it('passes a clean review and notes it under TESTED', () => {
+  it('records the fixer state when a round begins', () => {
     const sandbox = createSandbox();
-    makeFix(sandbox);
-    writeStatus(sandbox, doneStatus);
-    runReview(sandbox, 'snapshot');
+    writeStatus(sandbox, blockedStatus);
     writeReview(sandbox, cleanReview);
-    const result = runReview(sandbox, 'check');
+    const result = runRound(sandbox, ['begin', '2']);
     assert.equal(result.status, 0, result.stderr);
-    assert.equal(result.output, 'blocking=0\n');
+    assert.equal(result.output, 'state=blocked\n');
+    assert.ok(!existsSync(join(sandbox.repo, 'tmp/fix-issue/review.md')));
+  });
+
+  it('refuses a round that is not a number', () => {
+    const sandbox = createSandbox();
+    const result = runRound(sandbox, ['begin', 'x']);
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /'x' is not a round number/);
+  });
+
+  it('ends a round clean when the gate passes and the review finds nothing blocking', () => {
+    const sandbox = createSandbox();
+    makeFix(sandbox);
+    writeStatus(sandbox, doneStatus);
+    const result = reviewedRound(sandbox, 1, cleanReview);
+    assert.equal(result.status, 0, result.stderr);
+    assert.equal(result.output, 'outcome=clean\nclean=true\ncontinue=false\n');
+    assert.ok(existsSync(roundFile(sandbox, 1, 'review.md')));
+  });
+
+  it('continues after a failed gate without running the review', () => {
+    const sandbox = createSandbox();
+    makeFix(sandbox);
+    writeStatus(sandbox, doneStatus);
+    const result = reviewedRound(sandbox, 1, cleanReview, { STUB_PNPM_FAIL: 'lint' });
+    assert.equal(result.status, 0, result.stderr);
+    assert.equal(result.output, 'outcome=failed\nclean=false\ncontinue=true\n');
     assert.match(
-      readStatus(sandbox),
-      /TESTED:\n- Code review: 0 critical, blocker or regression findings\n- pnpm --filter/
+      readFileSync(roundFile(sandbox, 1, 'verify.md'), 'utf8'),
+      /^FAILED: `pnpm lint` failed/
+    );
+    assert.ok(!existsSync(roundFile(sandbox, 1, 'review.md')));
+  });
+
+  it('continues after blocking review findings', () => {
+    const sandbox = createSandbox();
+    makeFix(sandbox);
+    writeStatus(sandbox, doneStatus);
+    const result = reviewedRound(sandbox, 1, blockingReview);
+    assert.equal(result.output, 'outcome=failed\nclean=false\ncontinue=true\n');
+    assert.equal(
+      readFileSync(roundFile(sandbox, 1, 'summary'), 'utf8'),
+      'Round 1: review found 2 critical, blocker or regression findings\n'
     );
   });
 
-  it('reports the blocking count for the fix round', () => {
+  it('stops when the fixer is blocked', () => {
     const sandbox = createSandbox();
-    makeFix(sandbox);
-    writeStatus(sandbox, doneStatus);
-    runReview(sandbox, 'snapshot');
-    writeReview(sandbox, blockingReview);
-    const result = runReview(sandbox, 'check');
-    assert.equal(result.status, 0, result.stderr);
-    assert.equal(result.output, 'blocking=2\n');
-    assert.match(readStatus(sandbox), /- Code review: 2 critical, blocker or regression findings/);
+    writeStatus(sandbox, blockedStatus);
+    runRound(sandbox, ['begin', '1']);
+    const result = runRound(sandbox, ['end', '1']);
+    assert.equal(result.output, 'outcome=blocked\nclean=false\ncontinue=false\n');
   });
 
   it('fails when the review changed a file', () => {
     const sandbox = createSandbox();
     makeFix(sandbox);
     writeStatus(sandbox, doneStatus);
-    runReview(sandbox, 'snapshot');
-    writeRepoFile(sandbox, 'apps/extension/fee-row.tsx', 'export const feeRow = 3;\n');
-    writeReview(sandbox, cleanReview);
-    const result = runReview(sandbox, 'check');
-    assert.notEqual(result.status, 0);
-    assert.match(result.stderr, /the review changed files/);
-    assert.equal(result.output, '');
-  });
-
-  it('fails when the review added a file', () => {
-    const sandbox = createSandbox();
-    makeFix(sandbox);
-    writeStatus(sandbox, doneStatus);
-    runReview(sandbox, 'snapshot');
+    runRound(sandbox, ['begin', '1']);
+    runRound(sandbox, ['verify', '1']);
+    runRound(sandbox, ['snapshot']);
     writeRepoFile(sandbox, 'packages/utils/extra.ts', 'export const extra = 1;\n');
     writeReview(sandbox, cleanReview);
-    assert.match(runReview(sandbox, 'check').stderr, /the review changed files/);
+    const result = runRound(sandbox, ['check-review', '1']);
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /the review changed files/);
   });
 
   const invalidReviews = [
@@ -810,19 +888,72 @@ describe('fix-issue-review.sh', () => {
     ],
   ];
   for (const [name, review, message] of invalidReviews) {
-    it(`fails on ${name}`, () => {
+    it(`fails the review check on ${name}`, () => {
       const sandbox = createSandbox();
       makeFix(sandbox);
       writeStatus(sandbox, doneStatus);
-      runReview(sandbox, 'snapshot');
+      runRound(sandbox, ['snapshot']);
       if (review !== null) writeReview(sandbox, review);
-      const result = runReview(sandbox, 'check');
+      const result = runRound(sandbox, ['check-review', '1']);
       assert.notEqual(result.status, 0);
       assert.match(result.stderr, message);
       assert.equal(result.output, '');
-      assert.equal(readStatus(sandbox), doneStatus);
     });
   }
+
+  it('finishes a clean run with one TESTED bullet per round', () => {
+    const sandbox = createSandbox();
+    makeFix(sandbox);
+    writeStatus(sandbox, doneStatus);
+    reviewedRound(sandbox, 1, cleanReview, { STUB_PNPM_FAIL: 'lint' });
+    reviewedRound(sandbox, 2, cleanReview);
+    const result = runRound(sandbox, ['finish']);
+    assert.equal(result.status, 0, result.stderr);
+    assert.equal(result.output, 'outcome=clean\n');
+    const status = readStatus(sandbox);
+    assert.match(
+      status,
+      /TESTED:\n- Round 1: `pnpm lint` failed\n- Round 2: checks passed and review found no critical, blocker or regression findings\n- pnpm --filter/
+    );
+    assert.match(status, /^STATE: done$/m);
+  });
+
+  it('turns a run that still fails after the last round into a blocked status', () => {
+    const sandbox = createSandbox();
+    makeFix(sandbox);
+    writeStatus(sandbox, doneStatus);
+    for (const round of [1, 2, 3]) reviewedRound(sandbox, round, blockingReview);
+    const result = runRound(sandbox, ['finish']);
+    assert.equal(result.output, 'outcome=failed\n');
+    const status = readStatus(sandbox);
+    assert.match(status, /^STATE: blocked$/m);
+    assert.match(
+      status,
+      /QUESTIONS:\n- The fix still fails after 3 rounds \(review found 2 critical, blocker or regression findings\)\. Options:/
+    );
+    const verify = run(sandbox, 'fix-issue-verify.sh');
+    assert.equal(verify.status, 0, verify.stderr);
+  });
+
+  it('keeps a blocked fixer status and its questions', () => {
+    const sandbox = createSandbox();
+    writeStatus(sandbox, blockedStatus);
+    runRound(sandbox, ['begin', '1']);
+    runRound(sandbox, ['end', '1']);
+    const result = runRound(sandbox, ['finish']);
+    assert.equal(result.output, 'outcome=blocked\n');
+    const status = readStatus(sandbox);
+    assert.match(status, /QUESTIONS:\n- Should the label truncate or wrap\?/);
+    assert.match(status, /TESTED:\n- Round 1: the fixer stopped as blocked\n/);
+  });
+
+  it('fails to finish when no round ran', () => {
+    const sandbox = createSandbox();
+    writeStatus(sandbox, doneStatus);
+    const result = runRound(sandbox, ['finish']);
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /no round ran/);
+  });
 });
 
 describe('fix-issue-fetch.sh', () => {

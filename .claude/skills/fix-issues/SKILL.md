@@ -147,15 +147,27 @@ renders the issue and its comments to `tmp/fix-issue/issue.md`, writes the brief
 installs Chromium for Playwright (the browser cache is restored, never saved) and runs the fixer
 with `.github/prompts/fix-issue.md`. The fixer can build the extension in test mode and run its
 end-to-end specs under `xvfb-run` with the `EXTENSION_INTEGRATION_TEST_MNEMONIC` test wallet, and
-read issues, pull requests and code through the read-only GitHub MCP server. When the fixer is
-done, a separate Claude pass reviews the change with `.github/prompts/review-fix.md` and writes
-`tmp/fix-issue/review.md`: confirmed `critical`, `blocker` and `regression` findings under
-`## Blocking`, anything smaller under `## Minor`. `fix-issue-review.sh` fails the run if the review
-touched any file, and adds a `Code review:` bullet to `TESTED`. When there are blocking findings,
-one fix round (`.github/prompts/fix-review-findings.md`) fixes them and rewrites the status; minor
-findings are left for the human review, in the uploaded `review.md`. Then it re-runs
-the gate itself: `pnpm format` must change nothing, then lint, typecheck, knip, the extension's
-unused exports and the unit tests of every changed package and its dependents. Job
+read issues, pull requests and code through the read-only GitHub MCP server.
+
+The fix runs in up to three rounds of the composite action `.github/actions/fix-issue-round`, each
+fix → verify → review:
+
+- **Fix.** Round 1 follows `.github/prompts/fix-issue.md`; later rounds follow
+  `.github/prompts/fix-round.md` and fix only what the previous round reported.
+- **Verify.** `fix-issue-verify.sh` in report mode: `pnpm format` must change nothing, then lint,
+  typecheck, knip, the extension's unused exports and the unit tests of every changed package and
+  its dependents. A failure is written to `verify.md` with the tail of the failing output and sends
+  the change back to fix; the review is skipped.
+- **Review.** A separate Claude pass with `.github/prompts/review-fix.md` writes `review.md`:
+  confirmed `critical`, `blocker` and `regression` findings under `## Blocking`, anything smaller
+  under `## Minor`. Later rounds see earlier reviews and only re-raise unfixed or newly introduced
+  findings. The run fails if the review touched any file. Blocking findings send the change back to
+  fix; minor ones are left for the human review.
+
+`fix-issue-round.sh` keeps each round in `tmp/fix-issue/rounds/<n>/` (uploaded with the patch) and,
+at the end, adds one `Round <n>: …` bullet per round under `TESTED`. A round that is clean ends the
+loop; a fixer that writes `STATE: blocked` ends it too. If round 3 still fails, the status becomes
+`blocked` with a question naming what still fails, so the result is a draft pull request. Job
 `open-pull-request` gets only the patch and the status file, refuses any path outside `apps/`,
 `packages/`, `tools/` and `pnpm-lock.yaml`, and writes the signed commit to `bot/fix-<n>`. `done`
 opens a pull request; `blocked` with changes opens a draft whose body lists the questions;
