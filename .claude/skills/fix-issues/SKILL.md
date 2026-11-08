@@ -167,8 +167,18 @@ fix → verify → review:
 `fix-issue-round.sh` keeps each round in `tmp/fix-issue/rounds/<n>/` (uploaded with the patch) and,
 at the end, adds one `Round <n>: …` bullet per round under `TESTED`. A round that is clean ends the
 loop; a fixer that writes `STATE: blocked` ends it too. If round 3 still fails, the status becomes
-`blocked` with a question naming what still fails, so the result is a draft pull request. Job
-`open-pull-request` gets only the patch and the status file, refuses any path outside `apps/`,
+`blocked` with a question naming what still fails, so the result is a draft pull request.
+
+For a change that alters what an extension screen shows, the fixer writes throwaway Playwright
+specs in `tmp/fix-issue/screenshot-specs/` that save one PNG per state, and lists the states under
+`SCREENSHOTS:` in the status. `fix-issue-screenshots.sh capture` builds the test extension and runs
+them on the fix, stashes the fix, builds and runs them on `dev`, then restores the fix and fails the
+run if it did not come back intact. A failed build or spec only leaves that cell empty.
+`open-pull-request` checks each image (a real PNG, at most 1 MB, a lowercase hyphenated name, 12 at
+most), commits them to the `bot/screenshots` branch under `<issue>/<run>-<attempt>/`, and adds a
+`## Screenshots` table with one row per state and `Before` and `After` images linked by commit.
+
+Job `open-pull-request` gets only the patch and the status file, refuses any path outside `apps/`,
 `packages/`, `tools/` and `pnpm-lock.yaml`, and writes the signed commit to `bot/fix-<n>`. `done`
 opens a pull request; `blocked` with changes opens a draft whose body lists the questions;
 `blocked` with no changes comments the questions on the issue.

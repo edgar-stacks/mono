@@ -10,6 +10,13 @@ parent_sha="$PARENT_SHA"
 patch_file="${PATCH_FILE:-}"
 work_dir="${WORK_DIR:-tmp/fix-issue}"
 body="$work_dir/pull-request-body.md"
+screenshots_dir="${SCREENSHOTS_DIR:-$work_dir/screenshots}"
+screenshots_branch="${SCREENSHOTS_BRANCH:-bot/screenshots}"
+max_screenshots=12
+max_screenshot_bytes=1048576
+screenshot_id_pattern='^[a-z0-9][a-z0-9-]{0,62}$'
+png_signature=89504e470d0a1a0a
+screenshot_table=""
 
 . "$(dirname "${BASH_SOURCE[0]}")/fix-issue-status.sh"
 
@@ -39,9 +46,13 @@ function find_open_pr() {
     --jq 'map(select(.isCrossRepository | not)) | .[0] // empty | "\(.number) \(.isDraft)"'
 }
 
+function find_ref_sha() {
+  gh api "repos/$repo/git/matching-refs/heads/$1" \
+    --jq ".[] | select(.ref == \"refs/heads/$1\") | .object.sha"
+}
+
 function find_branch_sha() {
-  gh api "repos/$repo/git/matching-refs/heads/$branch" \
-    --jq ".[] | select(.ref == \"refs/heads/$branch\") | .object.sha"
+  find_ref_sha "$branch"
 }
 
 function is_text() {
@@ -97,6 +108,89 @@ function create_commit() {
     gh api "repos/$repo/git/commits" --input - --jq '.sha'
 }
 
+function is_screenshot() {
+  [ -f "$1" ] && [ ! -L "$1" ] &&
+    [ "$(wc -c < "$1" | tr -d ' ')" -le "$max_screenshot_bytes" ] &&
+    [ "$(head -c 8 "$1" | od -An -tx1 | tr -d ' \n')" = "$png_signature" ]
+}
+
+function screenshot_cell() {
+  if [ -n "$2" ]; then
+    echo "![$1]($2)"
+  else
+    echo "—"
+  fi
+}
+
+function publish_screenshots() {
+  local line id caption side file blob folder count=0 entries='[]' head tree commit url
+  local rows=()
+  folder="$issue/${GITHUB_RUN_ID:-local}-${GITHUB_RUN_ATTEMPT:-1}"
+  while IFS= read -r line; do
+    line="${line#- }"
+    id="${line%%:*}"
+    caption="${line#*:}"
+    caption="${caption#"${caption%%[![:space:]]*}"}"
+    caption="${caption//|/\\|}"
+    if ! [[ "$id" =~ $screenshot_id_pattern ]]; then
+      echo "open-pull-request: skipping screenshot '$id': not a lowercase hyphenated name" >&2
+      continue
+    fi
+    count=$((count + 1))
+    if [ "$count" -gt "$max_screenshots" ]; then
+      echo "open-pull-request: skipping screenshots beyond $max_screenshots" >&2
+      break
+    fi
+    local present=""
+    for side in before after; do
+      file="$screenshots_dir/$side/$id.png"
+      if is_screenshot "$file"; then
+        blob=$(create_blob "$file")
+        entries=$(jq -c --arg path "$folder/$side/$id.png" --arg sha "$blob" \
+          '. + [{path: $path, mode: "100644", type: "blob", sha: $sha}]' <<< "$entries")
+        present="$present $side"
+      elif [ -e "$file" ]; then
+        echo "open-pull-request: skipping $side/$id.png: not a PNG under $max_screenshot_bytes bytes" >&2
+      fi
+    done
+    rows+=("$id|${caption:-$id}|$present")
+  done < <(status_bullets "$status_file" SCREENSHOTS)
+  [ "$(jq 'length' <<< "$entries")" -gt 0 ] || return 0
+
+  head=$(find_ref_sha "$screenshots_branch")
+  if [ -n "$head" ]; then
+    tree=$(jq -n --arg base "$(gh api "repos/$repo/git/commits/$head" --jq '.tree.sha')" \
+      --argjson entries "$entries" '{base_tree: $base, tree: $entries}' |
+      gh api "repos/$repo/git/trees" --input - --jq '.sha')
+    commit=$(jq -n --arg message "Screenshots for #$issue" --arg tree "$tree" --arg parent "$head" \
+      '{message: $message, tree: $tree, parents: [$parent]}' |
+      gh api "repos/$repo/git/commits" --input - --jq '.sha')
+    gh api -X PATCH "repos/$repo/git/refs/heads/$screenshots_branch" -f "sha=$commit" --silent
+  else
+    tree=$(jq -n --argjson entries "$entries" '{tree: $entries}' |
+      gh api "repos/$repo/git/trees" --input - --jq '.sha')
+    commit=$(jq -n --arg message "Screenshots for #$issue" --arg tree "$tree" \
+      '{message: $message, tree: $tree, parents: []}' |
+      gh api "repos/$repo/git/commits" --input - --jq '.sha')
+    gh api "repos/$repo/git/refs" -f "ref=refs/heads/$screenshots_branch" -f "sha=$commit" --silent
+  fi
+
+  url="https://raw.githubusercontent.com/$repo/$commit/$folder"
+  screenshot_table=$'| State | Before | After |\n| --- | --- | --- |'
+  local row before_url after_url
+  for row in "${rows[@]}"; do
+    id="${row%%|*}"
+    row="${row#*|}"
+    caption="${row%|*}"
+    present="${row##*|}"
+    before_url=""
+    after_url=""
+    [[ "$present" == *before* ]] && before_url="$url/before/$id.png"
+    [[ "$present" == *after* ]] && after_url="$url/after/$id.png"
+    screenshot_table="$screenshot_table"$'\n'"| $caption | $(screenshot_cell "Before: $id" "$before_url") | $(screenshot_cell "After: $id" "$after_url") |"
+  done
+}
+
 function write_section() {
   local bullets
   bullets=$(status_bullets "$status_file" "$1")
@@ -121,6 +215,9 @@ function write_body() {
     write_section WHY Why
     write_section HOW How
     write_section TESTED Tested
+    if [ -n "$screenshot_table" ]; then
+      printf '\n## Screenshots\n\n%s\n' "$screenshot_table"
+    fi
   } > "$body"
 }
 
@@ -170,6 +267,7 @@ fi
 
 pr=$(find_open_pr)
 branch_sha=$(find_branch_sha)
+publish_screenshots
 write_body
 
 commit_sha=$(create_commit)

@@ -121,6 +121,9 @@ jobs:
       - name: finish-rounds
         run: bash .github/scripts/fix-issue-round.sh finish
 
+      - name: capture-screenshots
+        run: bash .github/scripts/fix-issue-screenshots.sh capture
+
       - name: package-fix
         run: |
           git add -A
@@ -134,6 +137,8 @@ jobs:
             tmp/fix-issue/status.md
             tmp/fix-issue/fix.patch
             tmp/fix-issue/rounds/
+            tmp/fix-issue/screenshots/before/
+            tmp/fix-issue/screenshots/after/
           if-no-files-found: error
           retention-days: 3
 

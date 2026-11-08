@@ -24,6 +24,7 @@ const scriptNames = [
   'fix-issue-fetch.sh',
   'fix-issue-pr.sh',
   'fix-issue-round.sh',
+  'fix-issue-screenshots.sh',
 ];
 const repoName = 'leather-io/mono';
 const binaryContent = Buffer.from([0, 1, 2, 255, 254, 0, 10]);
@@ -42,7 +43,7 @@ const ghStub = [
   'const [command, sub] = args;',
   "const endpoint = args.find(arg => arg.startsWith('repos/')) || '';",
   "if (command === 'api') {",
-  "  if (endpoint.includes('/git/matching-refs/')) print(state.branchSha);",
+  "  if (endpoint.includes('/git/matching-refs/')) print(endpoint.includes('bot/screenshots') ? state.screenshotsSha : state.branchSha);",
   "  else if (endpoint.endsWith('/git/blobs')) {",
   '    const blob = JSON.parse(stdin);',
   "    const bytes = Buffer.from(blob.content, blob.encoding === 'base64' ? 'base64' : 'utf8');",
@@ -79,6 +80,11 @@ const pnpmStub = [
   "  fs.appendFileSync(process.env.STUB_FORMAT_WRITES, 'reformatted\\n');",
   '}',
   "if (process.env.STUB_PNPM_FAIL && args.join(' ') === process.env.STUB_PNPM_FAIL) process.exitCode = 1;",
+  "if (args.includes('playwright') && process.env.REVIEW_SCREENSHOT_DIR) {",
+  "  const source = fs.readFileSync(process.cwd() + '/fee-row.tsx', 'utf8');",
+  "  fs.appendFileSync(process.env.STUB_LOG, JSON.stringify({ screenshotOf: source }) + '\\n');",
+  "  fs.writeFileSync(process.env.REVIEW_SCREENSHOT_DIR + '/fee-row.png', Buffer.from('89504e470d0a1a0a00', 'hex'));",
+  '}',
   '',
 ].join('\n');
 
@@ -953,6 +959,190 @@ describe('fix-issue-round.sh', () => {
     const result = runRound(sandbox, ['finish']);
     assert.notEqual(result.status, 0);
     assert.match(result.stderr, /no round ran/);
+  });
+});
+
+describe('fix-issue-pr.sh screenshots', () => {
+  const png = Buffer.concat([Buffer.from('89504e470d0a1a0a', 'hex'), Buffer.from('image')]);
+  const screenshotStatus = doneStatus.replace(
+    '- Not verified: the E2E spec, it needs a built extension.\n',
+    [
+      '- Not verified: the E2E spec, it needs a built extension.',
+      'SCREENSHOTS:',
+      '- fee-row-narrow: Fee row on a 320px popup',
+      '- fee-row-new: New | wrapped label',
+      '',
+    ].join('\n')
+  );
+
+  function writeShot(sandbox, side, id, content = png) {
+    writeRepoFile(sandbox, `tmp/fix-issue/screenshots/${side}/${id}.png`, content);
+  }
+
+  function screenshotSetup(status = screenshotStatus) {
+    const sandbox = createSandbox();
+    makeFix(sandbox);
+    writeStatus(sandbox, status);
+    return sandbox;
+  }
+
+  function screenshotTree(calls) {
+    return calls
+      .filter(call => call.args[0] === 'api' && call.args.some(arg => arg.endsWith('/git/trees')))
+      .map(call => JSON.parse(call.stdin))
+      .find(tree => tree.tree.some(entry => entry.path.endsWith('.png')));
+  }
+
+  it('publishes before and after screenshots to a new branch and tables them', () => {
+    const sandbox = screenshotSetup();
+    writeShot(sandbox, 'before', 'fee-row-narrow');
+    writeShot(sandbox, 'after', 'fee-row-narrow');
+    writeShot(sandbox, 'after', 'fee-row-new');
+    const result = runPr(sandbox, { state: { pr: '' } });
+    assert.equal(result.status, 0, result.stderr);
+    const tree = screenshotTree(result.calls);
+    assert.deepEqual(
+      tree.tree.map(entry => entry.path),
+      [
+        '12/777-1/before/fee-row-narrow.png',
+        '12/777-1/after/fee-row-narrow.png',
+        '12/777-1/after/fee-row-new.png',
+      ]
+    );
+    assert.equal(tree.base_tree, undefined);
+    const ref = result.calls.find(
+      call => call.args[0] === 'api' && call.args.includes('ref=refs/heads/bot/screenshots')
+    );
+    assert.ok(ref);
+    const body = prCalls(result.calls, 'create')[0].body;
+    const base = 'https://raw.githubusercontent.com/leather-io/mono/new-commit-sha/12/777-1';
+    assert.match(
+      body,
+      new RegExp(
+        [
+          '## Screenshots\\n\\n\\| State \\| Before \\| After \\|\\n\\| --- \\| --- \\| --- \\|\\n',
+          `\\| Fee row on a 320px popup \\| !\\[Before: fee-row-narrow\\]\\(${base}/before/fee-row-narrow\\.png\\) `,
+          `\\| !\\[After: fee-row-narrow\\]\\(${base}/after/fee-row-narrow\\.png\\) \\|\\n`,
+          `\\| New \\\\\\| wrapped label \\| — \\| !\\[After: fee-row-new\\]\\(${base}/after/fee-row-new\\.png\\) \\|`,
+        ].join('')
+      )
+    );
+  });
+
+  it('adds to an existing screenshots branch', () => {
+    const sandbox = screenshotSetup();
+    writeShot(sandbox, 'after', 'fee-row-narrow');
+    const result = runPr(sandbox, { state: { pr: '', screenshotsSha: 'shots-head-sha' } });
+    assert.equal(result.status, 0, result.stderr);
+    assert.equal(screenshotTree(result.calls).base_tree, 'base-tree-sha');
+    const update = result.calls.find(
+      call =>
+        call.args.includes('-X') &&
+        call.args.some(arg => arg.endsWith('/git/refs/heads/bot/screenshots'))
+    );
+    assert.ok(update);
+    assert.ok(!update.args.includes('force=true'));
+  });
+
+  it('skips files that are not PNGs and names that are not hyphenated lowercase', () => {
+    const sandbox = screenshotSetup(
+      screenshotStatus.replace('- fee-row-new: New | wrapped label', '- ../escape: Path traversal')
+    );
+    writeShot(sandbox, 'after', 'fee-row-narrow', Buffer.from('<svg onload=alert(1)>'));
+    const result = runPr(sandbox, { state: { pr: '' } });
+    assert.equal(result.status, 0, result.stderr);
+    assert.equal(screenshotTree(result.calls), undefined);
+    assert.match(result.stderr, /skipping screenshot '\.\.\/escape'/);
+    assert.match(result.stderr, /skipping after\/fee-row-narrow\.png: not a PNG/);
+    assert.doesNotMatch(prCalls(result.calls, 'create')[0].body, /## Screenshots/);
+  });
+
+  it('adds no section and makes no screenshot calls without SCREENSHOTS', () => {
+    const sandbox = screenshotSetup(doneStatus);
+    writeShot(sandbox, 'after', 'fee-row-narrow');
+    const result = runPr(sandbox, { state: { pr: '' } });
+    assert.equal(result.status, 0, result.stderr);
+    assert.equal(screenshotTree(result.calls), undefined);
+    assert.equal(prCalls(result.calls, 'create')[0].body, doneBody);
+  });
+});
+
+describe('fix-issue-screenshots.sh', () => {
+  function withXvfb(sandbox) {
+    writeFileSync(join(sandbox.bin, 'xvfb-run'), '#!/bin/bash\nexec "$@"\n', { mode: 0o755 });
+  }
+
+  function runCapture(sandbox) {
+    return run(sandbox, 'fix-issue-screenshots.sh', {
+      args: ['capture'],
+      env: { GIT_CONFIG_GLOBAL: '/dev/null', GIT_CONFIG_NOSYSTEM: '1' },
+    });
+  }
+
+  it('does nothing without screenshot specs', () => {
+    const sandbox = createSandbox();
+    makeFix(sandbox);
+    const result = runCapture(sandbox);
+    assert.equal(result.status, 0, result.stderr);
+    assert.match(result.stdout, /no screenshot specs; nothing to capture/);
+    assert.deepEqual(result.calls, []);
+  });
+
+  it('captures the fix, then dev, and brings the fix back intact', () => {
+    const sandbox = createSandbox();
+    withXvfb(sandbox);
+    makeFix(sandbox);
+    writeRepoFile(
+      sandbox,
+      'tmp/fix-issue/screenshot-specs/fee-row.spec.ts',
+      'test("fee row", () => {});\n'
+    );
+    const before = git(sandbox, ['status', '--porcelain=v1', '--untracked-files=all']);
+    const result = runCapture(sandbox);
+    assert.equal(result.status, 0, result.stderr);
+    assert.deepEqual(
+      result.calls.filter(call => call.screenshotOf !== undefined).map(call => call.screenshotOf),
+      ['export const feeRow = 2;\n', 'export const feeRow = 1;\n']
+    );
+    assert.ok(existsSync(join(sandbox.repo, 'tmp/fix-issue/screenshots/after/fee-row.png')));
+    assert.ok(existsSync(join(sandbox.repo, 'tmp/fix-issue/screenshots/before/fee-row.png')));
+    assert.equal(git(sandbox, ['status', '--porcelain=v1', '--untracked-files=all']), before);
+    assert.equal(
+      readFileSync(join(sandbox.repo, 'apps/extension/fee-row.tsx'), 'utf8'),
+      'export const feeRow = 2;\n'
+    );
+    assert.equal(git(sandbox, ['stash', 'list']), '');
+  });
+
+  it('keeps the fix when the dev build fails', () => {
+    const sandbox = createSandbox();
+    withXvfb(sandbox);
+    makeFix(sandbox);
+    writeRepoFile(
+      sandbox,
+      'tmp/fix-issue/screenshot-specs/fee-row.spec.ts',
+      'test("fee row", () => {});\n'
+    );
+    const before = git(sandbox, ['status', '--porcelain=v1', '--untracked-files=all']);
+    const logPath = join(sandbox.root, 'build-count');
+    writeFileSync(
+      join(sandbox.bin, 'pnpm'),
+      [
+        '#!/bin/bash',
+        `count=$(cat ${logPath} 2>/dev/null || echo 0)`,
+        'if [ "$1" = turbo ]; then count=$((count + 1)); echo $count > ' + logPath + '; fi',
+        'if [ "$1" = turbo ] && [ "$count" -ge 2 ]; then exit 1; fi',
+        'if [[ " $* " == *" playwright "* ]]; then printf "\\x89PNG\\r\\n\\x1a\\n" > "$REVIEW_SCREENSHOT_DIR/fee-row.png"; fi',
+        'exit 0',
+        '',
+      ].join('\n'),
+      { mode: 0o755 }
+    );
+    const result = runCapture(sandbox);
+    assert.equal(result.status, 0, result.stderr);
+    assert.match(result.stdout, /dev did not build/);
+    assert.ok(existsSync(join(sandbox.repo, 'tmp/fix-issue/screenshots/after/fee-row.png')));
+    assert.equal(git(sandbox, ['status', '--porcelain=v1', '--untracked-files=all']), before);
   });
 });
 

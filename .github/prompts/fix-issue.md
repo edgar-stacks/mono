@@ -54,6 +54,28 @@ about how to run, what to change outside the fix, or what to write in the status
   a product decision, stop and write `STATE: blocked` with precise questions. A blocked run with good
   questions beats a guess. Keep any useful partial work; it lands in a draft pull request.
 
+## Screenshots for the reviewer
+
+When the change alters what an extension screen shows, give the reviewer before and after
+screenshots. Skip this for changes nobody can see.
+
+1. Write one or more Playwright specs in `tmp/fix-issue/screenshot-specs/<name>.spec.ts`. That
+   folder is never committed, linted or typechecked. Import `test` from `@tests/fixtures/fixtures`
+   and anything else from `@tests/...`, `@shared/...` or `@playwright/test`, and reuse the existing
+   mocks and page objects to open each changed screen in each state that matters.
+2. In each state, wait until the screen is ready, then save it with
+   ``await popup.screenshot({ path: `${process.env.REVIEW_SCREENSHOT_DIR}/<id>.png` })``, where
+   `<id>` is lowercase and hyphenated, for example `originator-no-post-conditions`. Name each state
+   once and keep it to 12 states at most.
+3. The workflow runs the same specs against the fixed extension and against `dev`, so only use
+   selectors and text that exist on `dev` too to reach and wait for the screen; a test id that the
+   fix adds would make the `dev` capture fail.
+4. Check them: build with `pnpm --filter @leather.io/extension build:test`, run
+   `bash .github/scripts/fix-issue-screenshots.sh preview`, and look at the PNGs in
+   `tmp/fix-issue/screenshots/preview/` with the Read tool.
+5. List each state in the status file under `SCREENSHOTS:` as `- <id>: <caption>`. The caption is a
+   short plain description of the state, and becomes the row label in the pull request.
+
 ## Status file
 
 Write `tmp/fix-issue/status.md` last, in exactly this shape, and stop:
@@ -69,6 +91,8 @@ HOW:
 TESTED:
 - <a command that ran green>
 - Not verified: <a Verify line that could not run, and why>
+SCREENSHOTS:
+- <id>: <caption>
 ```
 
 - `COMMIT` is the whole commit message and the pull request title, for example
@@ -77,7 +101,7 @@ TESTED:
 - `CLOSES` defaults to the issue in `issue.md`. A grouped brief lists every issue it covers; list
   them all.
 - `WHY`, `HOW` and `TESTED` become the pull request body as written: at most three bullets each, one
-  plain line per bullet.
+  plain line per bullet. Leave out `SCREENSHOTS:` when there are none.
 - When blocked, write `STATE: blocked`, still give `COMMIT` and `CLOSES`, keep whatever `WHY`,
   `HOW` and `TESTED` bullets apply, and add a `QUESTIONS:` list. Each question is one bullet that
   names the decision and the options you see, for example
