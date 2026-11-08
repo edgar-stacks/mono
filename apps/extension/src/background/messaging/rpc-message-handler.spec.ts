@@ -31,12 +31,13 @@ const mocks = vi.hoisted(() => {
     defineHandler: (method: string) => [method, dispatchHandler],
     getOriginatingFrameFromPort: vi.fn(),
     listenForOriginTabClose: vi.fn(),
+    loggerInfo: vi.fn(),
     sendMessageToOriginatingFrame: vi.fn(),
     validateConnectedWalletExists: vi.fn(),
   };
 });
 
-vi.mock('@shared/logger', () => ({ logger: { info: vi.fn() } }));
+vi.mock('@shared/logger', () => ({ logger: { info: mocks.loggerInfo } }));
 
 vi.mock('@shared/messaging/send-message-to-originating-frame', () => ({
   sendMessageToOriginatingFrame: mocks.sendMessageToOriginatingFrame,
@@ -186,6 +187,15 @@ describe('rpcMessageHandler', () => {
 
     expect(mocks.validateConnectedWalletExists).not.toHaveBeenCalled();
     expect(mocks.dispatchHandler).toHaveBeenCalledTimes(1);
+  });
+
+  test('logs only the method and id of the request', async () => {
+    await handleRequest(signPsbt.method);
+
+    expect(mocks.loggerInfo).toHaveBeenCalledWith(`Received RPC request ${signPsbt.method}`, {
+      method: signPsbt.method,
+      id: 'req-1',
+    });
   });
 
   test('rejects a guarded method wrapped in an array', async () => {
