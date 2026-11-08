@@ -17,4 +17,5 @@ export type BitcoinErrorKey =
   | 'InsufficientAmount'
   | 'NoInputsToSign'
   | 'NoOutputsToSign'
+  | 'PsbtOutputMissingScript'
   | 'InscribedUtxos';

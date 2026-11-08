@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router';
 
 import { PsbtSelectors } from '@tests/selectors/requests.selectors';
@@ -26,6 +26,9 @@ import { useDescriptorPsbtDetails } from './hooks/use-descriptor-psbt-details';
 import { usePsbtDetails } from './hooks/use-psbt-details';
 import { usePsbtSigner } from './hooks/use-psbt-signer';
 import { type PsbtSignerContext, PsbtSignerProvider } from './psbt-signer.context';
+
+const psbtOutputMissingScriptMessage =
+  'This PSBT has an output without a script, so its outputs cannot all be shown.';
 
 interface PsbtSignerBondProposal extends PsbtBondDetails {
   policy: PolicyStore;
@@ -83,6 +86,7 @@ export function PsbtSigner(props: PsbtSignerProps) {
     addressTaprootTotal,
     fee,
     isPsbtMutable,
+    outputsError,
     psbtInputs,
     psbtOutputs,
     shouldDefaultToAdvancedView,
@@ -91,6 +95,13 @@ export function PsbtSigner(props: PsbtSignerProps) {
     indexesToSign,
     outputs: psbtTxOutputs,
   });
+
+  useEffect(() => {
+    if (!outputsError) return;
+    void navigate(RouteUrls.RequestError, {
+      state: { message: psbtOutputMissingScriptMessage, title: 'Failed request' },
+    });
+  }, [navigate, outputsError]);
 
   const descriptorDetails = useDescriptorPsbtDetails(psbtHex, descriptor);
 
@@ -110,6 +121,8 @@ export function PsbtSigner(props: PsbtSignerProps) {
     psbtOutputs,
     shouldDefaultToAdvancedView,
   };
+
+  if (outputsError) return null;
 
   if (shouldDefaultToAdvancedView && psbtRaw) return <Psbt.PsbtRequestRaw psbt={psbtRaw} />;
 
