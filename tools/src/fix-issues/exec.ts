@@ -47,3 +47,14 @@ export function runOrThrow(command: string, args: readonly string[], options: Ru
   }
   return result.stdout;
 }
+
+export function runAndEcho(
+  command: string,
+  args: readonly string[],
+  options: RunOptions
+): CommandResult {
+  const result = runCommand(command, args, options);
+  process.stdout.write(result.stdout);
+  process.stderr.write(result.stderr);
+  return result;
+}

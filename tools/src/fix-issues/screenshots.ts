@@ -9,7 +9,7 @@ import {
 } from 'node:fs';
 import path from 'node:path';
 
-import { type CommandRunner, runCommand } from './exec.js';
+import { type CommandRunner, runAndEcho, runCommand } from './exec.js';
 import { treeSnapshot } from './git.js';
 import type { FixIssuePaths } from './paths.js';
 
@@ -30,17 +30,6 @@ const stashIdentity = [
   '-c',
   'user.email=fix-issues@users.noreply.github.com',
 ];
-
-function passThrough(
-  command: string,
-  args: readonly string[],
-  options: { cwd: string; env?: NodeJS.ProcessEnv }
-) {
-  const result = runCommand(command, args, options);
-  process.stdout.write(result.stdout);
-  process.stderr.write(result.stderr);
-  return result;
-}
 
 export function isScreenshot(file: string): boolean {
   if (!existsSync(file)) return false;
@@ -130,7 +119,7 @@ function countPngs(dir: string): number {
 
 export function previewScreenshots({
   paths,
-  run = passThrough,
+  run = runAndEcho,
   log = console.log,
 }: ScreenshotOptions): void {
   if (!hasSpecs(paths)) throw new Error(`no specs in ${paths.screenshotSpecsDir}`);
@@ -152,7 +141,7 @@ function git(root: string, args: readonly string[]): void {
 
 export function captureScreenshots({
   paths,
-  run = passThrough,
+  run = runAndEcho,
   log = console.log,
 }: ScreenshotOptions): void {
   if (!hasSpecs(paths)) {

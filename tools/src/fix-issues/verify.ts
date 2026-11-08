@@ -1,7 +1,7 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 
-import { type CommandRunner, runCommand } from './exec.js';
+import { type CommandRunner, runAndEcho, runCommand } from './exec.js';
 import { allowedPathsDescription, changedPaths, refusedPaths, treeSnapshot } from './git.js';
 import { readStatus } from './status.js';
 
@@ -41,13 +41,6 @@ function formatVerifyReport(result: {
     : `FAILED: ${result.message}\n`;
 }
 
-function passThrough(command: string, args: readonly string[], options: { cwd: string }) {
-  const result = runCommand(command, args, options);
-  process.stdout.write(result.stdout);
-  process.stderr.write(result.stderr);
-  return result;
-}
-
 function checkGate(root: string, run: CommandRunner): VerifyResult {
   const before = treeSnapshot(root);
   const format = run('pnpm', formatCommand, { cwd: root });
@@ -83,7 +76,7 @@ export function verifyFix({
   root,
   statusFile,
   reportFile,
-  run = passThrough,
+  run = runAndEcho,
   log = console.log,
 }: VerifyOptions): VerifyResult {
   const result = evaluate(root, statusFile, run);

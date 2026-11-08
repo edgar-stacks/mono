@@ -81,16 +81,21 @@ export function createTestRepo(): TestRepo {
     head: git(['rev-parse', 'HEAD']),
     git,
     write,
-    remove: file => unlinkSync(path.join(root, file)),
-    writeStatus: status =>
-      write('tmp/fix-issue/status.json', `${JSON.stringify(status, null, 2)}\n`),
+    remove(file) {
+      unlinkSync(path.join(root, file));
+    },
+    writeStatus(status) {
+      write('tmp/fix-issue/status.json', `${JSON.stringify(status, null, 2)}\n`);
+    },
     makeFix() {
       write('apps/extension/fee-row.tsx', 'export const feeRow = 2;\n');
       write('apps/extension/fee-row.spec.tsx', 'test("wraps", () => {});\n');
       write('packages/utils/icon.bin', binaryContent);
       unlinkSync(path.join(root, 'apps/extension/old.ts'));
     },
-    cleanup: () => rmSync(root, { recursive: true, force: true }),
+    cleanup() {
+      rmSync(root, { recursive: true, force: true });
+    },
   };
 }
 

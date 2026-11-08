@@ -1,6 +1,6 @@
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { afterEach, describe, expect, test } from 'vitest';
+import { afterEach, beforeEach, describe, expect, test } from 'vitest';
 
 import {
   beginRound,
@@ -38,6 +38,9 @@ const blockingReview = {
 
 describe('rounds', () => {
   let repo: TestRepo;
+  beforeEach(() => {
+    repo = createTestRepo();
+  });
   afterEach(() => repo.cleanup());
 
   function writeReview(review: unknown) {
@@ -59,7 +62,6 @@ describe('rounds', () => {
   }
 
   test('a round begins by reading the fixer state and clearing the last round', () => {
-    repo = createTestRepo();
     repo.writeStatus(blockedStatus);
     writeReview(cleanReview);
     expect(beginRound(repo.paths, 2)).toBe('blocked');
@@ -72,7 +74,6 @@ describe('rounds', () => {
   });
 
   test('a round is clean when the gate passes and the review finds nothing blocking', () => {
-    repo = createTestRepo();
     repo.makeFix();
     repo.writeStatus(doneStatus);
     expect(reviewedRound(1, cleanReview)).toMatchObject({
@@ -84,7 +85,6 @@ describe('rounds', () => {
   });
 
   test('a failed gate continues to the next round without a review', () => {
-    repo = createTestRepo();
     repo.makeFix();
     repo.writeStatus(doneStatus);
     expect(reviewedRound(1, cleanReview, 'lint')).toEqual({
@@ -98,7 +98,6 @@ describe('rounds', () => {
   });
 
   test('blocking review findings continue to the next round', () => {
-    repo = createTestRepo();
     repo.makeFix();
     repo.writeStatus(doneStatus);
     expect(reviewedRound(1, blockingReview)).toMatchObject({
@@ -108,14 +107,12 @@ describe('rounds', () => {
   });
 
   test('a blocked fixer stops the rounds', () => {
-    repo = createTestRepo();
     repo.writeStatus(blockedStatus);
     beginRound(repo.paths, 1);
     expect(endRound(repo.paths, 1)).toMatchObject({ outcome: 'blocked', continue: false });
   });
 
   test('a review that changes a file fails the run', () => {
-    repo = createTestRepo();
     repo.makeFix();
     repo.writeStatus(doneStatus);
     snapshotForReview(repo.paths);
@@ -133,7 +130,6 @@ describe('rounds', () => {
     ],
     ['invalid JSON', '{ blocking', /is not valid JSON/],
   ])('a review check fails on %s', (_name, review, message) => {
-    repo = createTestRepo();
     repo.makeFix();
     repo.writeStatus(doneStatus);
     snapshotForReview(repo.paths);
@@ -143,7 +139,6 @@ describe('rounds', () => {
   });
 
   test('finishing a clean run records every round under tested', () => {
-    repo = createTestRepo();
     repo.makeFix();
     repo.writeStatus(doneStatus);
     reviewedRound(1, cleanReview, 'lint');
@@ -159,7 +154,6 @@ describe('rounds', () => {
   });
 
   test('a run that still fails after its last round becomes blocked with a question', () => {
-    repo = createTestRepo();
     repo.makeFix();
     repo.writeStatus(doneStatus);
     for (const round of [1, 2, 3]) reviewedRound(round, blockingReview);
@@ -172,7 +166,6 @@ describe('rounds', () => {
   });
 
   test('a blocked fixer keeps its questions', () => {
-    repo = createTestRepo();
     repo.writeStatus(blockedStatus);
     beginRound(repo.paths, 1);
     endRound(repo.paths, 1);
@@ -183,7 +176,6 @@ describe('rounds', () => {
   });
 
   test('finishing fails when no round ran', () => {
-    repo = createTestRepo();
     repo.writeStatus(doneStatus);
     expect(() => finishRounds(repo.paths)).toThrow('no round ran');
   });

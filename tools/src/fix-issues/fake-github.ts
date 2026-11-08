@@ -1,5 +1,4 @@
-import { createHash } from 'node:crypto';
-
+import { gitBlobSha } from './git.js';
 import { type GitHubClient, GitHubError, type HttpMethod } from './github.js';
 
 interface GitHubCall {
@@ -23,10 +22,7 @@ function blobSha(body: unknown): string {
   ) {
     throw new Error('blob body has no content');
   }
-  const bytes = Buffer.from(body.content, 'base64');
-  return createHash('sha1')
-    .update(Buffer.concat([Buffer.from(`blob ${bytes.length}\0`), bytes]))
-    .digest('hex');
+  return gitBlobSha(Buffer.from(body.content, 'base64'));
 }
 
 function respond(route: GitHubRoute, method: HttpMethod, path: string, body: unknown): unknown {

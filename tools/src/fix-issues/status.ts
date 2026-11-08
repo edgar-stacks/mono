@@ -76,27 +76,31 @@ export function parseStatus(raw: unknown): StatusResult {
   return { ok: false, problems: result.error.issues.map(describeIssue) };
 }
 
-export function readStatus(file: string): StatusResult {
-  if (!existsSync(file)) return { ok: false, problems: [`${file} does not exist`] };
+type RawFile =
+  | { readonly ok: true; readonly raw: unknown }
+  | { readonly ok: false; readonly problem: string };
+
+function readJson(file: string): RawFile {
+  if (!existsSync(file)) return { ok: false, problem: `${file} does not exist` };
   try {
-    return parseStatus(JSON.parse(readFileSync(file, 'utf8')));
+    return { ok: true, raw: JSON.parse(readFileSync(file, 'utf8')) };
   } catch (error) {
-    return { ok: false, problems: [`${file} is not valid JSON: ${String(error)}`] };
+    return { ok: false, problem: `${file} is not valid JSON: ${String(error)}` };
   }
 }
 
+export function readStatus(file: string): StatusResult {
+  const json = readJson(file);
+  return json.ok ? parseStatus(json.raw) : { ok: false, problems: [json.problem] };
+}
+
+const stateOnlySchema = z.object({ state: z.enum(['done', 'blocked']) });
+
 export function readState(file: string): FixState | null {
-  const result = readStatus(file);
-  if (result.ok) return result.status.state;
-  if (!existsSync(file)) return null;
-  try {
-    const state = z
-      .object({ state: z.enum(['done', 'blocked']) })
-      .safeParse(JSON.parse(readFileSync(file, 'utf8')));
-    return state.success ? state.data.state : null;
-  } catch {
-    return null;
-  }
+  const json = readJson(file);
+  if (!json.ok) return null;
+  const state = stateOnlySchema.safeParse(json.raw);
+  return state.success ? state.data.state : null;
 }
 
 export function writeStatus(file: string, status: FixStatus): void {
