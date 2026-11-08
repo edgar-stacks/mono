@@ -151,10 +151,9 @@ jobs:
     if: github.ref_name == 'dev'
     runs-on: ubuntu-24.04
     timeout-minutes: 15
+    environment: fix-issues
     permissions:
-      contents: write # create the signed fix commit on the bot/fix-<issue> branch
-      pull-requests: write # open or update the issue's pull request and flip its draft state
-      issues: write # comment the fixer's questions on the issue when it is blocked before changing anything
+      contents: read # checkout only; every GitHub write uses the fix-issues app token
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -167,6 +166,17 @@ jobs:
       - name: build-tools
         run: pnpm --filter @leather.io/tools build
 
+      - name: app-token
+        id: app-token
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        with:
+          client-id: ${{ vars.FIX_ISSUES_APP_CLIENT_ID }}
+          private-key: ${{ secrets.FIX_ISSUES_APP_PRIVATE_KEY }}
+          repositories: ${{ github.event.repository.name }}
+          permission-contents: write # create the signed fix commit on bot/fix-<issue> and the screenshots on bot/screenshots
+          permission-pull-requests: write # open or update the issue's pull request and flip its draft state
+          permission-issues: write # comment the fixer's questions on the issue when it is blocked before changing anything
+
       - name: download-fix
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
@@ -175,7 +185,7 @@ jobs:
 
       - name: open-pull-request
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
           ISSUE: ${{ inputs.issue }}
           BRANCH: bot/fix-${{ inputs.issue }}
           PARENT_SHA: ${{ github.sha }}

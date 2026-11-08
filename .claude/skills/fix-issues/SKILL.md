@@ -202,9 +202,17 @@ the fixer can edit, so an allowlist would not be a boundary either. What it can 
 holds the OAuth token for Claude (the action needs it) and a read-only GitHub token, and its shell
 inherits both. The write token exists only in the second job, on a fresh runner that runs no code
 from the patch. The verify step is a quality gate, not a security boundary.
-GitHub starts no `push` or `pull_request` workflows for events made with the run's own
-`GITHUB_TOKEN`, so CI and `repo:claude-code-review` do not start on their own: close and reopen
-the pull request to trigger them. After that it needs two human reviews like any other.
+Every GitHub write in `open-pull-request` uses an installation token of the `fix-issues` GitHub App
+(`actions/create-github-app-token`), not the run's `GITHUB_TOKEN`. GitHub starts no workflows for
+events made with `GITHUB_TOKEN`; the App's push and pull request start CI like any contributor's,
+and its API commits are signed. The pull request then needs two human reviews like any other.
+
+**App setup, once per repository:** create a GitHub App (webhook off; repository permissions
+Contents, Pull requests and Issues read and write, Metadata read; no Workflows permission) and
+install it on the repository only. Create the environment `fix-issues`, limited to the `dev`
+branch, with the variable `FIX_ISSUES_APP_CLIENT_ID` (the App's client ID) and the secret
+`FIX_ISSUES_APP_PRIVATE_KEY` (a private key generated for the App). Without them the `app-token`
+step fails and no pull request opens; the patch stays in the run's artifact for three days.
 
 ## 7. Track
 
