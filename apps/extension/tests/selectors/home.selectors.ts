@@ -12,6 +12,7 @@ export const HomePageSelectors = {
   ReceiveAssetsTab: 'receive-assets-tab',
   ReceiveCollectiblesTab: 'receive-collectibles-tab',
   ReceiveStxQrCodeBtn: 'receive-stx-qr-code-btn',
+  ReceiveStxNftCopyBtn: 'receive-stx-nft-copy-btn',
   SendCryptoAssetBtn: 'send-crypto-asset-btn',
   TokensTabBtn: 'tab-tokens',
   CollectiblesTabBtn: 'tab-collectibles',

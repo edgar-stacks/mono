@@ -1,3 +1,4 @@
+import { HomePageSelectors } from '@tests/selectors/home.selectors';
 import { css } from 'leather-styles/css';
 import { Stack } from 'leather-styles/jsx';
 
@@ -18,12 +19,13 @@ export function ReceiveCollectibles({ stxAddress, onClickQrStacksNft }: ReceiveC
 
   async function copyAddress(address: string) {
     await copyToClipboard(address);
-    toast.success('Copied to clipboard!');
+    toast.success('Address copied to clipboard');
   }
   return (
     <Stack className={css(receiveTabStyle)}>
       <ReceiveItem
         address={stxAddress}
+        copyDataTestId={HomePageSelectors.ReceiveStxNftCopyBtn}
         icon={<StxAvatarIcon />}
         onCopyAddress={() => {
           void copyAddress(stxAddress);
