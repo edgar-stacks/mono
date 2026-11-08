@@ -85,7 +85,7 @@ export function getTestSoftwareAccountDefaultWalletState() {
       isNotificationsEnabled: true,
     },
     manageTokens: { entities: {}, ids: [] },
-    _persist: { version: 4, rehydrated: true },
+    _persist: { version: 5, rehydrated: true },
   };
 }
 

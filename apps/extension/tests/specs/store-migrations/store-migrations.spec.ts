@@ -15,6 +15,7 @@ interface MigratedPersistedState {
   wallets: { ids: string[]; entities: Record<string, unknown> };
   chains: { stx: Record<string, unknown> };
   accounts: { ids: string[] };
+  networks: { currentNetworkId: string };
   ledger?: unknown;
   onboarding?: unknown;
   ordinals?: unknown;
@@ -26,7 +27,7 @@ const demoEncryptedKey =
 
 const demoSalt = 'c4cccf33166051f7704cd877a2f03f93';
 
-const latestPersistedVersion = 4;
+const latestPersistedVersion = 5;
 
 function readPersistedState(page: Page) {
   return page.evaluate(async () => {
@@ -91,7 +92,7 @@ test.describe('Store migrations', () => {
     test.expect(result.ledger).toBeUndefined();
   });
 
-  test('Migration 2 --> 4', async ({ extensionId, globalPage }) => {
+  test('Migration 2 --> 5', async ({ extensionId, globalPage }) => {
     const version2State = {
       _persist: { rehydrated: true, version: 2 },
       appPermissions: { entities: {}, ids: [] },
@@ -107,7 +108,7 @@ test.describe('Store migrations', () => {
       },
       ledger: { bitcoin: { entities: {}, ids: [] }, stacks: { entities: {}, ids: [] } },
       manageTokens: { entities: {}, ids: [] },
-      networks: { currentNetworkId: 'mainnet', entities: {}, ids: [] },
+      networks: { currentNetworkId: 'sbtcTestnet', entities: {}, ids: [] },
       ordinals: { entities: {}, ids: [] },
       settings: {
         discardedInscriptions: [],
@@ -142,7 +143,7 @@ test.describe('Store migrations', () => {
 
     const result = await readMigratedPersistedState(page);
 
-    test.expect(result._persist.version).toEqual(4);
+    test.expect(result._persist.version).toEqual(5);
     test.expect(result.softwareKeys.salt).toEqual(demoSalt);
     test.expect(result.softwareKeys.entities.default).toBeUndefined();
     test.expect(result.softwareKeys.entities.ef7bfd66).toBeDefined();
@@ -178,5 +179,7 @@ test.describe('Store migrations', () => {
     test
       .expect(result.accounts.ids)
       .toEqual(['ef7bfd66/0', 'ef7bfd66/1', 'ef7bfd66/2', 'ef7bfd66/3']);
+
+    test.expect(result.networks.currentNetworkId).toEqual('mainnet');
   });
 });

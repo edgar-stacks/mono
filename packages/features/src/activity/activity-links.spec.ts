@@ -58,7 +58,7 @@ describe('activity-links', () => {
     it('returns the staking testnet mempool link for a Bitcoin asset', () => {
       const result = makeActivityLink({
         txid: 'abc123',
-        networkPreference: defaultNetworksKeyedById.stakingTestnet,
+        networkPreference: defaultNetworksKeyedById.btcStakingStacksTestnet,
         asset: {
           chain: 'bitcoin',
           category: 'fungible',
@@ -76,7 +76,7 @@ describe('activity-links', () => {
     it('returns a testnet explorer link pinned to the staking testnet api for a Stacks asset', () => {
       const result = makeActivityLink({
         txid: 'def456',
-        networkPreference: defaultNetworksKeyedById.stakingTestnet,
+        networkPreference: defaultNetworksKeyedById.btcStakingStacksTestnet,
         asset: {
           chain: 'stacks',
           category: 'fungible',
@@ -91,6 +91,24 @@ describe('activity-links', () => {
       expect(result).toBe(
         `${HIRO_EXPLORER_URL}/txid/def456?chain=testnet&api=${encodeURIComponent(HIRO_API_BASE_URL_STAKING_TESTNET)}`
       );
+    });
+
+    it('returns a testnet explorer link for a Stacks asset on the Primary Hiro Testnet', () => {
+      const result = makeActivityLink({
+        txid: 'def456',
+        networkPreference: defaultNetworksKeyedById.testnet,
+        asset: {
+          chain: 'stacks',
+          category: 'fungible',
+          protocol: 'nativeStx',
+          name: 'Stacks',
+          symbol: 'STX',
+          decimals: 6,
+          hasMemo: false,
+        },
+      });
+
+      expect(result).toBe(`${HIRO_EXPLORER_URL}/txid/def456?chain=testnet`);
     });
 
     it('returns null when asset is missing', () => {
@@ -200,7 +218,7 @@ describe('activity-links', () => {
         id: 'txabc',
         type: 'tx',
         networkPreference: 'testnet3',
-        bitcoinUrl: defaultNetworksKeyedById.testnet.chain.bitcoin.bitcoinUrl,
+        bitcoinUrl: defaultNetworksKeyedById.testnet3.chain.bitcoin.bitcoinUrl,
       });
 
       expect(result).toBe(`${MEMPOOL_BASE_URL}/testnet/tx/txabc`);
@@ -352,24 +370,35 @@ describe('activity-links', () => {
       );
     });
 
-    it('returns localhost link for regtest with txid', () => {
+    it('returns localhost link for regtest with txid on a localhost api', () => {
+      const result = getStacksExplorerLink({
+        mode: 'regtest',
+        type: 'txid',
+        value: 'tx123',
+        apiUrl: 'http://localhost:3999',
+      });
+
+      expect(result).toBe('http://localhost:8000/txid/tx123');
+    });
+
+    it('returns a testnet explorer link for regtest with txid on a hosted api', () => {
       const result = getStacksExplorerLink({
         mode: 'regtest',
         type: 'txid',
         value: 'tx123',
       });
 
-      expect(result).toBe('http://localhost:8000/txid/tx123');
+      expect(result).toBe(`${HIRO_EXPLORER_URL}/txid/tx123?chain=testnet`);
     });
 
-    it('returns regular explorer link for regtest with address', () => {
+    it('returns a testnet explorer link for regtest with address on a hosted api', () => {
       const result = getStacksExplorerLink({
         mode: 'regtest',
         type: 'address',
         value: 'ST123ABC',
       });
 
-      expect(result).toBe(`${HIRO_EXPLORER_URL}/address/ST123ABC?chain=regtest`);
+      expect(result).toBe(`${HIRO_EXPLORER_URL}/address/ST123ABC?chain=testnet`);
     });
   });
 
