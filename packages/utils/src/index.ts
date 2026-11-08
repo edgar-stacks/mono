@@ -21,6 +21,7 @@ export * from './assets/asset-id';
 export * from './assets/sip10-name-overrides';
 export * from './truncate-middle';
 export * from './time';
+export * from './format-relative-time';
 export * from './market-data';
 export * from './currency-formatter/currency-formatter';
 export * from './flatten-object';

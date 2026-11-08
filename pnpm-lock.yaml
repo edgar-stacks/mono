@@ -2272,6 +2272,9 @@ importers:
       bignumber.js:
         specifier: 9.1.2
         version: 9.1.2
+      date-fns:
+        specifier: 4.4.0
+        version: 4.4.0
       dompurify:
         specifier: '>=3.4.17 <4'
         version: 3.4.17
@@ -10932,6 +10935,9 @@ packages:
 
   date-fns@4.1.0:
     resolution: {integrity: sha512-Ukq0owbQXxa/U3EGtsdVBkR1w7KOQ5gIBqdH2hkvknzZPYvBxb/aa6E8L7tmjFtkwZBu3UXBbjIgPo/Ez4xaNg==}
+
+  date-fns@4.4.0:
+    resolution: {integrity: sha512-+1UMbeh68lH1SegH83CGWwpb6OHHbpSgr3+s5Eww5M4CAgswBpoWS0AjTOfEJ33HiYKz1hdj/KTFprzXHmq/6w==}
 
   dateformat@5.0.3:
     resolution: {integrity: sha512-Kvr6HmPXUMerlLcLF+Pwq3K7apHpYmGDVqrxcDasBg86UcKeTSNWbEzU8bwdXnxnR44FtMhJAxI4Bov6Y/KUfA==}
@@ -30959,6 +30965,8 @@ snapshots:
   date-fns@3.6.0: {}
 
   date-fns@4.1.0: {}
+
+  date-fns@4.4.0: {}
 
   dateformat@5.0.3: {}
 
