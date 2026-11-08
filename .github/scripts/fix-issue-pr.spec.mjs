@@ -1016,17 +1016,16 @@ describe('fix-issue-pr.sh screenshots', () => {
     assert.ok(ref);
     const body = prCalls(result.calls, 'create')[0].body;
     const base = 'https://raw.githubusercontent.com/leather-io/mono/new-commit-sha/12/777-1';
-    assert.match(
-      body,
-      new RegExp(
-        [
-          '## Screenshots\\n\\n\\| State \\| Before \\| After \\|\\n\\| --- \\| --- \\| --- \\|\\n',
-          `\\| Fee row on a 320px popup \\| !\\[Before: fee-row-narrow\\]\\(${base}/before/fee-row-narrow\\.png\\) `,
-          `\\| !\\[After: fee-row-narrow\\]\\(${base}/after/fee-row-narrow\\.png\\) \\|\\n`,
-          `\\| New \\\\\\| wrapped label \\| — \\| !\\[After: fee-row-new\\]\\(${base}/after/fee-row-new\\.png\\) \\|`,
-        ].join('')
-      )
-    );
+    const table = [
+      '## Screenshots',
+      '',
+      '| State | Before | After |',
+      '| --- | --- | --- |',
+      `| Fee row on a 320px popup | ![Before: fee-row-narrow](${base}/before/fee-row-narrow.png) | ![After: fee-row-narrow](${base}/after/fee-row-narrow.png) |`,
+      `| New \\| wrapped label | — | ![After: fee-row-new](${base}/after/fee-row-new.png) |`,
+      '',
+    ].join('\n');
+    assert.ok(body.endsWith(table), body);
   });
 
   it('adds to an existing screenshots branch', () => {
