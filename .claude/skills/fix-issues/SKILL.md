@@ -147,7 +147,13 @@ renders the issue and its comments to `tmp/fix-issue/issue.md`, writes the brief
 installs Chromium for Playwright (the browser cache is restored, never saved) and runs the fixer
 with `.github/prompts/fix-issue.md`. The fixer can build the extension in test mode and run its
 end-to-end specs under `xvfb-run` with the `EXTENSION_INTEGRATION_TEST_MNEMONIC` test wallet, and
-read issues, pull requests and code through the read-only GitHub MCP server. Then it re-runs
+read issues, pull requests and code through the read-only GitHub MCP server. When the fixer is
+done, a separate Claude pass reviews the change with `.github/prompts/review-fix.md` and writes
+`tmp/fix-issue/review.md`: confirmed `critical`, `blocker` and `regression` findings under
+`## Blocking`, anything smaller under `## Minor`. `fix-issue-review.sh` fails the run if the review
+touched any file, and adds a `Code review:` bullet to `TESTED`. When there are blocking findings,
+one fix round (`.github/prompts/fix-review-findings.md`) fixes them and rewrites the status; minor
+findings are left for the human review, in the uploaded `review.md`. Then it re-runs
 the gate itself: `pnpm format` must change nothing, then lint, typecheck, knip, the extension's
 unused exports and the unit tests of every changed package and its dependents. Job
 `open-pull-request` gets only the patch and the status file, refuses any path outside `apps/`,

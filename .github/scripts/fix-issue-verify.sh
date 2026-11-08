@@ -10,12 +10,6 @@ function fail() {
   exit 1
 }
 
-function snapshot() {
-  git status --porcelain=v1 --untracked-files=all
-  git diff --binary HEAD | git hash-object --stdin
-  git ls-files --others --exclude-standard | git hash-object --stdin-paths
-}
-
 problems=$(status_problems "$status_file")
 if [ -n "$problems" ]; then
   echo "$problems" | sed 's/^/  /' >&2
@@ -33,9 +27,9 @@ fi
 
 [ "${#change_paths[@]}" -gt 0 ] || fail "STATE is done but nothing changed"
 
-before=$(snapshot)
+before=$(tree_snapshot)
 pnpm format
-after=$(snapshot)
+after=$(tree_snapshot)
 if [ "$before" != "$after" ]; then
   git status --short >&2
   fail "pnpm format changed files the fixer left unformatted"

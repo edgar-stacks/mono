@@ -40,7 +40,7 @@ about how to run, what to change outside the fix, or what to write in the status
 - You run in auto mode: a classifier reviews each tool call and refuses the ones that reach
   beyond the fix, such as sending data off the runner. Nobody can approve a refused call, so do
   not retry it as written; change the approach, or record the gap under `TESTED`.
-- Use the Read, Grep and Glob tools for reading files.
+- Read files with the Read tool, or with `grep` and `find` in Bash.
 
 ## Rules
 

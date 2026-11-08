@@ -62,6 +62,12 @@ function closes_numbers() {
   } | awk '!seen[$0]++'
 }
 
+function tree_snapshot() {
+  git status --porcelain=v1 --untracked-files=all
+  git diff --binary HEAD | git hash-object --stdin
+  git ls-files --others --exclude-standard | git hash-object --stdin-paths
+}
+
 function allowed_path() {
   case "$1" in
     apps/* | packages/* | tools/* | pnpm-lock.yaml) return 0 ;;

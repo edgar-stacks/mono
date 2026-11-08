@@ -23,6 +23,7 @@ const scriptNames = [
   'fix-issue-verify.sh',
   'fix-issue-fetch.sh',
   'fix-issue-pr.sh',
+  'fix-issue-review.sh',
 ];
 const repoName = 'leather-io/mono';
 const binaryContent = Buffer.from([0, 1, 2, 255, 254, 0, 10]);
@@ -180,10 +181,10 @@ function readCalls(path) {
     .map(line => JSON.parse(line));
 }
 
-function run(sandbox, script, { env = {}, state = {} } = {}) {
+function run(sandbox, script, { env = {}, state = {}, args = [] } = {}) {
   const logPath = join(sandbox.root, `${script}.calls.log`);
   writeFileSync(logPath, '');
-  const result = spawnSync('bash', [`.github/scripts/${script}`], {
+  const result = spawnSync('bash', [`.github/scripts/${script}`, ...args], {
     cwd: sandbox.repo,
     encoding: 'utf8',
     env: {
@@ -689,6 +690,137 @@ describe('fix-issue-verify.sh', () => {
       assert.notEqual(result.status, 0);
       assert.match(result.stderr, message);
       assert.deepEqual(result.calls, []);
+    });
+  }
+});
+
+describe('fix-issue-review.sh', () => {
+  const cleanReview = [
+    'BLOCKING: 0',
+    '## Blocking',
+    '## Minor',
+    '- apps/extension/fee-row.tsx:1 — name the constant.',
+    '',
+  ].join('\n');
+  const blockingReview = [
+    'BLOCKING: 2',
+    '## Blocking',
+    '- [critical] apps/extension/fee-row.tsx:1 — leaks the address. Scenario: any log call.',
+    '- [regression] apps/extension/fee-row.tsx:1 — breaks the old row. Scenario: a narrow popup.',
+    '## Minor',
+    '',
+  ].join('\n');
+
+  function runReview(sandbox, mode) {
+    const outputPath = join(sandbox.root, `review-${mode}.output`);
+    writeFileSync(outputPath, '');
+    const result = run(sandbox, 'fix-issue-review.sh', {
+      args: [mode],
+      env: { GITHUB_OUTPUT: outputPath },
+    });
+    return { ...result, output: readFileSync(outputPath, 'utf8') };
+  }
+
+  function writeReview(sandbox, text) {
+    writeFileSync(join(sandbox.repo, 'tmp/fix-issue/review.md'), text);
+  }
+
+  function readStatus(sandbox) {
+    return readFileSync(join(sandbox.repo, 'tmp/fix-issue/status.md'), 'utf8');
+  }
+
+  it('records the fixer state with the snapshot', () => {
+    const sandbox = createSandbox();
+    makeFix(sandbox);
+    writeStatus(sandbox, doneStatus);
+    const result = runReview(sandbox, 'snapshot');
+    assert.equal(result.status, 0, result.stderr);
+    assert.equal(result.output, 'state=done\n');
+    assert.ok(existsSync(join(sandbox.repo, 'tmp/fix-issue/review-snapshot.txt')));
+  });
+
+  it('records an empty state when the fixer wrote no status', () => {
+    const sandbox = createSandbox();
+    const result = runReview(sandbox, 'snapshot');
+    assert.equal(result.status, 0, result.stderr);
+    assert.equal(result.output, 'state=\n');
+  });
+
+  it('passes a clean review and notes it under TESTED', () => {
+    const sandbox = createSandbox();
+    makeFix(sandbox);
+    writeStatus(sandbox, doneStatus);
+    runReview(sandbox, 'snapshot');
+    writeReview(sandbox, cleanReview);
+    const result = runReview(sandbox, 'check');
+    assert.equal(result.status, 0, result.stderr);
+    assert.equal(result.output, 'blocking=0\n');
+    assert.match(
+      readStatus(sandbox),
+      /TESTED:\n- Code review: 0 critical, blocker or regression findings\n- pnpm --filter/
+    );
+  });
+
+  it('reports the blocking count for the fix round', () => {
+    const sandbox = createSandbox();
+    makeFix(sandbox);
+    writeStatus(sandbox, doneStatus);
+    runReview(sandbox, 'snapshot');
+    writeReview(sandbox, blockingReview);
+    const result = runReview(sandbox, 'check');
+    assert.equal(result.status, 0, result.stderr);
+    assert.equal(result.output, 'blocking=2\n');
+    assert.match(readStatus(sandbox), /- Code review: 2 critical, blocker or regression findings/);
+  });
+
+  it('fails when the review changed a file', () => {
+    const sandbox = createSandbox();
+    makeFix(sandbox);
+    writeStatus(sandbox, doneStatus);
+    runReview(sandbox, 'snapshot');
+    writeRepoFile(sandbox, 'apps/extension/fee-row.tsx', 'export const feeRow = 3;\n');
+    writeReview(sandbox, cleanReview);
+    const result = runReview(sandbox, 'check');
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /the review changed files/);
+    assert.equal(result.output, '');
+  });
+
+  it('fails when the review added a file', () => {
+    const sandbox = createSandbox();
+    makeFix(sandbox);
+    writeStatus(sandbox, doneStatus);
+    runReview(sandbox, 'snapshot');
+    writeRepoFile(sandbox, 'packages/utils/extra.ts', 'export const extra = 1;\n');
+    writeReview(sandbox, cleanReview);
+    assert.match(runReview(sandbox, 'check').stderr, /the review changed files/);
+  });
+
+  const invalidReviews = [
+    ['a missing review file', null, /review\.md does not exist/],
+    [
+      'a count that is not a number',
+      cleanReview.replace('BLOCKING: 0', 'BLOCKING: none'),
+      /is not a number/,
+    ],
+    [
+      'a count that disagrees with the list',
+      blockingReview.replace('BLOCKING: 2', 'BLOCKING: 1'),
+      /says 1 but ## Blocking lists 2 findings/,
+    ],
+  ];
+  for (const [name, review, message] of invalidReviews) {
+    it(`fails on ${name}`, () => {
+      const sandbox = createSandbox();
+      makeFix(sandbox);
+      writeStatus(sandbox, doneStatus);
+      runReview(sandbox, 'snapshot');
+      if (review !== null) writeReview(sandbox, review);
+      const result = runReview(sandbox, 'check');
+      assert.notEqual(result.status, 0);
+      assert.match(result.stderr, message);
+      assert.equal(result.output, '');
+      assert.equal(readStatus(sandbox), doneStatus);
     });
   }
 });

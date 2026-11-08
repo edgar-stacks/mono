@@ -100,9 +100,51 @@ jobs:
             --model opus
             --permission-mode auto
             --permission-prompts none
+            --allowedTools mcp__github
           show_full_output: true
           prompt: |
             Follow the instructions in .github/prompts/fix-issue.md.
+
+      - name: snapshot-fix
+        id: snapshot
+        run: bash .github/scripts/fix-issue-review.sh snapshot
+
+      - name: review-fix
+        if: steps.snapshot.outputs.state == 'done'
+        uses: anthropics/claude-code-action@ae68417a745a5df4b2124873632bd73a2255e6f6 # v1.0.259
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          github_token: ${{ github.token }}
+          claude_args: >-
+            --model opus
+            --permission-mode auto
+            --permission-prompts none
+            --allowedTools mcp__github
+          show_full_output: true
+          prompt: |
+            Follow the instructions in .github/prompts/review-fix.md.
+
+      - name: check-review
+        id: review
+        if: steps.snapshot.outputs.state == 'done'
+        run: bash .github/scripts/fix-issue-review.sh check
+
+      - name: fix-review-findings
+        if: steps.review.outputs.blocking != '' && steps.review.outputs.blocking != '0'
+        uses: anthropics/claude-code-action@ae68417a745a5df4b2124873632bd73a2255e6f6 # v1.0.259
+        env:
+          EXTENSION_INTEGRATION_TEST_MNEMONIC: ${{ vars.EXTENSION_INTEGRATION_TEST_MNEMONIC }}
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          github_token: ${{ github.token }}
+          claude_args: >-
+            --model opus
+            --permission-mode auto
+            --permission-prompts none
+            --allowedTools mcp__github
+          show_full_output: true
+          prompt: |
+            Follow the instructions in .github/prompts/fix-review-findings.md.
 
       - name: verify-fix
         run: bash .github/scripts/fix-issue-verify.sh
@@ -119,6 +161,7 @@ jobs:
           path: |
             tmp/fix-issue/status.md
             tmp/fix-issue/fix.patch
+            tmp/fix-issue/review.md
           if-no-files-found: error
           retention-days: 3
 
