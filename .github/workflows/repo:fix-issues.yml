@@ -71,8 +71,7 @@ jobs:
           github_token: ${{ github.token }}
           claude_args: >-
             --model opus
-            --permission-mode bypassPermissions
-            --allow-dangerously-skip-permissions
+            --permission-mode auto
           show_full_output: true
           prompt: |
             Follow the instructions in .github/prompts/fix-issue.md.
