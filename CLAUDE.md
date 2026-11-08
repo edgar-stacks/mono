@@ -142,4 +142,4 @@ pnpm --filter @leather.io/{package} typecheck
 - **Add a React Query hook** → `packages/queries/` or app-level `src/queries/`
 - **Run a single package's tests** → `pnpm --filter @leather.io/{package} test:unit`
 - **Add or fix an extension E2E test** → `apps/extension/tests`, use the `write-extension-e2e` skill
-- **Fix a batch of GitHub issues in parallel worktrees** → use the `fix-issues` skill
+- **Fix a batch of GitHub issues** → use the `fix-issues` skill: research, interview and briefs locally, then one `repo:fix-issues` workflow run per brief opens the pull request

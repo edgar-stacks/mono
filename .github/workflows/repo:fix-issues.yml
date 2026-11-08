@@ -1,0 +1,120 @@
+name: repo:fix-issues
+run-name: 'fix-issues: #${{ inputs.issue }}'
+
+on:
+  workflow_dispatch:
+    inputs:
+      issue:
+        description: The issue to fix; a grouped brief lists the others
+        type: number
+        required: true
+      notes:
+        description: The brief from the fix-issues skill, or a sentence of guidance
+        type: string
+        required: false
+        default: ''
+
+# GITHUB_TOKEN default permissions disabled; jobs declare their own.
+permissions: {}
+
+concurrency:
+  group: fix-issues-${{ inputs.issue }}
+  cancel-in-progress: true
+
+jobs:
+  fix-issue:
+    name: fix-issue
+    if: github.ref_name == 'dev'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    permissions:
+      contents: read # checkout only; this job runs the fixer and its code and never writes to the repository
+      issues: read # read the issue and its comments for the fixer
+      id-token: write # OIDC exchange for claude-code-action
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: $/.github/actions/provision
+        with:
+          TURBO_CACHE: 'false'
+
+      - name: build-packages
+        run: |
+          pnpm turbo run build --filter='!@leather.io/extension' --filter='!@leather.io/web' --filter='!@leather.io/test-app'
+          pnpm --filter @leather.io/extension --filter @leather.io/web run prepare:build
+
+      - name: fetch-issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ISSUE: ${{ inputs.issue }}
+        run: bash .github/scripts/fix-issue-fetch.sh
+
+      - name: write-notes
+        env:
+          NOTES: ${{ inputs.notes }}
+        run: printf '%s\n' "$NOTES" > tmp/fix-issue/notes.md
+
+      - name: fix-issue
+        uses: anthropics/claude-code-action@ae68417a745a5df4b2124873632bd73a2255e6f6 # v1.0.259
+        env:
+          CLAUDE_CODE_SUBPROCESS_ENV_SCRUB: '1'
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          claude_args: >-
+            --model opus
+            --allowedTools "Edit(apps/**) Edit(packages/**) Edit(tools/**) Edit(tmp/fix-issue/**) Write(apps/**) Write(packages/**) Write(tools/**) Write(tmp/fix-issue/**) Bash(pnpm:*) Bash(git diff:*) Bash(git status:*) Bash(git log:*) Bash(git show:*) Bash(git ls-files:*)"
+          show_full_output: true
+          prompt: |
+            Follow the instructions in .github/prompts/fix-issue.md.
+
+      - name: verify-fix
+        run: bash .github/scripts/fix-issue-verify.sh
+
+      - name: package-fix
+        run: |
+          git add -A
+          git diff --cached --binary --no-renames HEAD > tmp/fix-issue/fix.patch
+
+      - name: upload-fix
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: fix-issue
+          path: |
+            tmp/fix-issue/status.md
+            tmp/fix-issue/fix.patch
+          if-no-files-found: error
+          retention-days: 3
+
+  open-pull-request:
+    name: open-pull-request
+    needs: fix-issue
+    if: github.ref_name == 'dev'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: write # create the signed fix commit on the bot/fix-<issue> branch
+      pull-requests: write # open or update the issue's pull request and flip its draft state
+      issues: write # comment the fixer's questions on the issue when it is blocked before changing anything
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: download-fix
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: fix-issue
+          path: tmp/fix-issue
+
+      - name: open-pull-request
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ISSUE: ${{ inputs.issue }}
+          BRANCH: bot/fix-${{ inputs.issue }}
+          BASE_BRANCH: dev
+          STATUS_FILE: tmp/fix-issue/status.md
+          PATCH_FILE: tmp/fix-issue/fix.patch
+          PARENT_SHA: ${{ github.sha }}
+        run: bash .github/scripts/fix-issue-pr.sh
