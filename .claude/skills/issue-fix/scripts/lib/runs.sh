@@ -22,7 +22,8 @@ record_run() {
   local issue="$2"
   local run="$3"
   jq --arg issue "$issue" --argjson run "$run" \
-    'map(if (.issue | tostring) == $issue then . + {run_id: $run.databaseId, run_url: $run.url} else . end)' \
+    'map(if (.issue | tostring) == $issue then . + {run_id: $run.databaseId, run_url: $run.url,
+      branch: ("bot/issue-fix-" + $issue + "-" + ($run.databaseId | tostring))} else . end)' \
     "$run_json" > "$run_json.tmp"
   mv "$run_json.tmp" "$run_json"
 }

@@ -6,7 +6,7 @@ script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 usage() {
   cat <<'EOF'
-Usage: dispatch.sh --run-dir <dir> --issue <n> [--branch <branch>] [--brief <file>] [--dry-run]
+Usage: dispatch.sh --run-dir <dir> --issue <n> [--brief <file>] [--dry-run]
 
 Dispatches the repo:issue-fix workflow on dev for one brief: the issue as `issue`, the brief
 verbatim as `notes`, sent as JSON on standard input to `gh workflow run --json`, so the brief never
@@ -15,8 +15,8 @@ the "issue-fix: #<n>" title created after the dispatch) and records run_id, run_
 dispatched_at in <run-dir>/run.json. Dispatching the same issue again replaces its run.
 
   --issue    the issue the workflow fixes; for a group, the first issue of the brief
-  --branch   the pull request branch, default bot/issue-fix-<issue> (the workflow's own choice)
-  --brief    default <run-dir>/briefs/<branch>.md
+  --brief    default <run-dir>/briefs/bot/issue-fix-<issue>.md; the run names its branch
+             bot/issue-fix-<issue>-<run id>, recorded once the run is found
   --dry-run  check the brief and print the commands; dispatch nothing
 
 Refuses a brief over 60000 bytes (GitHub caps the inputs payload at 65535 characters). Exits 3
@@ -26,7 +26,6 @@ EOF
 
 run_dir=""
 issue=""
-branch=""
 brief=""
 dry_run=0
 max_brief_bytes=60000
@@ -38,7 +37,6 @@ while [ $# -gt 0 ]; do
   case "$1" in
     --run-dir) run_dir="$2"; shift 2 ;;
     --issue) issue="$2"; shift 2 ;;
-    --branch) branch="$2"; shift 2 ;;
     --brief) brief="$2"; shift 2 ;;
     --dry-run) dry_run=1; shift ;;
     -h|--help) usage; exit 0 ;;
@@ -54,8 +52,7 @@ die() {
 [ -n "$run_dir" ] || { usage >&2; exit 2; }
 [ -n "$issue" ] || { usage >&2; exit 2; }
 [[ "$issue" =~ ^[1-9][0-9]*$ ]] || die "--issue must be an issue number"
-branch="${branch:-bot/issue-fix-$issue}"
-brief="${brief:-$run_dir/briefs/$branch.md}"
+brief="${brief:-$run_dir/briefs/bot/issue-fix-$issue.md}"
 command -v jq >/dev/null || die "jq is required"
 command -v gh >/dev/null || die "gh is required"
 run_json="$run_dir/run.json"
@@ -100,12 +97,12 @@ if ! output="$(payload | gh workflow run "$workflow" --repo "$repo" --ref dev --
   exit 3
 fi
 
-jq --arg issue "$issue" --arg branch "$branch" --arg brief "$brief" --arg at "$dispatched_at" \
+jq --arg issue "$issue" --arg brief "$brief" --arg at "$dispatched_at" \
   --argjson since "$since" --argjson issues "$issues" '
   (map(select((.issue | tostring) == $issue)) | .[0].dispatches // 0) as $count
   | map(select((.issue | tostring) != $issue))
   + [{issue: ($issue | tonumber), issues: (if ($issues | length) == 0 then [$issue | tonumber] else $issues end),
-      branch: $branch, brief: $brief, dispatched_at: $at, dispatched_epoch: $since,
+      branch: null, brief: $brief, dispatched_at: $at, dispatched_epoch: $since,
       dispatches: ($count + 1), run_id: null, run_url: null}]' "$run_json" > "$run_json.tmp"
 mv "$run_json.tmp" "$run_json"
 

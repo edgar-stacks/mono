@@ -88,6 +88,7 @@ round() {
       if [ -n "$run" ]; then
         record_run "$run_json" "$issue" "$run"
         run_id="$(printf '%s' "$run" | jq -r '.databaseId')"
+        branch="bot/issue-fix-$issue-$run_id"
       fi
     fi
     status="not found"
@@ -104,8 +105,11 @@ round() {
     elif [ "$conclusion" != success ]; then
       failed=1
     fi
-    pr="$(gh pr list --repo "$repo" --head "$branch" --state all --limit 1 \
-      --json number,url,isDraft,title,state,body --jq '.[0] // empty')"
+    pr=""
+    if [ -n "$branch" ]; then
+      pr="$(gh pr list --repo "$repo" --head "$branch" --state all --limit 1 \
+        --json number,url,isDraft,title,state,body --jq '.[0] // empty')"
+    fi
     pr_text="-"
     if [ -n "$pr" ]; then
       pr_text="$(printf '%s' "$pr" | jq -r '"#\(.number) \(.state | ascii_downcase)\(if .isDraft then " draft" else "" end)"')"

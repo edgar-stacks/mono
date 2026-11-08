@@ -1,6 +1,6 @@
 ---
 name: issue-fix
-description: Take one or more GitHub issue numbers for leather-io/mono, research each one, settle the open decisions with the person in one short round per issue, write a handoff brief per issue (or per group of overlapping issues), then dispatch the repo:issue-fix GitHub workflow once per brief, which runs the fixer, verifies it and opens a signed pull request from bot/issue-fix-<issue>, and track the runs and pull requests to the end. Use when given one or more GitHub issue numbers to fix, asked to work through a batch of issues, or asked to dispatch fixers for issues.
+description: Take one or more GitHub issue numbers for leather-io/mono, research each one, settle the open decisions with the person in one short round per issue, write a handoff brief per issue (or per group of overlapping issues), then dispatch the repo:issue-fix GitHub workflow once per brief, which runs the fixer, verifies it and opens a signed pull request from bot/issue-fix-<issue>-<run id>, and track the runs and pull requests to the end. Use when given one or more GitHub issue numbers to fix, asked to work through a batch of issues, or asked to dispatch fixers for issues.
 ---
 
 # Issue fix
@@ -91,8 +91,8 @@ workflow's `notes` input, so it stays under the cap in `references/brief.md`.
 
 | Field          | Shape                                                                                                                                                |
 | -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Branch         | `bot/issue-fix-<n>`, set by the workflow from the dispatched issue                                                                                   |
-| Grouped branch | `bot/issue-fix-<first issue>` (section 5)                                                                                                            |
+| Branch         | `bot/issue-fix-<n>-<run id>`, set by the workflow from the dispatched issue and its run                                                              |
+| Grouped branch | `bot/issue-fix-<first issue>-<run id>` (section 5)                                                                                                   |
 | Commit type    | follows the issue: a bug is `fix`, a change is `feat` or `refactor` by its nature (as in `CLAUDE.md`: `feat(mobile)`, `refactor(web)`, `fix(utils)`) |
 | Commit scope   | the platform or package: `extension`, `mobile`, `web`, `<package>`                                                                                   |
 
@@ -187,7 +187,7 @@ most), commits them to the `bot/screenshots` branch under `<issue>/<run>-<attemp
 
 Job `open-pull-request` builds `tools` from `dev`, gets only the patch and the status file, applies
 the patch in a separate git worktree, refuses any path outside `apps/`, `packages/`, `tools/` and
-`pnpm-lock.yaml`, and writes the signed commit to `bot/issue-fix-<n>` (`pnpm lt issue-fix
+`pnpm-lock.yaml`, and writes the signed commit to a new `bot/issue-fix-<n>-<run id>` (`pnpm lt issue-fix
 open-pull-request`). The commit carries a `Co-authored-by:` trailer for the person who dispatched
 the run (`github.triggering_actor`, with their public name and GitHub no-reply email; bots are
 skipped), which GitHub keeps in the squash-merge message. `done`
@@ -222,7 +222,7 @@ step fails and no pull request opens; the patch stays in the run's artifact for 
 ```
 
 One row per entry: the run's status and conclusion and its URL (`gh run view`), and the pull
-request on `bot/issue-fix-<n>` (`gh pr list --state all`) with its number, draft state and URL. For a
+request on the run's `bot/issue-fix-<n>-<run id>` (`gh pr list --state all`) with its number, draft state and URL. For a
 draft it prints the `## Blocked` questions from the body below the table. `--watch` repeats every
 60 seconds (`--interval` changes it) until every run has completed. A run takes from 20 minutes to
 two hours; run `--watch` in the background, never poll in a loop of your own.
@@ -233,8 +233,10 @@ A blocked fixer asks its questions in a draft pull request (`status.sh` prints t
 changed nothing, in an issue comment. Put them to the person in one `AskUserQuestion` round per
 issue: these are the fixer's questions, a new set, not a second interview. Append each answer to the
 brief's Decisions as `Settled: <choice> — <reason>`, then dispatch again with `dispatch.sh`, after
-the same explicit yes. The workflow force-updates `bot/issue-fix-<n>`, rewrites the pull request body and
-marks the draft ready once the new run is done.
+the same explicit yes. Every run gets its own branch, `bot/issue-fix-<n>-<run id>`, and its own pull
+request; once it is open the run comments `Superseded by #<new>` on the issue's earlier bot pull
+request, closes it and deletes its branch. No branch is ever moved or force-pushed, so a change to a
+workflow on `dev` between runs never needs the App's Workflows permission, which it does not have.
 
 ## 9. Report
 

@@ -36,7 +36,7 @@ function respond(route: GitHubRoute, method: HttpMethod, path: string, body: unk
   if (method === 'GET' && path.includes('/pulls?')) return [];
   if (path.includes('/git/refs')) return {};
   if (method === 'POST' && path.endsWith('/pulls')) {
-    return { html_url: 'https://github.com/leather-io/mono/pull/101' };
+    return { number: 101, html_url: 'https://github.com/leather-io/mono/pull/101' };
   }
   if (method === 'PATCH' && path.includes('/pulls/')) return {};
   if (method === 'POST' && path.endsWith('/comments')) {

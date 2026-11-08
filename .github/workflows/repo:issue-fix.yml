@@ -173,7 +173,7 @@ jobs:
           client-id: ${{ vars.ISSUE_FIX_APP_CLIENT_ID }}
           private-key: ${{ secrets.ISSUE_FIX_APP_PRIVATE_KEY }}
           repositories: ${{ github.event.repository.name }}
-          permission-contents: write # create the signed fix commit on bot/issue-fix-<issue> and the screenshots on bot/screenshots
+          permission-contents: write # create the signed fix commit on bot/issue-fix-<issue>-<run id> and the screenshots on bot/screenshots
           permission-pull-requests: write # open or update the issue's pull request and flip its draft state
           permission-issues: write # comment the fixer's questions on the issue when it is blocked before changing anything
 
@@ -187,7 +187,7 @@ jobs:
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
           ISSUE: ${{ inputs.issue }}
-          BRANCH: bot/issue-fix-${{ inputs.issue }}
+          BRANCH: bot/issue-fix-${{ inputs.issue }}-${{ github.run_id }}
           PARENT_SHA: ${{ github.sha }}
           CO_AUTHOR: ${{ github.triggering_actor }}
         run: >-

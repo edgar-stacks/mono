@@ -4,7 +4,7 @@ import { z } from 'zod';
 
 import { runCommand, runOrThrow } from './exec.js';
 import { allowedPathsDescription, changedPaths, gitBlobSha, headSha, refusedPaths } from './git.js';
-import type { GitHubClient } from './github.js';
+import { type GitHubClient, paginate } from './github.js';
 import type { IssueFixPaths } from './paths.js';
 import { isScreenshot } from './screenshots.js';
 import { type FixStatus, closesNumbers, readStatus } from './status.js';
@@ -47,9 +47,11 @@ const pullSchema = z.object({
   draft: z.boolean(),
   node_id: z.string(),
   html_url: z.string(),
-  head: z.object({ repo: z.object({ full_name: z.string() }).nullable() }),
+  head: z.object({ ref: z.string(), repo: z.object({ full_name: z.string() }).nullable() }),
 });
 const urlSchema = z.object({ html_url: z.string() });
+const createdPullSchema = z.object({ number: z.number(), html_url: z.string() });
+const runIdPattern = /^\d+$/;
 const userSchema = z.object({ id: z.number(), login: z.string(), name: z.string().nullable() });
 const botLoginPattern = /\[bot\]$/;
 
@@ -289,6 +291,42 @@ async function findOpenPullRequest(options: OpenPullRequestOptions) {
   return pulls.find(pull => pull.head.repo?.full_name === repo) ?? null;
 }
 
+function isEarlierRunBranch(ref: string, issue: number, current: string): boolean {
+  const prefix = `bot/issue-fix-${issue}-`;
+  return ref !== current && ref.startsWith(prefix) && runIdPattern.test(ref.slice(prefix.length));
+}
+
+async function supersedeEarlierPullRequests(
+  options: OpenPullRequestOptions,
+  current: number,
+  log: (line: string) => void
+): Promise<void> {
+  const { client, repo, issue, branch, baseBranch } = options;
+  const open = z
+    .array(pullSchema)
+    .parse(await paginate(client, `repos/${repo}/pulls?state=open&base=${baseBranch}`));
+  const earlier = open.filter(
+    pull =>
+      pull.number !== current &&
+      pull.head.repo?.full_name === repo &&
+      isEarlierRunBranch(pull.head.ref, issue, branch)
+  );
+  for (const pull of earlier) {
+    try {
+      await client.request('POST', `repos/${repo}/issues/${pull.number}/comments`, {
+        body: `Superseded by #${current}.`,
+      });
+      await client.request('PATCH', `repos/${repo}/pulls/${pull.number}`, { state: 'closed' });
+      await client.request('DELETE', `repos/${repo}/git/refs/heads/${pull.head.ref}`);
+      log(`open-pull-request: closed #${pull.number}, superseded by #${current}`);
+    } catch (error) {
+      log(
+        `open-pull-request: could not supersede #${pull.number}: ${error instanceof Error ? error.message : String(error)}`
+      );
+    }
+  }
+}
+
 const readyMutation =
   'mutation($id: ID!) { markPullRequestReadyForReview(input: { pullRequestId: $id }) { clientMutationId } }';
 const draftMutation =
@@ -351,7 +389,7 @@ export async function openPullRequest(options: OpenPullRequestOptions): Promise<
 
     const blocked = status.status.state === 'blocked';
     if (!existing) {
-      const created = urlSchema.parse(
+      const created = createdPullSchema.parse(
         await client.request('POST', `repos/${repo}/pulls`, {
           title,
           head: branch,
@@ -360,11 +398,13 @@ export async function openPullRequest(options: OpenPullRequestOptions): Promise<
           draft: blocked,
         })
       );
+      await supersedeEarlierPullRequests(options, created.number, log);
       return created.html_url;
     }
     await client.request('PATCH', `repos/${repo}/pulls/${existing.number}`, { title, body });
     if (!blocked && existing.draft) await client.graphql(readyMutation, { id: existing.node_id });
     if (blocked && !existing.draft) await client.graphql(draftMutation, { id: existing.node_id });
+    await supersedeEarlierPullRequests(options, existing.number, log);
     return existing.html_url;
   } finally {
     removeWorkspace(paths);
