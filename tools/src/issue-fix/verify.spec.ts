@@ -71,16 +71,25 @@ describe('verifyFix', () => {
     );
   });
 
-  test('skips the gate when the fixer is blocked', () => {
+  test('skips the gate when the fixer is blocked with no changes', () => {
     repo = createTestRepo();
-    repo.makeFix();
     repo.writeStatus(blockedStatus);
     const pnpm = fakePnpm(repo);
     expect(verify(pnpm)).toEqual({
       passed: true,
-      message: 'the fixer is blocked with 4 changed files; skipping the verification gate',
+      skipped: true,
+      message: 'the fixer is blocked with no changes; skipping the verification gate',
     });
     expect(pnpm.calls).toEqual([]);
+  });
+
+  test('runs the gate when the fixer is blocked with changes', () => {
+    repo = createTestRepo();
+    repo.makeFix();
+    repo.writeStatus(blockedStatus);
+    const pnpm = fakePnpm(repo, { fail: 'lint' });
+    expect(verify(pnpm)).toMatchObject({ passed: false, message: '`pnpm lint` failed' });
+    expect(pnpm.calls).toEqual(['format', 'lint']);
   });
 
   test('fails when the fixer is done but nothing changed', () => {

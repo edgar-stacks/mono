@@ -112,6 +112,38 @@ describe('rounds', () => {
     expect(endRound(repo.paths, 1)).toMatchObject({ outcome: 'blocked', continue: false });
   });
 
+  test('a blocked fixer with no changes skips the gate and the review', () => {
+    repo.writeStatus(blockedStatus);
+    beginRound(repo.paths, 1);
+    expect(verifyRound(repo.paths, fakePnpm(repo).run)).toBe(false);
+    expect(endRound(repo.paths, 1)).toMatchObject({
+      outcome: 'blocked',
+      summary: 'Round 1: the fixer stopped as blocked',
+    });
+  });
+
+  test('a blocked fixer with changes is verified and reviewed, then stops the rounds', () => {
+    repo.makeFix();
+    repo.writeStatus(blockedStatus);
+    expect(reviewedRound(1, cleanReview)).toEqual({
+      outcome: 'blocked',
+      clean: false,
+      continue: false,
+      summary:
+        'Round 1: the fixer stopped as blocked; checks passed and review found no critical, blocker or regression findings',
+    });
+  });
+
+  test('a blocked fixer whose changes fail the gate records the failure', () => {
+    repo.makeFix();
+    repo.writeStatus(blockedStatus);
+    expect(reviewedRound(1, cleanReview, 'lint')).toMatchObject({
+      outcome: 'blocked',
+      summary: 'Round 1: the fixer stopped as blocked; `pnpm lint` failed',
+    });
+    expect(existsSync(roundFile(1, 'review.json'))).toBe(false);
+  });
+
   test('a review that changes a file fails the run', () => {
     repo.makeFix();
     repo.writeStatus(doneStatus);
@@ -173,6 +205,18 @@ describe('rounds', () => {
     const status = readStatus(repo.paths.statusFile);
     expect(status.ok && status.status.questions).toEqual(blockedStatus.questions);
     expect(status.ok && status.status.tested).toEqual(['Round 1: the fixer stopped as blocked']);
+  });
+
+  test('a blocked fixer with blocking review findings asks about them', () => {
+    repo.makeFix();
+    repo.writeStatus(blockedStatus);
+    reviewedRound(1, blockingReview);
+    expect(finishRounds(repo.paths)).toBe('blocked');
+    const status = readStatus(repo.paths.statusFile);
+    expect(status.ok && status.status.questions).toEqual([
+      ...blockedStatus.questions,
+      'The review found 2 critical, blocker or regression findings that no round fixed because the fixer stopped as blocked: critical at apps/extension/fee-row.tsx:1: leaks the address; regression at apps/extension/fee-row.tsx:1: breaks the old row. Options: answer the questions and dispatch again; fix them on this branch by hand.',
+    ]);
   });
 
   test('finishing fails when no round ran', () => {

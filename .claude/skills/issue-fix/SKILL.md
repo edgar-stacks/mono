@@ -174,7 +174,8 @@ fix → verify → review:
 Each round is kept in `tmp/issue-fix/rounds/<n>/` and recorded in `tmp/issue-fix/run.json` (both
 uploaded with the patch); `pnpm lt issue-fix round finish` adds one `Round <n>: …` entry per round
 to `tested`. A round that is clean ends the loop; a fixer that sets `"state": "blocked"` ends it
-too. If round 3 still fails, the status becomes `blocked` with a question naming what still fails,
+too, after the gate and the review still run over whatever it changed, and any blocking finding it
+leaves unfixed becomes a question. If round 3 still fails, the status becomes `blocked` with a question naming what still fails,
 so the result is a draft pull request. Then
 `pnpm lt issue-fix strip-forbidden` removes every change outside the allowed paths (restoring
 tracked files, deleting new ones) and, when it removed any, sets the status to `blocked` with a

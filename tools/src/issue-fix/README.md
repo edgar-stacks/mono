@@ -22,6 +22,8 @@ open-pull-request ─▶ signed commit on a new bot/issue-fix-<n>-<run id>, co-a
 ```
 
 A round ends `clean` (next: finish), `failed` (next round, up to three) or `blocked` (finish).
+A blocked fixer that changed files is still verified and reviewed, so its draft says how the
+change fared; blocking findings it leaves unfixed become a question.
 After the last round `round finish` adds one entry per round to `tested`, and turns a run that
 still fails into `blocked` with a question, so it becomes a draft pull request. `strip-forbidden`
 then removes any change outside the allowed paths and, if it removed one, blocks the status with a

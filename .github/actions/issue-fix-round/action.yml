@@ -51,7 +51,6 @@ runs:
 
     - name: verify
       id: verify
-      if: steps.begin-checks.outputs.state != 'blocked'
       shell: bash
       env:
         ROUND: ${{ inputs.round }}

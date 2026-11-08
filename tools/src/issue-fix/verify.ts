@@ -14,7 +14,7 @@ interface VerifyOptions {
 }
 
 type VerifyResult =
-  | { readonly passed: true; readonly message: string }
+  | { readonly passed: true; readonly skipped?: boolean; readonly message: string }
   | { readonly passed: false; readonly message: string; readonly details: string };
 
 const formatCommand: readonly string[] = ['format'];
@@ -106,10 +106,11 @@ function evaluate(root: string, statusFile: string, run: CommandRunner): VerifyR
       details: `Only ${allowedPathsDescription} may change:\n${refused.join('\n')}`,
     };
   }
-  if (status.status.state === 'blocked') {
+  if (changes.length === 0 && status.status.state === 'blocked') {
     return {
       passed: true,
-      message: `the fixer is blocked with ${changes.length} changed files; skipping the verification gate`,
+      skipped: true,
+      message: 'the fixer is blocked with no changes; skipping the verification gate',
     };
   }
   if (changes.length === 0) {

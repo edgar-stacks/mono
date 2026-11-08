@@ -60,7 +60,7 @@ export function verifyRound(paths: IssueFixPaths, run?: CommandRunner): boolean 
     run,
   });
   if (result.passed) rmSync(paths.verifyReport, { force: true });
-  return result.passed;
+  return result.passed && !result.skipped;
 }
 
 export function snapshotForReview(paths: IssueFixPaths): void {
@@ -79,30 +79,44 @@ export function checkReview(paths: IssueFixPaths): number {
   return readReview(paths.reviewFile).blocking.length;
 }
 
+function checksSummary(paths: IssueFixPaths): string | null {
+  if (existsSync(paths.verifyReport)) {
+    const firstLine = readFileSync(paths.verifyReport, 'utf8').split('\n')[0] ?? '';
+    return firstLine.replace(/^FAILED: /, '');
+  }
+  if (!existsSync(paths.reviewFile)) return null;
+  const blocking = readReview(paths.reviewFile).blocking.length;
+  return blocking === 0
+    ? 'checks passed and review found no critical, blocker or regression findings'
+    : `review found ${blocking} critical, blocker or regression findings`;
+}
+
 function decideOutcome(
   paths: IssueFixPaths,
   round: number
 ): { outcome: RoundOutcome; summary: string } {
+  const checks = checksSummary(paths);
   if (readState(paths.statusFile) === 'blocked') {
-    return { outcome: 'blocked', summary: `Round ${round}: the fixer stopped as blocked` };
+    const stopped = `Round ${round}: the fixer stopped as blocked`;
+    return { outcome: 'blocked', summary: checks ? `${stopped}; ${checks}` : stopped };
   }
-  if (existsSync(paths.verifyReport)) {
-    const firstLine = readFileSync(paths.verifyReport, 'utf8').split('\n')[0] ?? '';
-    return { outcome: 'failed', summary: `Round ${round}: ${firstLine.replace(/^FAILED: /, '')}` };
-  }
-  if (!existsSync(paths.reviewFile)) {
+  if (checks === null) {
     throw new Error(`round ${round} has neither a verify report nor a review`);
   }
-  const blocking = readReview(paths.reviewFile).blocking.length;
-  return blocking === 0
-    ? {
-        outcome: 'clean',
-        summary: `Round ${round}: checks passed and review found no critical, blocker or regression findings`,
-      }
-    : {
-        outcome: 'failed',
-        summary: `Round ${round}: review found ${blocking} critical, blocker or regression findings`,
-      };
+  const passed =
+    !existsSync(paths.verifyReport) && readReview(paths.reviewFile).blocking.length === 0;
+  return { outcome: passed ? 'clean' : 'failed', summary: `Round ${round}: ${checks}` };
+}
+
+function unfixedFindingsQuestion(paths: IssueFixPaths, round: number): string | null {
+  const file = path.join(roundDir(paths, round), path.basename(paths.reviewFile));
+  if (!existsSync(file)) return null;
+  const { blocking } = readReview(file);
+  if (blocking.length === 0) return null;
+  const findings = blocking.map(
+    finding => `${finding.kind} at ${finding.location}: ${finding.defect}`
+  );
+  return `The review found ${blocking.length} critical, blocker or regression findings that no round fixed because the fixer stopped as blocked: ${findings.join('; ')}. Options: answer the questions and dispatch again; fix them on this branch by hand.`;
 }
 
 export function endRound(paths: IssueFixPaths, round: number): RoundEnd {
@@ -129,6 +143,7 @@ export function finishRounds(paths: IssueFixPaths): RoundOutcome {
   }
   const summaries = rounds.map(entry => entry.summary);
   const lastReason = last.summary.replace(/^Round \d+: /, '');
+  const unfixed = last.outcome === 'blocked' ? unfixedFindingsQuestion(paths, last.round) : null;
   writeStatus(
     paths.statusFile,
     last.outcome === 'failed'
@@ -141,7 +156,11 @@ export function finishRounds(paths: IssueFixPaths): RoundOutcome {
             `The fix still fails after ${last.round} rounds (${lastReason}). Options: dispatch again with guidance in the brief; take the branch over locally.`,
           ],
         }
-      : { ...status.status, tested: [...summaries, ...status.status.tested] }
+      : {
+          ...status.status,
+          tested: [...summaries, ...status.status.tested],
+          questions: unfixed ? [...status.status.questions, unfixed] : status.status.questions,
+        }
   );
   return last.outcome;
 }
