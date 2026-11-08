@@ -1,7 +1,8 @@
 import type { SupportedBlockchains } from '@leather.io/models';
-import { capitalize } from '@leather.io/utils';
 
 import { useLedgerSteps } from '@app/features/ledger/flow/ledger-flow.context';
+import { getLedgerAppName } from '@app/features/ledger/utils/generic-ledger-utils';
+import { useCurrentNetwork } from '@app/store/networks/networks.selectors';
 
 import { ConnectLedgerErrorLayout } from './connect-ledger-error.layout';
 
@@ -11,10 +12,11 @@ interface ConnectLedgerErrorProps {
 }
 export function ConnectLedgerError({ chain, errorMessage }: ConnectLedgerErrorProps) {
   const ledgerSteps = useLedgerSteps();
+  const network = useCurrentNetwork();
   // TODO: here it would be better to use the actual app name from
   // LEDGER_APPS_MAP at src/app/features/ledger/utils/generic-ledger-utils.ts
 
-  const appName = capitalize(chain);
+  const appName = getLedgerAppName({ chain, network: network.chain.bitcoin.mode });
   return (
     <ConnectLedgerErrorLayout
       warningText={errorMessage ?? null}
