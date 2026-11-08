@@ -23,8 +23,25 @@ const commentSchema = z.object({
   user: userSchema,
 });
 
+const permissionSchema = z.object({ permission: z.string() });
+
 type Issue = z.infer<typeof issueSchema>;
 type Comment = z.infer<typeof commentSchema>;
+
+const trustedPermissions = ['admin', 'maintain', 'write'];
+
+interface FetchIssueOptions {
+  readonly client: GitHubClient;
+  readonly repo: string;
+  readonly issue: number;
+  readonly outFile: string;
+}
+
+interface FetchedIssue {
+  readonly comments: number;
+  readonly omittedComments: number;
+  readonly issueOmitted: boolean;
+}
 
 function text(value: string | null): string {
   return value === null || value === '' ? '(empty)' : value;
@@ -34,7 +51,40 @@ function login(user: Issue['user']): string {
   return user?.login ?? 'ghost';
 }
 
-function renderIssue(issue: Issue, comments: readonly Comment[]): string {
+async function hasWriteAccess(client: GitHubClient, repo: string, user: string): Promise<boolean> {
+  try {
+    const { permission } = permissionSchema.parse(
+      await client.request('GET', `repos/${repo}/collaborators/${user}/permission`)
+    );
+    return trustedPermissions.includes(permission);
+  } catch (error) {
+    if (error instanceof GitHubError && error.status === 404) return false;
+    throw error;
+  }
+}
+
+async function trustedAuthors(
+  client: GitHubClient,
+  repo: string,
+  users: readonly (string | null)[]
+): Promise<Set<string>> {
+  const trusted = new Set<string>();
+  for (const user of new Set(users)) {
+    if (user !== null && (await hasWriteAccess(client, repo, user))) trusted.add(user);
+  }
+  return trusted;
+}
+
+function isTrusted(trusted: ReadonlySet<string>, user: Issue['user']): boolean {
+  return user !== null && trusted.has(user.login);
+}
+
+function renderIssue(
+  issue: Issue,
+  comments: readonly Comment[],
+  omittedComments: number,
+  issueTrusted: boolean
+): string {
   const labels = issue.labels.map(label => (typeof label === 'string' ? label : label.name));
   const renderedComments =
     comments.length === 0
@@ -45,30 +95,38 @@ function renderIssue(issue: Issue, comments: readonly Comment[]): string {
               `### @${login(comment.user)} on ${comment.created_at}\n\n${text(comment.body)}`
           )
           .join('\n\n');
+  const omittedNote =
+    omittedComments === 0
+      ? []
+      : [
+          '',
+          `${omittedComments} comments from people without write access to the repository were omitted.`,
+        ];
+  const header = issueTrusted
+    ? [`# ${issue.title}`, '', issue.html_url]
+    : [
+        `# Issue opened by @${login(issue.user)}`,
+        '',
+        issue.html_url,
+        '',
+        `@${login(issue.user)} has no write access to the repository, so the title and body are omitted. The brief is the specification.`,
+      ];
   return [
-    `# ${issue.title}`,
-    '',
-    issue.html_url,
+    ...header,
     '',
     `Labels: ${labels.length === 0 ? 'none' : labels.join(', ')}`,
     `Opened by @${login(issue.user)} on ${issue.created_at}`,
     '',
     '## Body',
     '',
-    text(issue.body),
+    issueTrusted ? text(issue.body) : '(omitted)',
     '',
     '## Comments',
     '',
     renderedComments,
+    ...omittedNote,
     '',
   ].join('\n');
-}
-
-interface FetchIssueOptions {
-  readonly client: GitHubClient;
-  readonly repo: string;
-  readonly issue: number;
-  readonly outFile: string;
 }
 
 export async function fetchIssue({
@@ -76,7 +134,7 @@ export async function fetchIssue({
   repo,
   issue,
   outFile,
-}: FetchIssueOptions): Promise<number> {
+}: FetchIssueOptions): Promise<FetchedIssue> {
   let raw: unknown;
   try {
     raw = await client.request('GET', `repos/${repo}/issues/${issue}`);
@@ -93,7 +151,17 @@ export async function fetchIssue({
   const comments = z
     .array(commentSchema)
     .parse(await paginate(client, `repos/${repo}/issues/${issue}/comments`));
+  const trusted = await trustedAuthors(client, repo, [
+    parsed.user?.login ?? null,
+    ...comments.map(comment => comment.user?.login ?? null),
+  ]);
+  const kept = comments.filter(comment => isTrusted(trusted, comment.user));
+  const issueTrusted = isTrusted(trusted, parsed.user);
   mkdirSync(path.dirname(outFile), { recursive: true });
-  writeFileSync(outFile, renderIssue(parsed, comments));
-  return comments.length;
+  writeFileSync(outFile, renderIssue(parsed, kept, comments.length - kept.length, issueTrusted));
+  return {
+    comments: kept.length,
+    omittedComments: comments.length - kept.length,
+    issueOmitted: !issueTrusted,
+  };
 }

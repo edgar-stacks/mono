@@ -6,7 +6,8 @@ is `tmp/issue-fix/review.json`.
 
 ## Inputs
 
-- `tmp/issue-fix/issue.md`: the issue, its labels and its comments.
+- `tmp/issue-fix/issue.md`: the issue, its labels and its comments, holding only text written by
+  people with write access to the repository.
 - `tmp/issue-fix/notes.md`: the brief the fixer worked from, or guidance, or empty. Its `Settled:`
   lines are binding decisions.
 - `tmp/issue-fix/status.json`: the fixer's own account of what it did and tested.

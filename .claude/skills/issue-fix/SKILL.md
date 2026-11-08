@@ -142,7 +142,10 @@ jq -n --arg issue 123 --rawfile notes <brief> '{issue: $issue, notes: $notes}' |
 ```
 
 **What the run does.** Job `issue-fix` (read-only token) checks out `dev`, builds the packages,
-renders the issue and its comments to `tmp/issue-fix/issue.md`, writes the brief to
+renders the issue and its comments to `tmp/issue-fix/issue.md` (only text by people with write
+access to the repository: their permission is looked up per author, because `leather-io`
+memberships are private; anyone else's comments, and the title and body of an issue they opened,
+are left out with a note, so the brief must carry what an outside report says), writes the brief to
 `tmp/issue-fix/notes.md`, writes `apps/extension/.env` from the `PUBLIC_*` repository variables,
 installs Chromium for Playwright (the browser cache is restored, never saved) and runs the fixer
 with `.github/prompts/issue-fix.md`. The fixer can build the extension in test mode and run its

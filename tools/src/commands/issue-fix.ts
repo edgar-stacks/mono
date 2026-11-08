@@ -77,13 +77,15 @@ export function registerIssueFixCommands(program: Command): void {
     .action(({ issue }: IssueOptions) =>
       guard('fetch-issue', async () => {
         const target = paths();
-        const comments = await fetchIssue({
+        const fetched = await fetchIssue({
           client: github(),
           repo: requireEnv('GITHUB_REPOSITORY'),
           issue: parseIssue(issue),
           outFile: target.issueFile,
         });
-        console.log(`fetch-issue: wrote ${target.issueFile} with ${comments} comments`);
+        console.log(
+          `fetch-issue: wrote ${target.issueFile} with ${fetched.comments} comments; omitted ${fetched.omittedComments} comments${fetched.issueOmitted ? ' and the issue text' : ''} from people without write access`
+        );
       })
     );
 
