@@ -27,7 +27,7 @@ const sbtcLimits = {
 
 const networksByBitcoinMode = {
   mainnet: defaultNetworksKeyedById[WalletDefaultNetworkConfigurationIds.mainnet],
-  testnet: defaultNetworksKeyedById[WalletDefaultNetworkConfigurationIds.testnet],
+  testnet: defaultNetworksKeyedById[WalletDefaultNetworkConfigurationIds.testnet4],
 };
 
 const fetchWithCache = vi.fn<(key: HttpCacheKeyArray, fetchFn: () => Promise<unknown>) => void>();
@@ -66,7 +66,7 @@ describe(EmilyApiClient.name, () => {
 
       await makeClient('testnet').getSbtcLimits();
       expect(fetchWithCache).toHaveBeenLastCalledWith(
-        ['emily-api-get-sbtc-limits', 'https://beta.sbtc-emily.com'],
+        ['emily-api-get-sbtc-limits', 'https://testnet.sbtc-emily.com'],
         expect.any(Function)
       );
     });
@@ -112,7 +112,7 @@ describe(EmilyApiClient.name, () => {
       await makeClient('testnet').notifyDeposit(depositRequest);
 
       expect(post).toHaveBeenCalledWith(
-        'https://beta.sbtc-emily.com/deposit',
+        'https://testnet.sbtc-emily.com/deposit',
         depositRequest,
         expect.objectContaining({ timeout: 10_000 })
       );

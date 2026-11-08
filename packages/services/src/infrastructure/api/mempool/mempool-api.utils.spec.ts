@@ -34,7 +34,7 @@ describe(getMempoolUrlFromUserSettings.name, () => {
     expect(getMempoolUrlFromUserSettings(makeUserSettings(defaultNetworksKeyedById.mainnet))).toBe(
       null
     );
-    expect(getMempoolUrlFromUserSettings(makeUserSettings(defaultNetworksKeyedById.testnet))).toBe(
+    expect(getMempoolUrlFromUserSettings(makeUserSettings(defaultNetworksKeyedById.testnet3))).toBe(
       null
     );
     expect(getMempoolUrlFromUserSettings(makeUserSettings(defaultNetworksKeyedById.devnet))).toBe(
@@ -44,23 +44,22 @@ describe(getMempoolUrlFromUserSettings.name, () => {
 
   it('returns the configured bitcoin url for sbtc networks', () => {
     expect(
-      getMempoolUrlFromUserSettings(makeUserSettings(defaultNetworksKeyedById.sbtcTestnet))
-    ).toEqual(defaultNetworksKeyedById.sbtcTestnet.chain.bitcoin.bitcoinUrl);
-    expect(
       getMempoolUrlFromUserSettings(makeUserSettings(defaultNetworksKeyedById.sbtcDevenv))
     ).toEqual(defaultNetworksKeyedById.sbtcDevenv.chain.bitcoin.bitcoinUrl);
   });
 
-  it('returns the configured bitcoin url for the private-1 network', () => {
+  it('returns the configured bitcoin url for the primary hiro testnet network', () => {
     expect(
-      getMempoolUrlFromUserSettings(makeUserSettings(defaultNetworksKeyedById['private-1']))
-    ).toEqual(defaultNetworksKeyedById['private-1'].chain.bitcoin.bitcoinUrl);
+      getMempoolUrlFromUserSettings(makeUserSettings(defaultNetworksKeyedById.testnet))
+    ).toEqual('https://mempool.bitcoin.regtest.hiro.so/api');
   });
 
   it('returns the configured bitcoin url for the staking testnet network', () => {
     expect(
-      getMempoolUrlFromUserSettings(makeUserSettings(defaultNetworksKeyedById.stakingTestnet))
-    ).toEqual(defaultNetworksKeyedById.stakingTestnet.chain.bitcoin.bitcoinUrl);
+      getMempoolUrlFromUserSettings(
+        makeUserSettings(defaultNetworksKeyedById.btcStakingStacksTestnet)
+      )
+    ).toEqual(defaultNetworksKeyedById.btcStakingStacksTestnet.chain.bitcoin.bitcoinUrl);
   });
 
   it('returns the configured bitcoin url for user-added custom networks', () => {

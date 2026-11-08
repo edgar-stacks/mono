@@ -121,7 +121,13 @@ export function getStacksExplorerApiUrl(stacksUrl: string) {
 }
 
 function toHiroExplorerChain(mode: BitcoinNetworkModes) {
-  return mode === 'signet' ? 'testnet' : mode;
+  return mode === 'mainnet' ? 'mainnet' : 'testnet';
+}
+
+function isLocalhostUrl(url: string | undefined) {
+  if (!url) return false;
+  const host = /^https?:\/\/([^/:?#]+)/.exec(url)?.[1];
+  return host === 'localhost' || host === '127.0.0.1';
 }
 
 export function getStacksExplorerLink({
@@ -132,7 +138,8 @@ export function getStacksExplorerLink({
   isNakamoto = false,
   apiUrl,
 }: GetHiroExplorerLinkArgs) {
-  if (mode === 'regtest' && type === 'txid') return `http://localhost:8000/txid/${value}`;
+  if (mode === 'regtest' && type === 'txid' && isLocalhostUrl(apiUrl))
+    return `http://localhost:8000/txid/${value}`;
   searchParams.append('chain', toHiroExplorerChain(mode));
   const explorerApiUrl = apiUrl ?? (isNakamoto ? HIRO_API_BASE_URL_NAKAMOTO_TESTNET : undefined);
   if (explorerApiUrl) searchParams.append('api', explorerApiUrl);

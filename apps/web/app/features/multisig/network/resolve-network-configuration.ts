@@ -1,7 +1,11 @@
 import { type StacksNetworkName } from '@stacks/network';
 import { customNetworkConfig } from '~/constants/custom-network-config';
 
-import { type NetworkConfiguration, defaultNetworksKeyedById } from '@leather.io/models';
+import {
+  type NetworkConfiguration,
+  WalletDefaultNetworkConfigurationIds,
+  defaultNetworksKeyedById,
+} from '@leather.io/models';
 
 import { buildCustomNetworkConfiguration } from './build-custom-network-configuration';
 
@@ -13,5 +17,7 @@ export function resolveNetworkConfiguration(
   if (customNetworkConfig && networkName === 'testnet') {
     return buildCustomNetworkConfiguration(customNetworkConfig);
   }
+  if (networkName === 'testnet')
+    return defaultNetworksKeyedById[WalletDefaultNetworkConfigurationIds.testnet3];
   return defaultNetworksKeyedById[networkName];
 }

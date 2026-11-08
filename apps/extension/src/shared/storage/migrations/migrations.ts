@@ -7,6 +7,7 @@ import { migrateToUsingNoSerialization } from './migrate-0-1';
 import { migrateToRenameKeysStoreModule } from './migrate-1-2';
 import { migrateMultiWalletSupport } from './migrate-2-3';
 import { migrateToAccountsSlice } from './migrate-3-4';
+import { migrateToPrimaryStacksTestnet } from './migrate-4-5';
 
 function trackMigrationStart(event: string) {
   try {
@@ -47,6 +48,10 @@ export const migrations = createAsyncMigrate({
   async 4(state: Promise<unknown>) {
     trackMigrationStart('migration_3_4_accounts_slice_started');
     return migrateToAccountsSlice(await state);
+  },
+  async 5(state: Promise<unknown>) {
+    trackMigrationStart('migration_4_5_primary_stacks_testnet_started');
+    return migrateToPrimaryStacksTestnet(await state);
   },
   debug: true,
 });
