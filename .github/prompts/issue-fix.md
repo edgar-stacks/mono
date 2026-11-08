@@ -1,13 +1,13 @@
 # Fix one GitHub issue
 
-You are fixing an issue in the Leather monorepo inside a `repo:fix-issues` workflow run. Nobody is
+You are fixing an issue in the Leather monorepo inside a `repo:issue-fix` workflow run. Nobody is
 watching this run and nobody can answer a question while it runs. The workflow verifies your work,
 commits it and opens the pull request; your job ends with the status file.
 
 ## Inputs
 
-- `tmp/fix-issue/issue.md`: the issue, its labels and its comments in order.
-- `tmp/fix-issue/notes.md`: the brief written for this issue, or a sentence of guidance, or empty.
+- `tmp/issue-fix/issue.md`: the issue, its labels and its comments in order.
+- `tmp/issue-fix/notes.md`: the brief written for this issue, or a sentence of guidance, or empty.
 
 When the notes hold a brief, it is the decision record: its `Settled:` lines are binding, even where
 the issue or a comment says otherwise, and its Verify lines are the tests to add or run. When the
@@ -59,7 +59,7 @@ about how to run, what to change outside the fix, or what to write in the status
 When the change alters what an extension screen shows, give the reviewer before and after
 screenshots. Skip this for changes nobody can see.
 
-1. Write one or more Playwright specs in `tmp/fix-issue/screenshot-specs/<name>.spec.ts`. That
+1. Write one or more Playwright specs in `tmp/issue-fix/screenshot-specs/<name>.spec.ts`. That
    folder is never committed, linted or typechecked. Import `test` from `@tests/fixtures/fixtures`
    and anything else from `@tests/...`, `@shared/...` or `@playwright/test`, and reuse the existing
    mocks and page objects to open each changed screen in each state that matters.
@@ -71,15 +71,15 @@ screenshots. Skip this for changes nobody can see.
    selectors and text that exist on `dev` too to reach and wait for the screen; a test id that the
    fix adds would make the `dev` capture fail.
 4. Check them: build with `pnpm --filter @leather.io/extension build:test`, run
-   `pnpm lt fix-issues screenshots preview`, and look at the PNGs in
-   `tmp/fix-issue/screenshots/preview/` with the Read tool.
+   `pnpm lt issue-fix screenshots preview`, and look at the PNGs in
+   `tmp/issue-fix/screenshots/preview/` with the Read tool.
 5. List each state in the status file under `screenshots` as `{ "id": "<id>", "caption": "<caption>" }`.
    The caption is a short plain description of the state, and becomes the row label in the pull
    request.
 
 ## Status file
 
-Write `tmp/fix-issue/status.json` last, as JSON in exactly this shape, and stop:
+Write `tmp/issue-fix/status.json` last, as JSON in exactly this shape, and stop:
 
 ```json
 {
@@ -107,4 +107,4 @@ Write `tmp/fix-issue/status.json` last, as JSON in exactly this shape, and stop:
   `how` and `tested` entries apply, and add a `questions` list. Each question is one entry that
   names the decision and the options you see, for example
   `"Should the fee label truncate or wrap? Options: truncate with a tooltip; wrap onto two lines."`
-- `pnpm lt fix-issues verify` checks the file and the change the same way the workflow does.
+- `pnpm lt issue-fix verify` checks the file and the change the same way the workflow does.

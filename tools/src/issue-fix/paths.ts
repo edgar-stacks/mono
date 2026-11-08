@@ -1,6 +1,6 @@
 import path from 'node:path';
 
-export interface FixIssuePaths {
+export interface IssueFixPaths {
   readonly root: string;
   readonly workDir: string;
   readonly issueFile: string;
@@ -17,9 +17,9 @@ export interface FixIssuePaths {
   readonly screenshotsDir: string;
 }
 
-const defaultWorkDir = 'tmp/fix-issue';
+const defaultWorkDir = 'tmp/issue-fix';
 
-export function fixIssuePaths(root: string, workDir = defaultWorkDir): FixIssuePaths {
+export function issueFixPaths(root: string, workDir = defaultWorkDir): IssueFixPaths {
   const dir = path.join(root, workDir);
   return {
     root,

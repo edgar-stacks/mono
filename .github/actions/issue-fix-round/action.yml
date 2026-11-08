@@ -1,5 +1,5 @@
-name: fix-issue-round
-description: One repo:fix-issues round - fix, verify, review - reporting whether the change is clean
+name: issue-fix-round
+description: One repo:issue-fix round - fix, verify, review - reporting whether the change is clean
 inputs:
   round:
     description: 'The round number; round 1 runs the fixer prompt, later rounds fix what the previous round found'
@@ -41,14 +41,14 @@ runs:
           --permission-prompts none
           --allowedTools mcp__github
         show_full_output: true
-        prompt: ${{ inputs.round == '1' && 'Follow the instructions in .github/prompts/fix-issue.md.' || format('Follow the instructions in .github/prompts/fix-round.md. This is round {0}.', inputs.round) }}
+        prompt: ${{ inputs.round == '1' && 'Follow the instructions in .github/prompts/issue-fix.md.' || format('Follow the instructions in .github/prompts/issue-fix-round.md. This is round {0}.', inputs.round) }}
 
     - name: begin-checks
       id: begin-checks
       shell: bash
       env:
         ROUND: ${{ inputs.round }}
-      run: pnpm lt fix-issues round begin --round "$ROUND"
+      run: pnpm lt issue-fix round begin --round "$ROUND"
 
     - name: verify
       id: verify
@@ -56,12 +56,12 @@ runs:
       shell: bash
       env:
         ROUND: ${{ inputs.round }}
-      run: pnpm lt fix-issues round verify --round "$ROUND"
+      run: pnpm lt issue-fix round verify --round "$ROUND"
 
     - name: snapshot
       if: steps.verify.outputs.verified == 'true'
       shell: bash
-      run: pnpm lt fix-issues round snapshot
+      run: pnpm lt issue-fix round snapshot
 
     - name: review
       if: steps.verify.outputs.verified == 'true'
@@ -75,18 +75,18 @@ runs:
           --permission-prompts none
           --allowedTools mcp__github
         show_full_output: true
-        prompt: Follow the instructions in .github/prompts/review-fix.md.
+        prompt: Follow the instructions in .github/prompts/issue-fix-review.md.
 
     - name: check-review
       if: steps.verify.outputs.verified == 'true'
       shell: bash
       env:
         ROUND: ${{ inputs.round }}
-      run: pnpm lt fix-issues round check-review --round "$ROUND"
+      run: pnpm lt issue-fix round check-review --round "$ROUND"
 
     - name: end-round
       id: end-round
       shell: bash
       env:
         ROUND: ${{ inputs.round }}
-      run: pnpm lt fix-issues round end --round "$ROUND"
+      run: pnpm lt issue-fix round end --round "$ROUND"

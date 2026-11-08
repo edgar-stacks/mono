@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 
 repo="leather-io/mono"
-workflow="repo:fix-issues.yml"
+workflow="repo:issue-fix.yml"
 
 run_title() {
-  printf 'fix-issues: #%s' "$1"
+  printf 'issue-fix: #%s' "$1"
 }
 
 find_run() {

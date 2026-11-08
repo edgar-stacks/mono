@@ -144,7 +144,7 @@ describe('openPullRequest', () => {
       paths: repo.paths,
       repo: repoName,
       issue: 12,
-      branch: 'bot/fix-12',
+      branch: 'bot/issue-fix-12',
       baseBranch: 'dev',
       parentSha: overrides.parentSha ?? repo.head,
       coAuthor: overrides.coAuthor,
@@ -189,12 +189,12 @@ describe('openPullRequest', () => {
       parents: [repo.head],
     });
     expect(callsTo(client, 'POST', '/git/refs')[0]?.body).toEqual({
-      ref: 'refs/heads/bot/fix-12',
+      ref: 'refs/heads/bot/issue-fix-12',
       sha: 'new-commit-sha',
     });
     expect(callsTo(client, 'POST', '/pulls')[0]?.body).toEqual({
       title: doneStatus.commit,
-      head: 'bot/fix-12',
+      head: 'bot/issue-fix-12',
       base: 'dev',
       body: doneBody,
       draft: false,
@@ -250,14 +250,14 @@ describe('openPullRequest', () => {
   test('force-updates the branch and readies the draft pull request', async () => {
     setup(doneStatus);
     const { client, result } = open((method, path) => {
-      if (path.includes('/git/matching-refs/heads/bot/fix-12')) {
-        return [{ ref: 'refs/heads/bot/fix-12', object: { sha: 'old-sha' } }];
+      if (path.includes('/git/matching-refs/heads/bot/issue-fix-12')) {
+        return [{ ref: 'refs/heads/bot/issue-fix-12', object: { sha: 'old-sha' } }];
       }
       if (method === 'GET' && path.includes('/pulls?')) return existingPull(true);
       return undefined;
     });
     await expect(result).resolves.toBe('https://github.com/leather-io/mono/pull/7');
-    expect(callsTo(client, 'PATCH', '/git/refs/heads/bot/fix-12')[0]?.body).toEqual({
+    expect(callsTo(client, 'PATCH', '/git/refs/heads/bot/issue-fix-12')[0]?.body).toEqual({
       sha: 'new-commit-sha',
       force: true,
     });
@@ -306,7 +306,7 @@ describe('openPullRequest', () => {
       'https://github.com/leather-io/mono/issues/12#issuecomment-1'
     );
     expect(callsTo(client, 'POST', '/issues/12/comments')[0]?.body).toEqual({
-      body: `The \`repo:fix-issues\` run (https://github.com/leather-io/mono/actions/runs/777) stopped before changing anything. It needs answers to:\n\n- ${blockedStatus.questions[0]}\n`,
+      body: `The \`repo:issue-fix\` run (https://github.com/leather-io/mono/actions/runs/777) stopped before changing anything. It needs answers to:\n\n- ${blockedStatus.questions[0]}\n`,
     });
     expect(callsTo(client, 'POST', '/pulls')).toHaveLength(0);
   });
@@ -347,7 +347,7 @@ describe('openPullRequest', () => {
     };
 
     function shoot(side: string, id: string, content: Buffer = png) {
-      repo.write(`tmp/fix-issue/screenshots/${side}/${id}.png`, content);
+      repo.write(`tmp/issue-fix/screenshots/${side}/${id}.png`, content);
     }
 
     test('publishes them to a new screenshots branch and tables them', async () => {

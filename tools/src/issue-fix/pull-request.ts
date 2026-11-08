@@ -5,13 +5,13 @@ import { z } from 'zod';
 import { runCommand, runOrThrow } from './exec.js';
 import { allowedPathsDescription, changedPaths, gitBlobSha, headSha, refusedPaths } from './git.js';
 import type { GitHubClient } from './github.js';
-import type { FixIssuePaths } from './paths.js';
+import type { IssueFixPaths } from './paths.js';
 import { isScreenshot } from './screenshots.js';
 import { type FixStatus, closesNumbers, readStatus } from './status.js';
 
 interface OpenPullRequestOptions {
   readonly client: GitHubClient;
-  readonly paths: FixIssuePaths;
+  readonly paths: IssueFixPaths;
   readonly repo: string;
   readonly issue: number;
   readonly branch: string;
@@ -116,7 +116,7 @@ export function renderBody(
 
 function renderQuestionsComment(status: FixStatus, runUrl: string | null): string {
   const run = runUrl ? ` (${runUrl})` : '';
-  return `The \`repo:fix-issues\` run${run} stopped before changing anything. It needs answers to:\n\n${bullets(status.questions)}\n`;
+  return `The \`repo:issue-fix\` run${run} stopped before changing anything. It needs answers to:\n\n${bullets(status.questions)}\n`;
 }
 
 function patchPaths(root: string, patchFile: string): string[] {
@@ -126,7 +126,7 @@ function patchPaths(root: string, patchFile: string): string[] {
     .map(record => record.split('\t').slice(2).join('\t'));
 }
 
-function prepareWorkspace(paths: FixIssuePaths, parentSha: string): string {
+function prepareWorkspace(paths: IssueFixPaths, parentSha: string): string {
   removeWorkspace(paths);
   runOrThrow('git', ['worktree', 'add', '--detach', '--quiet', paths.applyDir, parentSha], {
     cwd: paths.root,
@@ -143,7 +143,7 @@ function prepareWorkspace(paths: FixIssuePaths, parentSha: string): string {
   return paths.applyDir;
 }
 
-function removeWorkspace(paths: FixIssuePaths): void {
+function removeWorkspace(paths: IssueFixPaths): void {
   runCommand('git', ['worktree', 'remove', '--force', paths.applyDir], { cwd: paths.root });
   rmSync(paths.applyDir, { recursive: true, force: true });
   runCommand('git', ['worktree', 'prune'], { cwd: paths.root });

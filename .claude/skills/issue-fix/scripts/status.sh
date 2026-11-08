@@ -8,11 +8,11 @@ usage() {
   cat <<'EOF'
 Usage: status.sh --run-dir <dir> [--watch] [--interval <seconds>] [--dry-run]
 
-Prints one row per entry in <run-dir>/run.json: the issues, the branch, the repo:fix-issues run's
+Prints one row per entry in <run-dir>/run.json: the issues, the branch, the repo:issue-fix run's
 status and conclusion (gh run view), the pull request on the branch (gh pr list --state all) with
 its number, state and draft flag, and the run and pull request URLs. Below the table, the
 ## Blocked questions of every draft pull request. An entry dispatched before its run appeared is
-looked up by its "fix-issues: #<n>" title first and recorded in run.json.
+looked up by its "issue-fix: #<n>" title first and recorded in run.json.
 
   --watch     repeat until every run has completed
   --interval  seconds between rounds with --watch, default 60

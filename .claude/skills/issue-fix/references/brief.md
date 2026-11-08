@@ -1,7 +1,7 @@
 # Brief
 
 One brief per dispatch, written to `<run-dir>/briefs/<branch>.md` once every decision for its
-issues is settled. `dispatch.sh` sends it verbatim as the `notes` input of the `repo:fix-issues`
+issues is settled. `dispatch.sh` sends it verbatim as the `notes` input of the `repo:issue-fix`
 workflow, so besides the issue and its comments it is the only thing the fixer knows. It must stand
 alone: no "as discussed", no pointers to this conversation, to the run directory or to files that
 exist only on this machine. Verbatim headings, in this order; drop a section that would be empty.

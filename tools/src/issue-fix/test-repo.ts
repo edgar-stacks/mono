@@ -11,12 +11,12 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 
 import { type CommandRunner, runOrThrow } from './exec.js';
-import { type FixIssuePaths, fixIssuePaths } from './paths.js';
+import { type IssueFixPaths, issueFixPaths } from './paths.js';
 import type { FixStatus } from './status.js';
 
 export interface TestRepo {
   readonly root: string;
-  readonly paths: FixIssuePaths;
+  readonly paths: IssueFixPaths;
   readonly head: string;
   git(args: readonly string[]): string;
   write(file: string, content: string | Buffer, mode?: number): void;
@@ -55,7 +55,7 @@ export const blockedStatus: FixStatus = {
 export const binaryContent = Buffer.from([0, 1, 2, 255, 254, 0, 10]);
 
 export function createTestRepo(): TestRepo {
-  const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'fix-issues-spec-')));
+  const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'issue-fix-spec-')));
   function git(args: readonly string[]): string {
     return runOrThrow('git', [...identity, ...args], { cwd: root }).trim();
   }
@@ -73,7 +73,7 @@ export function createTestRepo(): TestRepo {
   git(['init', '-q', '-b', 'dev']);
   git(['add', '-A']);
   git(['commit', '-q', '-m', 'base']);
-  const paths = fixIssuePaths(root);
+  const paths = issueFixPaths(root);
   mkdirSync(paths.workDir, { recursive: true });
   return {
     root,
@@ -85,7 +85,7 @@ export function createTestRepo(): TestRepo {
       unlinkSync(path.join(root, file));
     },
     writeStatus(status) {
-      write('tmp/fix-issue/status.json', `${JSON.stringify(status, null, 2)}\n`);
+      write('tmp/issue-fix/status.json', `${JSON.stringify(status, null, 2)}\n`);
     },
     makeFix() {
       write('apps/extension/fee-row.tsx', 'export const feeRow = 2;\n');
