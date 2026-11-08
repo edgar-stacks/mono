@@ -137,7 +137,7 @@ describe('openPullRequest', () => {
     repo.writeStatus(status);
   }
 
-  function open(route?: GitHubRoute, overrides: { parentSha?: string } = {}) {
+  function open(route?: GitHubRoute, overrides: { parentSha?: string; coAuthor?: string } = {}) {
     const client = fakeGitHub(route);
     const result = openPullRequest({
       client,
@@ -147,6 +147,7 @@ describe('openPullRequest', () => {
       branch: 'bot/fix-12',
       baseBranch: 'dev',
       parentSha: overrides.parentSha ?? repo.head,
+      coAuthor: overrides.coAuthor,
       runId: '777',
       runAttempt: '1',
       serverUrl: 'https://github.com',
@@ -200,6 +201,41 @@ describe('openPullRequest', () => {
     });
     expect(existsSync(repo.paths.applyDir)).toBe(false);
     expect(repo.git(['status', '--porcelain'])).toBe('');
+  });
+
+  describe('co-author', () => {
+    function withUser(name: string | null): GitHubRoute {
+      return (_method, path) =>
+        path === 'users/alice' ? { id: 42, login: 'alice', name } : undefined;
+    }
+
+    test('credits the dispatcher with their name and no-reply email', async () => {
+      setup(doneStatus);
+      const { client, result } = open(withUser('Alice Smith'), { coAuthor: 'alice' });
+      await result;
+      expect(callsTo(client, 'POST', '/git/commits')[0]?.body).toMatchObject({
+        message: `${doneStatus.commit}\n\nCo-authored-by: Alice Smith <42+alice@users.noreply.github.com>\n`,
+      });
+    });
+
+    test('falls back to the login when the dispatcher has no public name', async () => {
+      setup(doneStatus);
+      const { client, result } = open(withUser(null), { coAuthor: 'alice' });
+      await result;
+      expect(callsTo(client, 'POST', '/git/commits')[0]?.body).toMatchObject({
+        message: `${doneStatus.commit}\n\nCo-authored-by: alice <42+alice@users.noreply.github.com>\n`,
+      });
+    });
+
+    test('credits no bot', async () => {
+      setup(doneStatus);
+      const { client, result } = open(undefined, { coAuthor: 'github-actions[bot]' });
+      await result;
+      expect(client.calls.some(call => call.path.startsWith('users/'))).toBe(false);
+      expect(callsTo(client, 'POST', '/git/commits')[0]?.body).toMatchObject({
+        message: doneStatus.commit,
+      });
+    });
   });
 
   test('keeps the executable bit', async () => {

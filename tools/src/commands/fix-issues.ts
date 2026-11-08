@@ -32,6 +32,7 @@ interface OpenPullRequestFlags {
   readonly branch: string;
   readonly base: string;
   readonly parentSha: string;
+  readonly coAuthor?: string;
 }
 
 function paths() {
@@ -194,7 +195,8 @@ export function registerFixIssuesCommands(program: Command): void {
     .requiredOption('--branch <branch>', 'Pull request branch')
     .requiredOption('--base <branch>', 'Base branch')
     .requiredOption('--parent-sha <sha>', 'Commit the patch was made against')
-    .action(({ issue, branch, base, parentSha }: OpenPullRequestFlags) =>
+    .option('--co-author <login>', 'GitHub login to credit with a Co-authored-by trailer')
+    .action(({ issue, branch, base, parentSha, coAuthor }: OpenPullRequestFlags) =>
       guard('open-pull-request', async () => {
         const url = await openPullRequest({
           client: github(),
@@ -204,6 +206,7 @@ export function registerFixIssuesCommands(program: Command): void {
           branch,
           baseBranch: base,
           parentSha,
+          coAuthor,
           runId: process.env.GITHUB_RUN_ID,
           runAttempt: process.env.GITHUB_RUN_ATTEMPT,
           serverUrl: process.env.GITHUB_SERVER_URL,

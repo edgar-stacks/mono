@@ -21,6 +21,7 @@ interface OpenPullRequestOptions {
   readonly runAttempt?: string;
   readonly serverUrl?: string;
   readonly screenshotsBranch?: string;
+  readonly coAuthor?: string;
   log?(line: string): void;
 }
 
@@ -49,6 +50,22 @@ const pullSchema = z.object({
   head: z.object({ repo: z.object({ full_name: z.string() }).nullable() }),
 });
 const urlSchema = z.object({ html_url: z.string() });
+const userSchema = z.object({ id: z.number(), login: z.string(), name: z.string().nullable() });
+const botLoginPattern = /\[bot\]$/;
+
+async function coAuthorTrailer(
+  client: GitHubClient,
+  login: string | undefined
+): Promise<string | null> {
+  if (!login || botLoginPattern.test(login)) return null;
+  const user = userSchema.parse(await client.request('GET', `users/${login}`));
+  const name = user.name?.trim() || user.login;
+  return `Co-authored-by: ${name} <${user.id}+${user.login}@users.noreply.github.com>`;
+}
+
+function commitMessage(subject: string, trailer: string | null): string {
+  return trailer ? `${subject}\n\n${trailer}\n` : subject;
+}
 
 const defaultScreenshotsBranch = 'bot/screenshots';
 const executableMode = '100755';
@@ -312,7 +329,14 @@ export async function openPullRequest(options: OpenPullRequestOptions): Promise<
     const table = await publishScreenshots(options, status.status, log);
     const body = renderBody(status.status, closesNumbers(status.status, issue), table);
     const title = status.status.commit;
-    const commit = await commitTree(client, repo, title, entries, parentSha);
+    const trailer = await coAuthorTrailer(client, options.coAuthor);
+    const commit = await commitTree(
+      client,
+      repo,
+      commitMessage(title, trailer),
+      entries,
+      parentSha
+    );
     if (branchHead) {
       await client.request('PATCH', `repos/${repo}/git/refs/heads/${branch}`, {
         sha: commit,

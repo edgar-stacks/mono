@@ -17,7 +17,8 @@ fetch-issue ─▶ round 1 ─▶ round 2? ─▶ round 3? ─▶ round finish �
                                      ─▶ review (Claude) ─▶ round check-review ─▶ round end
   │
   ▼  job open-pull-request: write token, runs only dev's code
-open-pull-request ─▶ signed commit on bot/fix-<n> ─▶ pull request (or a comment with questions)
+open-pull-request ─▶ signed commit on bot/fix-<n>, co-authored by the dispatcher
+  ─▶ pull request (or a comment with questions)
 ```
 
 A round ends `clean` (next: finish), `failed` (next round, up to three) or `blocked` (finish).

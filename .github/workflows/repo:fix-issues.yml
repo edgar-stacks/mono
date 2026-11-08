@@ -179,6 +179,7 @@ jobs:
           ISSUE: ${{ inputs.issue }}
           BRANCH: bot/fix-${{ inputs.issue }}
           PARENT_SHA: ${{ github.sha }}
+          CO_AUTHOR: ${{ github.triggering_actor }}
         run: >-
           pnpm lt fix-issues open-pull-request --issue "$ISSUE" --branch "$BRANCH" --base dev
-          --parent-sha "$PARENT_SHA"
+          --parent-sha "$PARENT_SHA" --co-author "$CO_AUTHOR"

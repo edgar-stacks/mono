@@ -188,7 +188,9 @@ most), commits them to the `bot/screenshots` branch under `<issue>/<run>-<attemp
 Job `open-pull-request` builds `tools` from `dev`, gets only the patch and the status file, applies
 the patch in a separate git worktree, refuses any path outside `apps/`, `packages/`, `tools/` and
 `pnpm-lock.yaml`, and writes the signed commit to `bot/fix-<n>` (`pnpm lt fix-issues
-open-pull-request`). `done`
+open-pull-request`). The commit carries a `Co-authored-by:` trailer for the person who dispatched
+the run (`github.triggering_actor`, with their public name and GitHub no-reply email; bots are
+skipped), which GitHub keeps in the squash-merge message. `done`
 opens a pull request; `blocked` with changes opens a draft whose body lists the questions;
 `blocked` with no changes comments the questions on the issue.
 
