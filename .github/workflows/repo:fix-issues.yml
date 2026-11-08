@@ -26,10 +26,11 @@ jobs:
     name: fix-issue
     if: github.ref_name == 'dev'
     runs-on: ubuntu-24.04
-    timeout-minutes: 120
+    timeout-minutes: 180
     permissions:
       contents: read # checkout only; this job runs the fixer and its code and never writes to the repository
       issues: read # read the issue and its comments for the fixer
+      pull-requests: read # let the fixer read related pull requests through the read-only GitHub MCP server
       id-token: write # OIDC exchange for claude-code-action
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -56,22 +57,49 @@ jobs:
           NOTES: ${{ inputs.notes }}
         run: printf '%s\n' "$NOTES" > tmp/fix-issue/notes.md
 
-      - name: install-bubblewrap
+      - name: write-extension-env
+        env:
+          BITFLOW_API_HOST: ${{ vars.PUBLIC_BITFLOW_API_HOST }}
+          BITFLOW_API_KEY: ${{ vars.PUBLIC_BITFLOW_API_KEY }}
+          BITFLOW_READONLY_CALL_API_HOST: ${{ vars.PUBLIC_BITFLOW_READONLY_CALL_API_HOST }}
+          BITFLOW_READONLY_CALL_API_KEY: ${{ vars.PUBLIC_BITFLOW_READONLY_CALL_API_KEY }}
+          BITFLOW_KEEPER_API_KEY: ${{ vars.PUBLIC_BITFLOW_KEEPER_API_KEY }}
+          BITFLOW_KEEPER_API_HOST: ${{ vars.PUBLIC_BITFLOW_KEEPER_API_HOST }}
+          BITFLOW_PROVIDER_ADDRESS: ${{ vars.PUBLIC_BITFLOW_PROVIDER_ADDRESS }}
+          LAUNCH_DARKLY_KEY: ${{ vars.PUBLIC_EXTENSION_LAUNCH_DARKLY_KEY }}
         run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y --no-install-recommends bubblewrap socat
-          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+          for key in BITFLOW_API_HOST BITFLOW_API_KEY BITFLOW_READONLY_CALL_API_HOST BITFLOW_READONLY_CALL_API_KEY \
+            BITFLOW_KEEPER_API_KEY BITFLOW_KEEPER_API_HOST BITFLOW_PROVIDER_ADDRESS LAUNCH_DARKLY_KEY; do
+            printf '%s=%s\n' "$key" "${!key}"
+          done > apps/extension/.env
+
+      - name: get-installed-playwright-version
+        working-directory: apps/extension
+        run: echo "PLAYWRIGHT_VERSION=$(node -e "console.log(require('./package.json').devDependencies['@playwright/test'])")" >> "$GITHUB_ENV"
+
+      - name: restore-playwright-binaries
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        id: playwright-cache
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-cache-1-${{ env.PLAYWRIGHT_VERSION }}
+
+      - name: install-playwright-browsers
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
+        working-directory: apps/extension
+        run: pnpm playwright install chromium --no-shell --with-deps
 
       - name: fix-issue
         uses: anthropics/claude-code-action@ae68417a745a5df4b2124873632bd73a2255e6f6 # v1.0.259
         env:
-          CLAUDE_CODE_SUBPROCESS_ENV_SCRUB: '1'
+          EXTENSION_INTEGRATION_TEST_MNEMONIC: ${{ vars.EXTENSION_INTEGRATION_TEST_MNEMONIC }}
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           github_token: ${{ github.token }}
           claude_args: >-
             --model opus
             --permission-mode auto
+            --permission-prompts none
           show_full_output: true
           prompt: |
             Follow the instructions in .github/prompts/fix-issue.md.

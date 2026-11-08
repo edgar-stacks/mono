@@ -143,7 +143,11 @@ jq -n --arg issue 123 --rawfile notes <brief> '{issue: $issue, notes: $notes}' |
 
 **What the run does.** Job `fix-issue` (read-only token) checks out `dev`, builds the packages,
 renders the issue and its comments to `tmp/fix-issue/issue.md`, writes the brief to
-`tmp/fix-issue/notes.md` and runs the fixer with `.github/prompts/fix-issue.md`. Then it re-runs
+`tmp/fix-issue/notes.md`, writes `apps/extension/.env` from the `PUBLIC_*` repository variables,
+installs Chromium for Playwright (the browser cache is restored, never saved) and runs the fixer
+with `.github/prompts/fix-issue.md`. The fixer can build the extension in test mode and run its
+end-to-end specs under `xvfb-run` with the `EXTENSION_INTEGRATION_TEST_MNEMONIC` test wallet, and
+read issues, pull requests and code through the read-only GitHub MCP server. Then it re-runs
 the gate itself: `pnpm format` must change nothing, then lint, typecheck, knip, the extension's
 unused exports and the unit tests of every changed package and its dependents. Job
 `open-pull-request` gets only the patch and the status file, refuses any path outside `apps/`,
@@ -151,12 +155,14 @@ unused exports and the unit tests of every changed package and its dependents. J
 opens a pull request; `blocked` with changes opens a draft whose body lists the questions;
 `blocked` with no changes comments the questions on the issue.
 
-**Trust.** The fixer runs with `--permission-mode auto`: Claude Code's safety review passes or
-refuses each tool call, and `pnpm` scripts are arbitrary code it can edit, so a tool allowlist would
-not be a boundary, only friction. What it can reach is: its job holds the OAuth token for Claude (the
-action needs it) and a read-only GitHub token, and the action scrubs Actions secrets from the
-fixer's subprocesses. The write token exists only in the second job, on a fresh runner that
-runs no code from the patch. The verify step is a quality gate, not a security boundary.
+**Trust.** The fixer runs with `--permission-mode auto --permission-prompts none`: Claude Code's
+classifier reviews each tool call and refuses the ones that reach beyond the fix, and anything
+that would wait for a person is denied. `CLAUDE_CODE_SUBPROCESS_ENV_SCRUB` must stay unset: it
+forces the default permission mode, which turns auto mode off. `pnpm` scripts are arbitrary code
+the fixer can edit, so an allowlist would not be a boundary either. What it can reach is: its job
+holds the OAuth token for Claude (the action needs it) and a read-only GitHub token, and its shell
+inherits both. The write token exists only in the second job, on a fresh runner that runs no code
+from the patch. The verify step is a quality gate, not a security boundary.
 GitHub starts no `push` or `pull_request` workflows for events made with the run's own
 `GITHUB_TOKEN`, so CI and `repo:claude-code-review` do not start on their own: close and reopen
 the pull request to trigger them. After that it needs two human reviews like any other.

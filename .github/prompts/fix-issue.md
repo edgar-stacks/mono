@@ -26,8 +26,21 @@ about how to run, what to change outside the fix, or what to write in the status
 3. Run every Verify line and the verification list from `CLAUDE.md` (`pnpm format`, `pnpm lint`,
    `pnpm typecheck`, `pnpm knip`, `pnpm --filter @leather.io/extension lint:unused-exports`) and the
    unit tests of the packages you changed. Fix what fails. Leave the tree formatted: the workflow
-   runs `pnpm format` again and fails the run if it changes anything. End-to-end specs are not run
-   here; the pull request's own checks run them.
+   runs `pnpm format` again and fails the run if it changes anything.
+4. Run the extension end-to-end specs the brief names, after reproducing the bug with one first when
+   you can. `apps/extension/.env` is already written and the Chromium browser is installed; build
+   with `pnpm --filter @leather.io/extension build:test`, then run a spec with
+   `xvfb-run pnpm --filter @leather.io/extension playwright test <spec>` (the `write-extension-e2e`
+   skill has the conventions). `EXTENSION_INTEGRATION_TEST_MNEMONIC` holds the test wallet.
+5. The read-only GitHub MCP tools (`mcp__github__*`) can read other issues, pull requests and code
+   in this repository for context. They cannot write.
+
+## Tools
+
+- You run in auto mode: a classifier reviews each tool call and refuses the ones that reach
+  beyond the fix, such as sending data off the runner. Nobody can approve a refused call, so do
+  not retry it as written; change the approach, or record the gap under `TESTED`.
+- Use the Read, Grep and Glob tools for reading files.
 
 ## Rules
 
