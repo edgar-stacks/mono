@@ -33,10 +33,11 @@ const mocks = vi.hoisted(() => {
     listenForOriginTabClose: vi.fn(),
     sendMessageToOriginatingFrame: vi.fn(),
     validateConnectedWalletExists: vi.fn(),
+    logInfo: vi.fn(),
   };
 });
 
-vi.mock('@shared/logger', () => ({ logger: { info: vi.fn() } }));
+vi.mock('@shared/logger', () => ({ logger: { info: mocks.logInfo } }));
 
 vi.mock('@shared/messaging/send-message-to-originating-frame', () => ({
   sendMessageToOriginatingFrame: mocks.sendMessageToOriginatingFrame,
@@ -204,6 +205,15 @@ describe('rpcMessageHandler', () => {
     await handleRequest('constructor');
 
     expectRejectedAsUnknownMethod();
+  });
+
+  test('logs only the method and id of the request', async () => {
+    await handleRequest(signPsbt.method);
+
+    expect(mocks.logInfo).toHaveBeenCalledWith(`Received RPC request ${signPsbt.method}`, {
+      method: signPsbt.method,
+      id: 'req-1',
+    });
   });
 
   test('rejects a method that is not a string', async () => {
