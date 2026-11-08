@@ -151,8 +151,8 @@ unused exports and the unit tests of every changed package and its dependents. J
 opens a pull request; `blocked` with changes opens a draft whose body lists the questions;
 `blocked` with no changes comments the questions on the issue.
 
-**Trust.** The fixer runs `pnpm`, and `pnpm` scripts are arbitrary code it can edit, so the tool
-list is not the boundary. What it can reach is: its job holds the OAuth token for Claude (the
+**Trust.** The fixer runs with `--permission-mode bypassPermissions`: `pnpm` scripts are arbitrary
+code it can edit, so a tool allowlist would not be a boundary, only friction. What it can reach is: its job holds the OAuth token for Claude (the
 action needs it) and a read-only GitHub token, and the action scrubs Actions secrets from the
 fixer's subprocesses. The write token exists only in the second job, on a fresh runner that
 runs no code from the patch. The verify step is a quality gate, not a security boundary.

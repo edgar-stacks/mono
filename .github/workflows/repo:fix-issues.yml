@@ -71,7 +71,7 @@ jobs:
           github_token: ${{ github.token }}
           claude_args: >-
             --model opus
-            --allowedTools "Edit(apps/**) Edit(packages/**) Edit(tools/**) Edit(tmp/fix-issue/**) Write(apps/**) Write(packages/**) Write(tools/**) Write(tmp/fix-issue/**) Bash(pnpm:*) Bash(git diff:*) Bash(git status:*) Bash(git log:*) Bash(git show:*) Bash(git ls-files:*)"
+            --permission-mode bypassPermissions
           show_full_output: true
           prompt: |
             Follow the instructions in .github/prompts/fix-issue.md.
