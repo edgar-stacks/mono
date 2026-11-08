@@ -25,6 +25,14 @@ export function rpcPostConditionModeToEnum(mode?: PostConditionModeName) {
   return PostConditionMode.Deny;
 }
 
+export function toPostConditionModeName(
+  mode: PostConditionMode | PostConditionModeName
+): PostConditionModeName {
+  if (mode === PostConditionMode.Allow || mode === 'allow') return 'allow';
+  if (mode === PostConditionMode.Originator || mode === 'originator') return 'originator';
+  return 'deny';
+}
+
 export type NonPoxPostConditionWire = Exclude<PostConditionWire, PoxPostConditionWire>;
 
 export type PostConditionVerb = 'transfer' | 'stake';
