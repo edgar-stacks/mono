@@ -30,9 +30,15 @@ export function VaultAssetRow({ item, onClick }: VaultAssetRowProps) {
       }
       caption={item.asset.symbol}
       trailing={
-        <styled.span textStyle="label.02" color="ink.text-primary" whiteSpace="nowrap">
-          {formatCurrency(item.fiat)}
-        </styled.span>
+        item.fiat ? (
+          <styled.span textStyle="label.02" color="ink.text-primary" whiteSpace="nowrap">
+            {formatCurrency(item.fiat)}
+          </styled.span>
+        ) : (
+          <styled.span textStyle="caption.01" color="ink.text-subdued" whiteSpace="nowrap">
+            No price
+          </styled.span>
+        )
       }
       trailingCaption={
         <styled.span textStyle="caption.01" color="ink.text-subdued" whiteSpace="nowrap">

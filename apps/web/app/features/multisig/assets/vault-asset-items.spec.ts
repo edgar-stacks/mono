@@ -104,7 +104,8 @@ describe(buildVaultAssetItems.name, () => {
     expect(items.map(item => item.asset.symbol)).toEqual(['STX']);
     expect(Number(items[0].crypto.amount)).toBe(0);
     expect(items[0].crypto.symbol).toBe('STX');
-    expect(items[0].fiat.symbol).toBe('USD');
+    expect(items[0].fiat?.symbol).toBe('USD');
+    expect(Number(items[0].fiat?.amount)).toBe(0);
   });
 
   it('pins STX above assets with larger balances', () => {
@@ -155,6 +156,59 @@ describe(buildVaultAssetItems.name, () => {
       'USD'
     );
     expect(items.map(item => item.asset.symbol)).toEqual(['RICH', 'AAA', 'BBB']);
+  });
+
+  it('keeps the fiat value of a priced asset', () => {
+    const meme = makeSip10Asset({
+      symbol: 'MEME',
+      assetId: 'SP9.meme::meme',
+      contractId: 'SP9.meme',
+    });
+    const items = buildVaultAssetItems([makeItem(meme, makeBalance(meme, 500, 12))], 'USD');
+    expect(Number(items[0].fiat?.amount)).toBe(12);
+    expect(items[0].fiat?.symbol).toBe('USD');
+  });
+
+  it('leaves the fiat value empty for a held asset with no price', () => {
+    const meme = makeSip10Asset({
+      symbol: 'MEME',
+      assetId: 'SP9.meme::meme',
+      contractId: 'SP9.meme',
+    });
+    const items = buildVaultAssetItems([makeItem(meme, makeBalance(meme, 500, 0))], 'USD');
+    expect(items).toHaveLength(1);
+    expect(items[0].fiat).toBeNull();
+  });
+
+  it('leaves the fiat value empty for a held pinned asset with no price', () => {
+    const items = buildVaultAssetItems([makeItem(stxAsset, makeBalance(stxAsset, 10, 0))], 'USD');
+    expect(items[0].fiat).toBeNull();
+  });
+
+  it('keeps a zero fiat value for a pinned asset with a zero balance', () => {
+    const items = buildVaultAssetItems([makeItem(stxAsset, makeBalance(stxAsset, 0, 0))], 'USD');
+    expect(Number(items[0].fiat?.amount)).toBe(0);
+    expect(items[0].fiat?.symbol).toBe('USD');
+  });
+
+  it('sorts unpriced assets after priced ones, then by symbol', () => {
+    const alpha = makeSip10Asset({ symbol: 'AAA', assetId: 'SP9.aaa::aaa', contractId: 'SP9.aaa' });
+    const bravo = makeSip10Asset({ symbol: 'BBB', assetId: 'SP9.bbb::bbb', contractId: 'SP9.bbb' });
+    const cheap = makeSip10Asset({
+      symbol: 'ZZZ',
+      assetId: 'SP9.zzz::zzz',
+      contractId: 'SP9.zzz',
+    });
+    const items = buildVaultAssetItems(
+      [
+        makeItem(bravo, makeBalance(bravo, 100, 0)),
+        makeItem(alpha, makeBalance(alpha, 10, 0)),
+        makeItem(cheap, makeBalance(cheap, 1, 1)),
+        makeItem(stxAsset),
+      ],
+      'USD'
+    );
+    expect(items.map(item => item.asset.symbol)).toEqual(['STX', 'ZZZ', 'AAA', 'BBB']);
   });
 
   it('keeps a lone zero-balance BTC row for bitcoin vaults', () => {

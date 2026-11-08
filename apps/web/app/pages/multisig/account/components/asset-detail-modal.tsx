@@ -273,9 +273,15 @@ export function AssetDetailModal({
               {formatCryptoGlanceable(item.crypto, { showCurrency: false })}
               <styled.span color="ink.text-subdued"> {asset.symbol.toUpperCase()}</styled.span>
             </styled.div>
-            <styled.div textStyle="label.01" color="ink.text-primary">
-              {formatCurrency(item.fiat)}
-            </styled.div>
+            {item.fiat ? (
+              <styled.div textStyle="label.01" color="ink.text-primary">
+                {formatCurrency(item.fiat)}
+              </styled.div>
+            ) : (
+              <styled.div textStyle="caption.01" color="ink.text-subdued">
+                No price
+              </styled.div>
+            )}
           </Flex>
           <Flex gap="space.03" justifyContent="center" pt="space.02">
             <Button
