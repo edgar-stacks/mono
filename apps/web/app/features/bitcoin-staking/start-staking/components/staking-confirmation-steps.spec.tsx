@@ -4,6 +4,7 @@ import { bitcoinStakingContent } from '~/content/bitcoin-staking-content';
 import { type BitcoinStakingPool, getStakingPoolFromSlug } from '~/data/bitcoin-staking-data';
 
 import { useStakingAcknowledgment } from '../../hooks/use-staking-acknowledgment';
+import { type StakingConnectAction } from '../../hooks/use-staking-connect-action';
 import { StakingConfirmationSteps } from './staking-confirmation-steps';
 
 interface ConfirmationHarnessProps {
@@ -11,6 +12,7 @@ interface ConfirmationHarnessProps {
   onConfirm(): void;
   isBusy?: boolean;
   entered?: { stakeAmount: number | undefined; cycles: number | undefined };
+  connectAction?: StakingConnectAction;
 }
 
 function ConfirmationHarness({
@@ -18,6 +20,7 @@ function ConfirmationHarness({
   onConfirm,
   isBusy,
   entered = { stakeAmount: 3200, cycles: 12 },
+  connectAction = { status: 'connected' },
 }: ConfirmationHarnessProps) {
   const acknowledgment = useStakingAcknowledgment('fast-pool:3200:12');
   return (
@@ -27,6 +30,7 @@ function ConfirmationHarness({
       cycles={entered.cycles}
       estimatedUnlockDate={new Date('2027-03-25T12:00:00Z')}
       acknowledgment={acknowledgment}
+      connectAction={connectAction}
       onConfirm={onConfirm}
       isBusy={isBusy}
     />
@@ -101,5 +105,37 @@ describe(StakingConfirmationSteps.name, () => {
     render(<ConfirmationHarness pool={pool} onConfirm={vi.fn()} />);
     expect(screen.getByText(text)).toBeTruthy();
     expect(screen.queryByText(/read and accepted.*terms/)).toBeNull();
+  });
+
+  test.each<{ status: 'install' | 'connect'; step: string; action: string }>([
+    {
+      status: 'install',
+      step: bitcoinStakingContent.connectGate.installStep,
+      action: bitcoinStakingContent.connectGate.installAction,
+    },
+    {
+      status: 'connect',
+      step: bitcoinStakingContent.connectGate.connectStep,
+      action: bitcoinStakingContent.connectGate.connectAction,
+    },
+  ])('asks to $action Leather before staking', ({ status, step, action }) => {
+    const run = vi.fn(() => Promise.resolve());
+    const onConfirm = vi.fn();
+    render(<ConfirmationHarness onConfirm={onConfirm} connectAction={{ status, run }} />);
+    expect(screen.getByText(step)).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: action }));
+    expect(run).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole('checkbox').hasAttribute('disabled')).toBe(true);
+    const confirm = screen.getByRole('button', { name: 'Confirm and start staking' });
+    expect(confirm.hasAttribute('disabled')).toBe(true);
+    fireEvent.click(confirm);
+    expect(onConfirm).not.toHaveBeenCalled();
+  });
+
+  test('shows no connect step once connected', () => {
+    render(<ConfirmationHarness onConfirm={vi.fn()} />);
+    expect(screen.queryByTestId('staking-connect-step')).toBeNull();
+    expect(screen.queryByText(bitcoinStakingContent.connectGate.installStep)).toBeNull();
+    expect(screen.queryByText(bitcoinStakingContent.connectGate.connectStep)).toBeNull();
   });
 });

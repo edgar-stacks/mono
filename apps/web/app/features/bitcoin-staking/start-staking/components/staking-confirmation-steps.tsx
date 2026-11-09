@@ -1,4 +1,4 @@
-import { Stack, styled } from 'leather-styles/jsx';
+import { Flex, Stack, styled } from 'leather-styles/jsx';
 import { bitcoinStakingContent } from '~/content/bitcoin-staking-content';
 import { type BitcoinStakingPool } from '~/data/bitcoin-staking-data';
 import { toHumanReadableMicroStx } from '~/utils/unit-convert';
@@ -14,6 +14,35 @@ import {
   useAttentionAnimation,
 } from '../../hooks/use-attention-animation';
 import { type StakingAcknowledgmentState } from '../../hooks/use-staking-acknowledgment';
+import { type StakingConnectAction } from '../../hooks/use-staking-connect-action';
+
+interface StakingConnectStepProps {
+  connectAction: Extract<StakingConnectAction, { status: 'install' | 'connect' }>;
+}
+
+function StakingConnectStep({ connectAction }: StakingConnectStepProps) {
+  const content = bitcoinStakingContent.connectGate;
+  const isInstall = connectAction.status === 'install';
+
+  return (
+    <Flex
+      p="space.05"
+      gap="space.04"
+      alignItems="center"
+      justifyContent="space-between"
+      borderBottomWidth={1}
+      borderColor="ink.border-default"
+      data-testid="staking-connect-step"
+    >
+      <styled.p textStyle="label.02">
+        {isInstall ? content.installStep : content.connectStep}
+      </styled.p>
+      <Button size="sm" onClick={() => void connectAction.run()}>
+        {isInstall ? content.installAction : content.connectAction}
+      </Button>
+    </Flex>
+  );
+}
 
 interface StakingConfirmationStepsProps {
   pool: BitcoinStakingPool | null;
@@ -21,6 +50,7 @@ interface StakingConfirmationStepsProps {
   cycles: number | undefined;
   estimatedUnlockDate: Date | null;
   acknowledgment: StakingAcknowledgmentState;
+  connectAction: StakingConnectAction;
   onConfirm(): void;
   isBusy?: boolean;
   isDisabled?: boolean;
@@ -32,6 +62,7 @@ export function StakingConfirmationSteps({
   cycles,
   estimatedUnlockDate,
   acknowledgment,
+  connectAction,
   onConfirm,
   isBusy = false,
   isDisabled = false,
@@ -44,6 +75,7 @@ export function StakingConfirmationSteps({
     shakeKeyframes,
     shakeTiming
   );
+  const isConnected = connectAction.status === 'connected';
 
   return (
     <Stack
@@ -75,14 +107,21 @@ export function StakingConfirmationSteps({
           </styled.span>
         )}
       </Stack>
+      {(connectAction.status === 'install' || connectAction.status === 'connect') && (
+        <StakingConnectStep connectAction={connectAction} />
+      )}
       <Stack p="space.05" gap="space.05">
-        <StakingAcknowledgment pool={pool} acknowledgment={acknowledgment} disabled={isBusy} />
+        <StakingAcknowledgment
+          pool={pool}
+          acknowledgment={acknowledgment}
+          disabled={isBusy || !isConnected}
+        />
         <Stack>
           <styled.div ref={buttonRef}>
             <Button
               fullWidth
-              disabled={isBusy || isDisabled}
-              aria-busy={isBusy || undefined}
+              disabled={isBusy || isDisabled || !isConnected}
+              aria-busy={isBusy || connectAction.status === 'pending' || undefined}
               onClick={() => {
                 if (acknowledgment.requireAccepted()) onConfirm();
               }}

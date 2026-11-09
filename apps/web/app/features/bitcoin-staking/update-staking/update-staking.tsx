@@ -17,7 +17,6 @@ import {
 } from '~/data/bitcoin-staking-data';
 import { pox5NetworkConfig } from '~/data/pox5-network-config';
 import { usePox5StackingClientRequired } from '~/features/bitcoin-staking/hooks/use-pox5-clients';
-import { useIsHydrated } from '~/hooks/use-is-hydrated';
 import {
   DEFAULT_MIN_CLAIM_SATS,
   MIN_MAX_WITHDRAWAL_FEE_SATS,
@@ -37,10 +36,15 @@ import { AvailableBalanceRow } from '../components/available-balance-row';
 import { Pox5SubmitError } from '../components/pox5-submit-error';
 import { PreparePhaseCallout } from '../components/prepare-phase-callout';
 import { StakingAcknowledgment } from '../components/staking-acknowledgment';
+import { StakingConnectCard } from '../components/staking-connect-card';
 import { usePox5CycleClock } from '../hooks/use-pox5-cycle-clock';
 import { usePox5Position } from '../hooks/use-pox5-position';
 import { usePox5TxTracker } from '../hooks/use-pox5-tx-tracker';
 import { useStakingAcknowledgment } from '../hooks/use-staking-acknowledgment';
+import {
+  type StakingWalletConnectAction,
+  useStakingConnectAction,
+} from '../hooks/use-staking-connect-action';
 import { type Pox5StakerInfo } from '../queries/create-get-pox5-staker-info-query-options';
 import {
   usePox5AvailableUnlockedBalance,
@@ -91,10 +95,10 @@ interface UpdateStakingProps {
 }
 
 export function UpdateStaking({ poolSlug }: UpdateStakingProps) {
-  const isHydrated = useIsHydrated();
-  const { stacksAccount } = useLeatherConnect();
+  const connectAction = useStakingConnectAction();
+  const { stacksAccount, connect } = useLeatherConnect();
 
-  if (!isHydrated) {
+  if (connectAction.status === 'pending') {
     return (
       <Flex justifyContent="center" alignItems="center" h="100%">
         <LoadingSpinner fill="ink.text-subdued" />
@@ -102,7 +106,19 @@ export function UpdateStaking({ poolSlug }: UpdateStakingProps) {
     );
   }
 
-  if (!stacksAccount) return 'You need to connect Leather';
+  if (connectAction.status === 'install' || connectAction.status === 'connect') {
+    return <StakingConnectCard connectAction={connectAction} />;
+  }
+
+  if (!stacksAccount) {
+    const reconnectAction: StakingWalletConnectAction = {
+      status: 'connect',
+      async run() {
+        await connect();
+      },
+    };
+    return <StakingConnectCard connectAction={reconnectAction} />;
+  }
 
   return <UpdateStakingLayout poolSlug={poolSlug} address={stacksAccount.address} />;
 }

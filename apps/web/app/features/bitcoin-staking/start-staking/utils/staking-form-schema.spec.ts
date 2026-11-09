@@ -250,6 +250,27 @@ describe(createStakingFormSchema.name, () => {
       expect(schema.safeParse({ ...validValues, amount: '2500' }).success).toBe(true);
     });
   });
+
+  describe('when no wallet is connected', () => {
+    const schema = createStakingFormSchema({
+      networkMode: 'mainnet',
+      payoutMode: 'sbtc',
+      supportsMinClaim: false,
+      minStake: planbetterMinStake,
+    });
+
+    test('accepts an amount above the pool minimum without an available balance', () => {
+      expect(schema.safeParse({ ...validValues, amount: '2500' }).success).toBe(true);
+    });
+
+    test('still rejects an amount below the pool minimum', () => {
+      expect(schema.safeParse({ ...validValues, amount: '500' }).success).toBe(false);
+    });
+
+    test('still rejects an invalid amount', () => {
+      expect(schema.safeParse({ ...validValues, amount: 'abc' }).success).toBe(false);
+    });
+  });
 });
 
 describe(buildPayoutPreference.name, () => {

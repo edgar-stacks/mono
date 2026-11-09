@@ -12,7 +12,7 @@ const queryOptions = {
 } as const;
 
 interface CreateGetStxAddressBalanceQueryOptionsArgs {
-  address: string;
+  address: string | undefined;
   client: Pick<StacksApiClient, 'getStxAddressBalance'>;
   network: string;
 }
@@ -25,7 +25,10 @@ export function createGetStxAddressBalanceQueryOptions({
   return {
     enabled: !!address,
     queryKey: ['get-stx-address-balance', address, network],
-    queryFn: ({ signal }: QueryFunctionContext) => client.getStxAddressBalance(address, signal),
+    async queryFn({ signal }: QueryFunctionContext) {
+      if (!address) return null;
+      return client.getStxAddressBalance(address, signal);
+    },
     ...queryOptions,
   } as const;
 }
