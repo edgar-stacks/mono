@@ -8,7 +8,10 @@ import {
   collectFunctionCallees,
   collectHandlerEndpointNames,
   collectInterfaceProperties,
+  collectObjectLiteralKeys,
+  collectStringArray,
   collectStringConstObjects,
+  collectStringPropertyObjects,
   evaluateStringExpression,
   parseSourceFile,
 } from './ts-ast.js';
@@ -197,5 +200,61 @@ describe(collectFunctionCallees.name, () => {
       callees: ['mockFees', 'mockFees'],
     });
     expect(collectFunctionCallees(sourceFile, 'other')).toBeUndefined();
+  });
+});
+
+describe(collectObjectLiteralKeys.name, () => {
+  test('lists method, property and shorthand keys of a named object literal', () => {
+    const sourceFile = parseSourceFile(
+      'mock-registry.ts',
+      `export const verifyMockRegistry = {
+         setupMockApis({ context }) { return setupMockApis(context); },
+         mockFees: ({ context }) => mockFees(context),
+         mockOther,
+       } satisfies Record<string, VerifyMock>;
+       const list = ['x'];`
+    );
+    expect(collectObjectLiteralKeys(sourceFile, 'verifyMockRegistry')).toEqual([
+      'setupMockApis',
+      'mockFees',
+      'mockOther',
+    ]);
+    expect(collectObjectLiteralKeys(sourceFile, 'list')).toBeUndefined();
+    expect(collectObjectLiteralKeys(sourceFile, 'missing')).toBeUndefined();
+  });
+});
+
+describe(collectStringArray.name, () => {
+  test('reads the string literals of a named const array', () => {
+    const sourceFile = parseSourceFile(
+      'persist-whitelist.ts',
+      `export const persistWhitelist = ['accounts', 'active', \`wallets\`] as const;
+       export const other = { a: 'b' };`
+    );
+    expect(collectStringArray(sourceFile, 'persistWhitelist')).toEqual([
+      'accounts',
+      'active',
+      'wallets',
+    ]);
+    expect(collectStringArray(sourceFile, 'other')).toBeUndefined();
+  });
+});
+
+describe(collectStringPropertyObjects.name, () => {
+  test('finds nested object literals carrying every named string property', () => {
+    const sourceFile = parseSourceFile(
+      'general.ts',
+      `export const generalMethods: RpcMethodSpec[] = [
+         { id: 'getAddresses', method: 'getAddresses', params(ctx) { return {}; } },
+         { id: 'open-popup', method: 'open', params: { mode: 'popup' } },
+         { id: 'no-method', label: 'x' },
+       ];`
+    );
+    const objects = collectStringPropertyObjects(sourceFile, ['id', 'method']);
+    expect(objects.map(object => [object.values.get('id'), object.values.get('method')])).toEqual([
+      ['getAddresses', 'getAddresses'],
+      ['open-popup', 'open'],
+    ]);
+    expect(objects[1]?.line).toBe(3);
   });
 });

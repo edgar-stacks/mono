@@ -21,6 +21,12 @@ export interface FeatureMapAppConfig {
   readonly setupMocksFunctionName: string;
   readonly specsDir: string;
   readonly outputFile: string;
+  readonly verifyPageObjects: readonly string[];
+  readonly exclusiveMocks: readonly (readonly [string, string])[];
+  readonly verifyMockRegistryFile: string;
+  readonly persistWhitelistFile: string;
+  readonly networkIdsFile: string;
+  readonly rpcCatalogDir: string;
 }
 
 const supportedApps = ['extension'] as const;
@@ -48,6 +54,25 @@ function makeExtensionConfig(root: string): FeatureMapAppConfig {
     setupMocksFunctionName: 'setupMockApis',
     specsDir: path.join(appDir, 'tests/specs'),
     outputFile: path.join(root, '.claude/skills/feature-map/extension.md'),
+    verifyPageObjects: [
+      'GlobalPage',
+      'HomePage',
+      'OnboardingPage',
+      'SendPage',
+      'SwapRevampPage',
+      'NetworkPage',
+      'SettingsPage',
+      'SwitchAccountPage',
+    ],
+    exclusiveMocks: [
+      ['mockMixedUtxosForSend', 'mockNativeSegwitOnlyUtxosForSend'],
+      ['mockEmptyStacksBalancesRequest', 'mockMainnetTestAccountStacksBalancesRequest'],
+      ['mockMainnetTestAccountEmptyUtxosRequests', 'mockMainnetTestAccountBitcoinRequests'],
+    ],
+    verifyMockRegistryFile: path.join(appDir, 'tests/verify/mock-registry.ts'),
+    persistWhitelistFile: path.join(appDir, 'src/shared/storage/persist-whitelist.ts'),
+    networkIdsFile: path.join(root, 'packages/models/src/network/network.model.ts'),
+    rpcCatalogDir: path.join(root, 'apps/test-app/src/methods'),
   };
 }
 

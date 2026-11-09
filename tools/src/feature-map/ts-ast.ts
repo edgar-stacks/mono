@@ -379,3 +379,61 @@ export function collectObjectPropertyStrings(
   visit(sourceFile);
   return texts;
 }
+
+function findVariableInitializer(
+  sourceFile: ts.SourceFile,
+  variableName: string
+): ts.Expression | undefined {
+  for (const statement of sourceFile.statements) {
+    if (!ts.isVariableStatement(statement)) continue;
+    for (const declaration of statement.declarationList.declarations) {
+      if (!ts.isIdentifier(declaration.name) || declaration.name.text !== variableName) continue;
+      if (declaration.initializer) return unwrapExpression(declaration.initializer);
+    }
+  }
+  return undefined;
+}
+
+export function collectObjectLiteralKeys(
+  sourceFile: ts.SourceFile,
+  variableName: string
+): string[] | undefined {
+  const initializer = findVariableInitializer(sourceFile, variableName);
+  if (!initializer || !ts.isObjectLiteralExpression(initializer)) return undefined;
+  return initializer.properties
+    .map(property => (property.name ? getPropertyName(property.name) : undefined))
+    .filter(name => name !== undefined);
+}
+
+export function collectStringArray(
+  sourceFile: ts.SourceFile,
+  variableName: string
+): string[] | undefined {
+  const initializer = findVariableInitializer(sourceFile, variableName);
+  if (!initializer || !ts.isArrayLiteralExpression(initializer)) return undefined;
+  return initializer.elements
+    .map(element => getStringLiteralText(element))
+    .filter(text => text !== undefined);
+}
+
+interface StringPropertyObject extends SourceLocation {
+  readonly values: ReadonlyMap<string, string>;
+}
+
+export function collectStringPropertyObjects(
+  sourceFile: ts.SourceFile,
+  propertyNames: readonly string[]
+): StringPropertyObject[] {
+  const objects: StringPropertyObject[] = [];
+  function visit(node: ts.Node) {
+    if (ts.isObjectLiteralExpression(node)) {
+      const values = readStringObjectLiteral(node);
+      if (propertyNames.every(name => values.has(name))) {
+        objects.push({ file: sourceFile.fileName, line: getLine(sourceFile, node), values });
+      }
+    }
+    ts.forEachChild(node, visit);
+  }
+  visit(sourceFile);
+  return objects;
+}

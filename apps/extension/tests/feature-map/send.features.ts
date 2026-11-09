@@ -499,7 +499,7 @@ export const sendFeatures = [
         ],
       },
     ],
-    gate: 'none',
+    gate: 'account',
     flags: [],
     preconditions: {
       session: 'signed-in',
@@ -531,7 +531,7 @@ export const sendFeatures = [
         ],
       },
     ],
-    gate: 'none',
+    gate: 'account',
     flags: [],
     preconditions: {
       session: 'signed-in',

@@ -12,9 +12,12 @@ import {
   collectFunctionCallees,
   collectHandlerEndpointNames,
   collectInterfaceProperties,
+  collectObjectLiteralKeys,
   collectObjectPropertyStrings,
   collectPropertyAccessReferences,
+  collectStringArray,
   collectStringConstObjects,
+  collectStringPropertyObjects,
   listFiles,
   mergeStringTables,
   parseSourceFile,
@@ -30,6 +33,10 @@ const rpcMethodProperty = 'method';
 const rpcEndpointFunction = 'defineRpcEndpoint';
 const rpcHandlerFunction = 'defineRpcRequestHandler';
 const selectorsObjectSuffix = 'Selectors';
+const verifyMockRegistryName = 'verifyMockRegistry';
+const persistWhitelistName = 'persistWhitelist';
+const networkIdsObjectName = 'WalletDefaultNetworkConfigurationIds';
+const catalogIdProperty = 'id';
 
 export interface SelectorObject extends SourceLocation {
   readonly name: string;
@@ -213,6 +220,66 @@ export function loadRouterFiles(config: FeatureMapAppConfig): string[] {
 
 export function loadFeatureFiles(config: FeatureMapAppConfig): string[] {
   return listFiles(config.featuresDir, file => file.endsWith('.features.ts'));
+}
+
+export function loadVerifyMockRegistry(config: FeatureMapAppConfig): Set<string> {
+  const keys = collectObjectLiteralKeys(
+    parseSourceFile(config.verifyMockRegistryFile),
+    verifyMockRegistryName
+  );
+  if (!keys) {
+    throw new Error(
+      `feature-map: ${toRepoRelative(config.verifyMockRegistryFile)} does not define a '${verifyMockRegistryName}' object`
+    );
+  }
+  return new Set(keys);
+}
+
+export function loadPersistWhitelist(config: FeatureMapAppConfig): string[] {
+  const slices = collectStringArray(
+    parseSourceFile(config.persistWhitelistFile),
+    persistWhitelistName
+  );
+  if (!slices) {
+    throw new Error(
+      `feature-map: ${toRepoRelative(config.persistWhitelistFile)} does not define a '${persistWhitelistName}' array`
+    );
+  }
+  return slices;
+}
+
+export function loadNetworkIds(config: FeatureMapAppConfig): string[] {
+  const values = collectStringConstObjects(parseSourceFile(config.networkIdsFile)).get(
+    networkIdsObjectName
+  );
+  if (!values) {
+    throw new Error(
+      `feature-map: ${toRepoRelative(config.networkIdsFile)} does not define a '${networkIdsObjectName}' object`
+    );
+  }
+  return [...values.values()];
+}
+
+export interface RpcCatalogEntry extends SourceLocation {
+  readonly id: string;
+  readonly method: string;
+}
+
+export function loadRpcCatalog(config: FeatureMapAppConfig): Map<string, RpcCatalogEntry> {
+  const catalog = new Map<string, RpcCatalogEntry>();
+  for (const file of listFiles(config.rpcCatalogDir, file => file.endsWith('.ts'))) {
+    const objects = collectStringPropertyObjects(parseSourceFile(file), [
+      catalogIdProperty,
+      rpcMethodProperty,
+    ]);
+    for (const object of objects) {
+      const id = object.values.get(catalogIdProperty);
+      const method = object.values.get(rpcMethodProperty);
+      if (id === undefined || method === undefined || catalog.has(id)) continue;
+      catalog.set(id, { id, method, file, line: object.line });
+    }
+  }
+  return catalog;
 }
 
 export function specPathFor(spec: string): string {

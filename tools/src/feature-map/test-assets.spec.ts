@@ -6,10 +6,14 @@ import { describe, expect, test } from 'vitest';
 import { getFeatureMapAppConfig } from './app-config.js';
 import {
   loadMockFunctions,
+  loadNetworkIds,
+  loadPersistWhitelist,
   loadRouterFiles,
+  loadRpcCatalog,
   loadRpcHandlers,
   loadSelectorObjects,
   loadSetupMocks,
+  loadVerifyMockRegistry,
 } from './test-assets.js';
 
 const config = getFeatureMapAppConfig('extension');
@@ -87,5 +91,47 @@ describe(loadRouterFiles.name, () => {
     expect(names).toContain('home.tsx');
     expect(names).toContain('rpc-stx-call-contract.routes.tsx');
     expect(names).not.toContain('modal-background-wrapper.tsx');
+  });
+});
+
+describe(loadVerifyMockRegistry.name, () => {
+  test('lists the mocks verify can apply, each an exported mock function', () => {
+    const registry = loadVerifyMockRegistry(config);
+    const mocks = loadMockFunctions(config);
+    expect(registry).toContain('setupMockApis');
+    expect(registry).toContain('mockUnhandledRequests');
+    expect([...registry].every(name => mocks.has(name))).toBe(true);
+  });
+
+  test('throws when the registry object is missing', () => {
+    const file = path.join(tempDir, 'empty-registry.ts');
+    writeFileSync(file, 'export const somethingElse = {};');
+    expect(() => loadVerifyMockRegistry({ ...config, verifyMockRegistryFile: file })).toThrow(
+      "does not define a 'verifyMockRegistry' object"
+    );
+  });
+});
+
+describe(loadPersistWhitelist.name, () => {
+  test('reads the persisted slice keys', () => {
+    const whitelist = loadPersistWhitelist(config);
+    expect(whitelist).toEqual(expect.arrayContaining(['active', 'networks', 'wallets']));
+    expect(whitelist).toContain('softwareKeys');
+  });
+});
+
+describe(loadNetworkIds.name, () => {
+  test('reads the default wallet network ids', () => {
+    expect(loadNetworkIds(config)).toEqual(expect.arrayContaining(['mainnet', 'testnet4']));
+  });
+});
+
+describe(loadRpcCatalog.name, () => {
+  test('maps every test-app catalog id to its rpc method', () => {
+    const catalog = loadRpcCatalog(config);
+    expect(catalog.get('getAddresses')?.method).toBe('getAddresses');
+    expect(catalog.get('open-popup')?.method).toBe('open');
+    expect(catalog.get('signMessage-p2tr')?.method).toBe('signMessage');
+    expect(catalog.get('open-popup')?.file.endsWith('methods/general.ts')).toBe(true);
   });
 });

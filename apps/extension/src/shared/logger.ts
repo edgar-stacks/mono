@@ -35,6 +35,15 @@ const pinoLogger = pino({
 
 type LoggerFnApi = (msg: string, ...args: unknown[]) => void;
 
+const loggerErrorListeners = new Set<LoggerFnApi>();
+
+export function onLoggerError(listener: LoggerFnApi) {
+  loggerErrorListeners.add(listener);
+  return () => {
+    loggerErrorListeners.delete(listener);
+  };
+}
+
 // Pino offers a handful of APIs to log messages. Here we enforce a single one,
 // described by `LoggerFnApi`
 export const logger: Record<'debug' | 'info' | 'warn' | 'error', LoggerFnApi> = {
@@ -49,5 +58,6 @@ export const logger: Record<'debug' | 'info' | 'warn' | 'error', LoggerFnApi> = 
   },
   error(...args) {
     pinoLogger.error(...args);
+    loggerErrorListeners.forEach(listener => listener(...args));
   },
 };

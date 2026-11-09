@@ -1,4 +1,5 @@
 import { compareStrings } from '../utils/compare.js';
+import { verifyBlocker, verifyCommand } from '../verify/resolve.js';
 import { toRepoRelative } from './app-config.js';
 import { type ParsedFeature, type ResolvedString } from './features-parser.js';
 import {
@@ -103,6 +104,12 @@ function openedByLines(model: FeatureMapModel, feature: ParsedFeature): string[]
   return lines;
 }
 
+export function verifyLine(model: FeatureMapModel, feature: ParsedFeature): string {
+  const blocker = verifyBlocker(feature);
+  if (blocker) return `Not verifiable: ${blocker}.`;
+  return code(verifyCommand(feature, model.config.app));
+}
+
 function renderFeature(model: FeatureMapModel, feature: ParsedFeature): string[] {
   const lines: string[] = [];
   lines.push(`### ${feature.id}`, '', feature.description, '');
@@ -153,6 +160,8 @@ function renderFeature(model: FeatureMapModel, feature: ParsedFeature): string[]
     );
   }
   lines.push('');
+
+  lines.push('**Verify**', '', verifyLine(model, feature), '');
 
   lines.push('**Preconditions**', '');
   lines.push(`- session: ${feature.preconditions.session}`);

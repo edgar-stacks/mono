@@ -1,6 +1,7 @@
 import { existsSync } from 'node:fs';
 
 import { compareStrings } from '../utils/compare.js';
+import { verifyAccountTypes } from '../verify/verify-contract.js';
 import { toRepoRelative } from './app-config.js';
 import { type ParsedFeature, type ResolvedString } from './features-parser.js';
 import {
@@ -16,6 +17,7 @@ import {
   routedKeys,
   routesForKey,
   selectorObjectOf,
+  startRouteInstances,
 } from './model.js';
 import { distinctMountedPaths } from './routers-parser.js';
 import { specPathFor } from './test-assets.js';
@@ -205,6 +207,89 @@ function checkRedundantMocks(model: FeatureMapModel, feature: ParsedFeature): st
     );
 }
 
+function checkVerifyMocks(model: FeatureMapModel, feature: ParsedFeature): string[] {
+  const registry = toRepoRelative(model.config.verifyMockRegistryFile);
+  const { mocks } = feature.preconditions;
+  const errors = mocks
+    .filter(mock => model.mocks.has(mock) && !model.verifyMocks.has(mock))
+    .map(
+      mock =>
+        `${featureLabel(feature)}: mock '${mock}' is not registered in ${registry}, so verify cannot apply it. Fix: add it to verifyMockRegistry.`
+    );
+  for (const [first, second] of model.config.exclusiveMocks) {
+    if (!mocks.includes(first) || !mocks.includes(second)) continue;
+    errors.push(
+      `${featureLabel(feature)}: mocks '${first}' and '${second}' route the same requests, so only the last one registered would apply. Fix: keep one of them.`
+    );
+  }
+  return errors;
+}
+
+function checkVerifyOpenActions(model: FeatureMapModel, feature: ParsedFeature): string[] {
+  const errors: string[] = [];
+  const pageObjects = model.config.verifyPageObjects;
+  for (const action of feature.open) {
+    const found = model.pageObjectActions.get(action);
+    if (!found) continue;
+    const problem = [
+      pageObjects.includes(found.className)
+        ? undefined
+        : `${found.className} is not a page object the fixtures expose (${pageObjects.join(', ')})`,
+      found.isStatic ? 'it is static' : undefined,
+      found.requiredParameters > 0
+        ? `it takes ${found.requiredParameters} required argument${found.requiredParameters === 1 ? '' : 's'}`
+        : undefined,
+    ].filter(item => item !== undefined);
+    if (problem.length === 0) continue;
+    errors.push(
+      `${featureLabel(feature)}: open action '${action}' cannot be called by verify: ${problem.join('; ')}. Fix: use a zero-argument instance method of a fixture page object.`
+    );
+  }
+  return errors;
+}
+
+function checkPreconditionValues(model: FeatureMapModel, feature: ParsedFeature): string[] {
+  const errors: string[] = [];
+  const { network, accountType } = feature.preconditions;
+  if (network !== undefined && !model.networkIds.includes(network)) {
+    errors.push(
+      `${featureLabel(feature)}: preconditions.network '${network}' is not a network id in ${toRepoRelative(model.config.networkIdsFile)}. Fix: use one of ${model.networkIds.join(', ')}.`
+    );
+  }
+  if (accountType !== undefined && !verifyAccountTypes.some(type => type === accountType)) {
+    errors.push(
+      `${featureLabel(feature)}: preconditions.accountType '${accountType}' is not one of ${verifyAccountTypes.join(', ')}.`
+    );
+  }
+  return errors;
+}
+
+function checkStartRoute(model: FeatureMapModel, feature: ParsedFeature): string[] {
+  if (feature.anchor.kind === 'route' || !feature.startRoute) return [];
+  const errors: string[] = [];
+  const reported = new Set<string>();
+  const key = keyForRoute(model, feature.startRoute);
+  const label = key ? routeRef(model, key) : `'${feature.startRoute.value}'`;
+  for (const instance of startRouteInstances(model, feature)) {
+    const gate = derivedGate(instance);
+    const where = `${toRepoRelative(instance.file)}:${instance.line}`;
+    if (gate !== feature.gate && !reported.has(gate)) {
+      reported.add(gate);
+      errors.push(
+        `${featureLabel(feature)}: gate '${feature.gate}' does not match the router: startRoute ${label} mounts at '${instance.mountedPath}' behind ${gate === 'none' ? 'no gate' : gate} (${where}). Fix: set gate to '${gate}'.`
+      );
+    }
+    for (const flag of instance.flags) {
+      if (feature.flags.includes(flag) || reported.has(flag)) continue;
+      reported.add(flag);
+      errors.push(
+        `${featureLabel(feature)}: startRoute ${label} is mounted behind the ${flag} flag (${where}) but flags does not list it. Fix: add '${flag}' to flags so verify turns it on.`
+      );
+    }
+  }
+  return errors;
+}
+
 function checkFeatureReferences(model: FeatureMapModel, feature: ParsedFeature): string[] {
   const errors: string[] = [];
   const label = featureLabel(feature);
@@ -246,6 +331,9 @@ function checkFeatureReferences(model: FeatureMapModel, feature: ParsedFeature):
     );
   }
   errors.push(...checkRedundantMocks(model, feature));
+  errors.push(...checkVerifyMocks(model, feature));
+  errors.push(...checkVerifyOpenActions(model, feature));
+  errors.push(...checkPreconditionValues(model, feature));
 
   feature.entry.forEach((point, index) => {
     if (point.method === undefined || model.rpcMethods.has(point.method)) return;
@@ -340,6 +428,7 @@ export function checkFeatureMap(model: FeatureMapModel): CheckResult {
     errors.push(...checkFeatureReferences(model, feature));
     errors.push(...checkGates(model, feature));
     errors.push(...checkRouteFlags(model, feature));
+    errors.push(...checkStartRoute(model, feature));
   }
   errors.push(...checkUnclaimedRoutes(model, routeClaims));
   errors.push(...checkOverclaimedRoutes(model, routeClaims));

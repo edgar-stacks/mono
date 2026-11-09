@@ -6,7 +6,7 @@ import { checkFeatureMap, formatCheckReport } from './check.js';
 import { type ParsedFeature } from './features-parser.js';
 import { type FeatureMapModel } from './model.js';
 import { type RoutedRoute } from './routers-parser.js';
-import { type RpcHandler, type SelectorObject } from './test-assets.js';
+import { type PageObjectAction, type RpcHandler, type SelectorObject } from './test-assets.js';
 
 const config = getFeatureMapAppConfig('extension');
 const appRoutes = path.join(config.appDir, 'src/app/routes/app-routes.tsx');
@@ -193,6 +193,10 @@ function model(overrides: Partial<FeatureMapModel>): FeatureMapModel {
     rpcMethods: new Set(['open']),
     selectorObjects: new Map(),
     rpcHandlers: new Map(),
+    verifyMocks: new Set(['setupMockApis', 'mockStacksFeeRequests']),
+    persistWhitelist: ['active', 'networks', 'wallets'],
+    networkIds: ['mainnet', 'testnet4'],
+    rpcCatalog: new Map(),
     ...overrides,
   };
 }
@@ -508,6 +512,114 @@ describe('router flags and orphan sheets', () => {
     );
     expect(result.errors).toEqual([
       "entry 'orphan' (apps/extension/tests/feature-map/home.features.ts:1): route 'edit-tx-nonce' is not mounted under any of this entry's routes; it only nests under other screens. Fix: move it to the entry whose route mounts it.",
+    ]);
+  });
+});
+
+function pageObjectAction(
+  className: string,
+  requiredParameters = 0,
+  isStatic = false
+): PageObjectAction {
+  return { file: 'page.ts', line: 1, className, requiredParameters, isStatic };
+}
+
+describe('verify readiness rules', () => {
+  const label = "entry 'home-tokens' (apps/extension/tests/feature-map/home.features.ts:1)";
+
+  test('requires every mock to be registered in the verify mock registry', () => {
+    const entry = feature({
+      preconditions: { session: 'signed-in', mocks: ['setupMockApis', 'mockUnregistered'] },
+    });
+    const result = checkFeatureMap(
+      model({
+        features: [...claimersExcept('home-tokens'), entry],
+        mocks: new Map([
+          ['setupMockApis', { file: mockApis, line: 1 }],
+          ['mockUnregistered', { file: 'mock-x.ts', line: 1 }],
+        ]),
+      })
+    );
+    expect(result.errors).toEqual([
+      `${label}: mock 'mockUnregistered' is not registered in apps/extension/tests/verify/mock-registry.ts, so verify cannot apply it. Fix: add it to verifyMockRegistry.`,
+    ]);
+  });
+
+  test('rejects a pair of mocks that route the same requests', () => {
+    const [first, second] = config.exclusiveMocks[0] ?? ['', ''];
+    const entry = feature({ preconditions: { session: 'signed-in', mocks: [first, second] } });
+    const result = checkFeatureMap(
+      model({
+        features: [...claimersExcept('home-tokens'), entry],
+        mocks: new Map([
+          [first, { file: 'mock-a.ts', line: 1 }],
+          [second, { file: 'mock-b.ts', line: 1 }],
+        ]),
+        verifyMocks: new Set([first, second]),
+      })
+    );
+    expect(result.errors).toEqual([
+      `${label}: mocks '${first}' and '${second}' route the same requests, so only the last one registered would apply. Fix: keep one of them.`,
+    ]);
+  });
+
+  test('only accepts zero-argument instance methods of fixture page objects as open actions', () => {
+    const entry = feature({
+      open: ['HomePage.lock', 'HomePage.signIn', 'HomePage.build', 'ReceivePage.open'],
+    });
+    const result = checkFeatureMap(
+      model({
+        features: [...claimersExcept('home-tokens'), entry],
+        pageObjectActions: new Map([
+          ['HomePage.lock', pageObjectAction('HomePage')],
+          ['HomePage.signIn', pageObjectAction('HomePage', 1)],
+          ['HomePage.build', pageObjectAction('HomePage', 0, true)],
+          ['ReceivePage.open', pageObjectAction('ReceivePage')],
+        ]),
+      })
+    );
+    expect(result.errors).toEqual([
+      `${label}: open action 'HomePage.signIn' cannot be called by verify: it takes 1 required argument. Fix: use a zero-argument instance method of a fixture page object.`,
+      `${label}: open action 'HomePage.build' cannot be called by verify: it is static. Fix: use a zero-argument instance method of a fixture page object.`,
+      `${label}: open action 'ReceivePage.open' cannot be called by verify: ReceivePage is not a page object the fixtures expose (GlobalPage, HomePage, OnboardingPage, SendPage, SwapRevampPage, NetworkPage, SettingsPage, SwitchAccountPage). Fix: use a zero-argument instance method of a fixture page object.`,
+    ]);
+  });
+
+  test('validates the network and account type preconditions', () => {
+    const entry = feature({
+      preconditions: { session: 'signed-in', network: 'moonnet', accountType: 'paper', mocks: [] },
+    });
+    const result = checkFeatureMap(model({ features: [...claimersExcept('home-tokens'), entry] }));
+    expect(result.errors).toEqual([
+      `${label}: preconditions.network 'moonnet' is not a network id in packages/models/src/network/network.model.ts. Fix: use one of mainnet, testnet4.`,
+      `${label}: preconditions.accountType 'paper' is not one of software, ledger, mixed, policy.`,
+    ]);
+  });
+
+  test('requires the gate and flags of a sheet to agree with its start route', () => {
+    const sheet = feature({
+      id: 'sell-sheet',
+      anchor: { kind: 'selectors', objects: [] },
+      routes: [],
+      gate: 'none',
+      startRoute: { value: '/sell', ref: 'RouteUrls.Sell' },
+    });
+    const result = checkFeatureMap(model({ features: [...claimers, sheet] }));
+    const sheetLabel = "entry 'sell-sheet' (apps/extension/tests/feature-map/home.features.ts:1)";
+    expect(result.errors).toEqual(
+      expect.arrayContaining([
+        `${sheetLabel}: gate 'none' does not match the router: startRoute RouteUrls.Sell mounts at '/sell' behind account (apps/extension/src/app/routes/app-routes.tsx:7). Fix: set gate to 'account'.`,
+        `${sheetLabel}: startRoute RouteUrls.Sell is mounted behind the releaseOnramperSell flag (apps/extension/src/app/routes/app-routes.tsx:7) but flags does not list it. Fix: add 'releaseOnramperSell' to flags so verify turns it on.`,
+      ])
+    );
+    const matching = feature({
+      ...sheet,
+      gate: 'account',
+      flags: ['releaseOnramperSell'],
+    });
+    const passing = checkFeatureMap(model({ features: [...claimers, matching] }));
+    expect(passing.errors.filter(error => error.includes('sell-sheet'))).toEqual([
+      expect.stringContaining('a selectors anchor needs at least one'),
     ]);
   });
 });

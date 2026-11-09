@@ -22,6 +22,7 @@ trace*
 /playwright-report/
 /blob-report/
 /playwright/.cache/
+/verify-results/
 leather-styles
 .netlify
 ./.vscode/settings.json
