@@ -21,6 +21,7 @@ import { MultisigPage } from '../components/multisig-page';
 import { VaultActivityDetail } from '../components/vault-activity-detail';
 import { vaultThemeFromName } from '../multisig-tokens';
 import { multisigPaths } from '../multisig.constants';
+import { cryptoAssetChainFromNetwork } from '../multisig.utils';
 
 export function ActivityDetailPage() {
   const { vaultId, accountId, txid } = useParams();
@@ -50,6 +51,7 @@ export function ActivityDetailPage() {
 
   const activity = useBlockchainActivityByTxIdDetailQuery(
     accountAddresses,
+    cryptoAssetChainFromNetwork(network),
     txid,
     settings,
     Boolean(account.data && txid)

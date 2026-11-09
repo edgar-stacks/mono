@@ -5,6 +5,15 @@ export const ActivitySelectors = {
   ActivityItemMenuIncreaseFee: 'activity-item-menu-increase-fee',
   ActivityItemMenuCancelTransaction: 'activity-item-menu-cancel-transaction',
 
+  ActivityDetails: 'activity-details',
+  ActivityDetailsTitle: 'activity-details-title',
+  ActivityDetailsBackBtn: 'activity-details-back',
+  ActivityDetailsHero: 'activity-details-hero',
+  ActivityDetailsBalanceChanges: 'activity-details-balance-changes',
+  ActivityDetailsExplorerBtn: 'activity-details-explorer-btn',
+  ActivityDetailsLoading: 'activity-details-loading',
+  ActivityDetailsNotFound: 'activity-details-not-found',
+
   TransactionActionBalance: 'transaction-action-balance',
   TransactionActionFeeInput: 'transaction-action-fee-input',
   TransactionActionSheet: 'transaction-action-sheet',

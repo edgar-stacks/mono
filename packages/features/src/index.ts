@@ -43,8 +43,15 @@ export {
   buildBlockchainActivityActionTitle,
   interpolateActivityTemplate,
 } from './activity/blockchain-activity-copy';
+export {
+  formatBlockchainActivityAmountCaption,
+  getBlockchainActivityOperator,
+} from './activity/blockchain-activity-amount';
+export type { BlockchainActivityHeroLines } from './activity/blockchain-activity-hero';
+export { buildBlockchainActivityHeroLines } from './activity/blockchain-activity-hero';
 export type {
   BlockchainActivityAmount,
+  BlockchainActivityAmountCaption,
   BlockchainActivityAvatar,
   BlockchainActivityDirection,
   BlockchainActivityIndicator,

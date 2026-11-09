@@ -3,14 +3,27 @@ import { type InfiniteData, useInfiniteQuery, useQuery } from '@tanstack/react-q
 import {
   type BlockchainActivityItem,
   type BlockchainActivityViewDeps,
+  createBlockchainActivityItem,
   createBlockchainActivityItems,
 } from '@leather.io/features';
-import type { AccountAddresses, BlockchainActivity, CryptoAsset, Money } from '@leather.io/models';
+import type {
+  AccountAddresses,
+  BlockchainActivity,
+  CryptoAsset,
+  CryptoAssetChain,
+  Money,
+} from '@leather.io/models';
 import {
   createBlockchainActivityByAssetIdQueryConfig,
+  createBlockchainActivityByTxIdQueryConfig,
   createBlockchainActivityInfiniteQueryConfig,
+  createBlockchainActivityInfiniteQueryKey,
 } from '@leather.io/queries';
-import { type ActivityResponse, getHttpCacheService } from '@leather.io/services';
+import {
+  type ActivityResponse,
+  type UserSettings,
+  getHttpCacheService,
+} from '@leather.io/services';
 import { type FormatAmountOptions, getAssetId } from '@leather.io/utils';
 
 import { formatCurrency } from '@app/common/currency-formatter';
@@ -21,10 +34,14 @@ const feedPageSize = 25;
 const feedRefetchInterval = 15_000;
 const feedRefetchMaxPages = 2;
 
+const unresolvedTxidRetryInterval = 3_000;
+const maxUnresolvedTxidRetries = 4;
+
 const activityQueryPrefixes = [
   'blockchain-activity-service--get-activity',
   'blockchain-activity-service--get-activity-infinite',
   'blockchain-activity-service--get-activity-by-asset-id',
+  'blockchain-activity-service--get-activity-by-tx-id',
 ];
 
 export async function invalidateActivityQueries() {
@@ -54,6 +71,10 @@ function selectBlockchainActivityItems(activities: BlockchainActivity[]) {
   return createBlockchainActivityItems(activities, activityViewDeps);
 }
 
+function selectBlockchainActivityDetail(activity: BlockchainActivity | null) {
+  return activity === null ? null : createBlockchainActivityItem(activity, activityViewDeps);
+}
+
 export function useBlockchainActivityByAssetId(account: AccountAddresses, asset: CryptoAsset) {
   const settings = useUserSettings();
 
@@ -78,6 +99,49 @@ interface BlockchainActivityFeed {
 
 interface BlockchainActivityFeedOptions {
   poll?: boolean;
+}
+
+function createFeedQueryKey(account: AccountAddresses, settings: UserSettings) {
+  return createBlockchainActivityInfiniteQueryKey({ account, limit: feedPageSize }, settings);
+}
+
+function findCachedFeedActivity(
+  account: AccountAddresses,
+  chain: CryptoAssetChain,
+  txid: string,
+  settings: UserSettings
+) {
+  return queryClient
+    .getQueryData<InfiniteData<ActivityResponse>>(createFeedQueryKey(account, settings))
+    ?.pages.flatMap(page => page.items)
+    .find(activity => activity.chain === chain && activity.txid === txid);
+}
+
+export function useBlockchainActivityDetail(
+  account: AccountAddresses,
+  chain: CryptoAssetChain,
+  txid: string
+) {
+  const settings = useUserSettings();
+
+  return useQuery({
+    ...createBlockchainActivityByTxIdQueryConfig(account, chain, txid, settings),
+    initialData: () => findCachedFeedActivity(account, chain, txid, settings),
+    initialDataUpdatedAt: () =>
+      findCachedFeedActivity(account, chain, txid, settings)
+        ? queryClient.getQueryState(createFeedQueryKey(account, settings))?.dataUpdatedAt
+        : undefined,
+    refetchInterval(query) {
+      const activity = query.state.data;
+      if (activity === null) {
+        return query.state.dataUpdateCount <= maxUnresolvedTxidRetries
+          ? unresolvedTxidRetryInterval
+          : false;
+      }
+      return activity?.status === 'pending' ? feedRefetchInterval : false;
+    },
+    select: selectBlockchainActivityDetail,
+  });
 }
 
 export function useBlockchainActivityFeed(

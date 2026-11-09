@@ -105,6 +105,14 @@ export class HomePage {
     await this.page.getByTestId(HomePageSelectors.ActivityTabBtn).click();
   }
 
+  async openActivityDetails(rowText: string) {
+    await this.page
+      .getByTestId(ActivitySelectors.ActivityList)
+      .getByText(rowText, { exact: true })
+      .click();
+    await expect(this.page.getByTestId(ActivitySelectors.ActivityDetailsTitle)).toBeVisible();
+  }
+
   async clickSettingsButton() {
     await this.settingsButton.click();
   }

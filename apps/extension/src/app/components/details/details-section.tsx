@@ -2,19 +2,21 @@ import type { ReactNode } from 'react';
 
 import { Flex, Stack, styled } from 'leather-styles/jsx';
 
-interface TokenDetailsSectionProps {
+interface DetailsSectionProps {
   title: string;
   children: ReactNode;
   isTitleCentered?: boolean;
+  testId?: string;
 }
 
-export function TokenDetailsSection({
+export function DetailsSection({
   title,
   children,
   isTitleCentered = false,
-}: TokenDetailsSectionProps) {
+  testId,
+}: DetailsSectionProps) {
   return (
-    <Stack bg="ink.background-primary" py="space.02" width="100%">
+    <Stack bg="ink.background-primary" py="space.02" width="100%" data-testid={testId}>
       <Flex
         px="space.05"
         py="space.02"

@@ -9,6 +9,7 @@ import { RouteUrls } from '@shared/route-urls';
 
 import { Content } from '@app/components/layout/layouts/content.layout';
 import { SwitchAccountLayout } from '@app/components/layout/layouts/switch-account.layout';
+import { ActivityDetails } from '@app/features/activity-details/activity-details';
 import { Container } from '@app/features/container/container';
 import { HomeHeader } from '@app/features/container/headers/home.header';
 import { CancelStacksTransactionSheet } from '@app/features/dialogs/transaction-action-dialog/cancel-stacks-transaction-sheet';
@@ -151,6 +152,15 @@ function useAppRoutes() {
           )}
 
           {sendCryptoAssetFormRoutes}
+
+          <Route
+            path={RouteUrls.ActivityDetails}
+            element={
+              <AccountGate>
+                <ActivityDetails />
+              </AccountGate>
+            }
+          />
 
           <Route
             path={RouteUrls.TokenDetails}

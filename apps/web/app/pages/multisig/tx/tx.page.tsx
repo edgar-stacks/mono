@@ -41,6 +41,7 @@ import { SectionLabel } from '../components/section-label';
 import { VaultActivityDetail } from '../components/vault-activity-detail';
 import { vaultThemeFromName } from '../multisig-tokens';
 import { multisigPaths } from '../multisig.constants';
+import { cryptoAssetChainFromNetwork } from '../multisig.utils';
 import { SignerRollcall } from './components/signer-rollcall';
 import { formatTransactionActionError } from './format-transaction-error';
 import { formatRelativeDateTime, formatRelativeTime } from './relative-time';
@@ -101,6 +102,7 @@ export function TxDetailPage() {
 
   const onchainDetail = useBlockchainActivityByTxIdDetailQuery(
     getMultisigAccountAddresses(account.data),
+    cryptoAssetChainFromNetwork(network),
     transaction.data?.txId ?? undefined,
     settings,
     Boolean(transaction.data?.txId && account.data)

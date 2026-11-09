@@ -8,6 +8,7 @@ import { useStacksTransactionActionNavigate } from '@app/common/hooks/use-stacks
 import { StacksTransactionActionType } from '@app/common/transactions/stacks/transaction.utils';
 import { IncreaseFeeButton } from '@app/components/stacks-transaction-item/increase-fee-button';
 import { StacksTransactionActionMenu } from '@app/components/stacks-transaction-item/stacks-transaction-action-menu';
+import { transactionActionOpenerState } from '@app/features/dialogs/transaction-action-dialog/transaction-action-opener';
 import { usePendingBitcoinTxByTxid } from '@app/query/bitcoin/address/transactions-by-address.hooks';
 
 type ActivityActionKind = 'stacks-manage' | 'bitcoin-increase-fee';
@@ -53,7 +54,11 @@ function BitcoinActivityAction({ txid }: ActivityActionProps) {
     <IncreaseFeeButton
       isEnabled
       isSelected={pathname === RouteUrls.IncreaseBtcFee}
-      onIncreaseFee={() => void navigate(RouteUrls.IncreaseBtcFee, { state: { btcTx: pendingTx } })}
+      onIncreaseFee={() =>
+        void navigate(RouteUrls.IncreaseBtcFee, {
+          state: { btcTx: pendingTx, ...transactionActionOpenerState },
+        })
+      }
     />
   );
 }

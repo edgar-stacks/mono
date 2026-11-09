@@ -7,6 +7,7 @@ import { StacksTransactionActionType } from '@app/common/transactions/stacks/tra
 import { useWalletType } from '@app/common/use-wallet-type';
 import { whenPageMode } from '@app/common/utils';
 import { openIndexPageInNewTab } from '@app/common/utils/open-in-new-tab';
+import { transactionActionOpenerState } from '@app/features/dialogs/transaction-action-dialog/transaction-action-opener';
 
 export function useStacksTransactionActionNavigate() {
   const navigate = useNavigate();
@@ -22,10 +23,10 @@ export function useStacksTransactionActionNavigate() {
       return whenWallet({
         ledger: () =>
           whenPageMode({
-            full: () => void navigate(routeUrl),
+            full: () => void navigate(routeUrl, { state: transactionActionOpenerState }),
             popup: () => void openIndexPageInNewTab(routeUrl),
           })(),
-        software: () => navigate(routeUrl),
+        software: () => navigate(routeUrl, { state: transactionActionOpenerState }),
       })();
     },
     [navigate, whenWallet]

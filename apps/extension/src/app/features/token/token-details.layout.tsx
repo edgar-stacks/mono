@@ -1,5 +1,7 @@
 import { type ReactNode, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router';
 
+import { TokenDetailsSelectors } from '@tests/selectors/token-details.selectors';
 import { Box } from 'leather-styles/jsx';
 
 import { makeAccountIdentifer } from '@leather.io/crypto';
@@ -7,9 +9,12 @@ import type { BlockchainActivityItem } from '@leather.io/features';
 import type { FungibleCryptoAsset, Money } from '@leather.io/models';
 import { getAssetId, serializeAssetId } from '@leather.io/utils';
 
+import { RouteUrls } from '@shared/route-urls';
 import { analytics } from '@shared/utils/analytics';
 
 import type { ReceiveView } from '@app/common/receive/receive';
+import { DetailsRow } from '@app/components/details/details-row';
+import { DetailsScreen } from '@app/components/details/details-screen';
 import { useCurrentAccountId } from '@app/store/accounts/account';
 import { useSelectTokenDetailsTab } from '@app/store/settings/settings.actions';
 import { useTokenDetailsTab } from '@app/store/settings/settings.selectors';
@@ -17,8 +22,6 @@ import type { TokenDetailsTab } from '@app/store/settings/settings.slice';
 
 import { TokenPriceHistory } from './components/price-history/token-price-history';
 import { type SwapChain, TokenDetailsActionsRow } from './components/token-details-actions';
-import { TokenDetailsRow } from './components/token-details-row';
-import { TokenDetailsScreen } from './components/token-details-screen';
 import { TokenDetailsTabs, resolveVisibleTokenDetailsTab } from './components/token-details-tabs';
 import { TokenOverview } from './components/token-overview';
 
@@ -65,6 +68,7 @@ export function TokenDetailsLayout({
 }: TokenDetailsLayoutProps) {
   const activeTab = resolveVisibleTokenDetailsTab(useTokenDetailsTab(), !!balancesContent);
   const selectTab = useSelectTokenDetailsTab();
+  const navigate = useNavigate();
   const currentAccountId = useCurrentAccountId();
   const hasPrice = !!price && price.amount.isGreaterThan(0);
   const hasBalance = balance.amount.isGreaterThan(0);
@@ -93,7 +97,13 @@ export function TokenDetailsLayout({
   }
 
   return (
-    <TokenDetailsScreen title={title}>
+    <DetailsScreen
+      title={title}
+      onBack={() => void navigate(RouteUrls.Home)}
+      testId={TokenDetailsSelectors.TokenDetailsContainer}
+      backTestId={TokenDetailsSelectors.TokenDetailsBackButton}
+      titleTestId={TokenDetailsSelectors.TokenDetailsTitle}
+    >
       <TokenOverview
         icon={icon}
         balance={balance}
@@ -127,12 +137,16 @@ export function TokenDetailsLayout({
         hasBalance={hasBalance}
         detailRows={
           <>
-            <TokenDetailsRow label="Name" value={name} testId="token-details-name" />
-            <TokenDetailsRow label="Layer" value={layer} testId="token-details-layer" />
-            <TokenDetailsRow label="Contract details" value={contractDetails} />
+            <DetailsRow label="Name" value={name} testId={TokenDetailsSelectors.TokenDetailsName} />
+            <DetailsRow
+              label="Layer"
+              value={layer}
+              testId={TokenDetailsSelectors.TokenDetailsLayer}
+            />
+            <DetailsRow label="Contract details" value={contractDetails} />
           </>
         }
       />
-    </TokenDetailsScreen>
+    </DetailsScreen>
   );
 }

@@ -10,7 +10,11 @@ import { createBitcoinTransactionByTxIdQueryConfig } from '@leather.io/queries';
 import { useUserSettings } from '@app/hooks/use-user-settings';
 import { activityViewDeps } from '@app/query/activity/blockchain-activity.query';
 import { useMarketData } from '@app/query/common/market-data/market-data.query';
-import { useSbtcFailedDeposits, useSbtcPendingDeposits } from '@app/query/sbtc/sbtc-deposits.query';
+import {
+  type SbtcDeposit,
+  useSbtcFailedDeposits,
+  useSbtcPendingDeposits,
+} from '@app/query/sbtc/sbtc-deposits.query';
 import { useCurrentStacksAccountAddress } from '@app/store/accounts/blockchain/stacks/stacks-account.hooks';
 
 import { createSbtcDepositActivity } from './sbtc-deposit-activity';
@@ -25,17 +29,35 @@ function combineFundingTxs(results: UseQueryResult<BitcoinTransaction | null>[])
   return { fundingTxs: results.map(result => result.data ?? null) };
 }
 
-export function useSbtcDepositActivity(feedTxids: ReadonlySet<string>): SbtcDepositActivity {
+function useSbtcDeposits() {
   const stxAddress = useCurrentStacksAccountAddress();
-  const settings = useUserSettings();
   const { pendingSbtcDeposits } = useSbtcPendingDeposits(stxAddress);
   const { failedSbtcDeposits } = useSbtcFailedDeposits(stxAddress);
-  const btcMarketData = useMarketData(btcAsset);
 
-  const deposits = useMemo(
+  return useMemo(
     () => [...pendingSbtcDeposits, ...failedSbtcDeposits],
     [pendingSbtcDeposits, failedSbtcDeposits]
   );
+}
+
+function createSbtcDepositOverlays(deposits: SbtcDeposit[]) {
+  const map = new Map<string, SbtcDepositOverlay>();
+  for (const deposit of deposits) {
+    const overlay = createSbtcDepositOverlay(deposit.status);
+    if (overlay) map.set(deposit.bitcoinTxid, overlay);
+  }
+  return map;
+}
+
+export function useSbtcDepositOverlay(txid: string): SbtcDepositOverlay | undefined {
+  const deposits = useSbtcDeposits();
+  return useMemo(() => createSbtcDepositOverlays(deposits).get(txid), [deposits, txid]);
+}
+
+export function useSbtcDepositActivity(feedTxids: ReadonlySet<string>): SbtcDepositActivity {
+  const settings = useUserSettings();
+  const btcMarketData = useMarketData(btcAsset);
+  const deposits = useSbtcDeposits();
 
   const unmatchedDeposits = useMemo(
     () => deposits.filter(deposit => !feedTxids.has(deposit.bitcoinTxid)),
@@ -51,14 +73,7 @@ export function useSbtcDepositActivity(feedTxids: ReadonlySet<string>): SbtcDepo
 
   const marketData = btcMarketData.state === 'success' ? btcMarketData.value : undefined;
 
-  const overlays = useMemo(() => {
-    const map = new Map<string, SbtcDepositOverlay>();
-    for (const deposit of deposits) {
-      const overlay = createSbtcDepositOverlay(deposit.status);
-      if (overlay) map.set(deposit.bitcoinTxid, overlay);
-    }
-    return map;
-  }, [deposits]);
+  const overlays = useMemo(() => createSbtcDepositOverlays(deposits), [deposits]);
 
   const standaloneItems = useMemo(
     () =>

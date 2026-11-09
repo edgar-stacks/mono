@@ -1,13 +1,9 @@
 import { memo } from 'react';
+import { useNavigate } from 'react-router';
 
 import { styled } from 'leather-styles/jsx';
 
-import {
-  type BlockchainActivityDirection,
-  type BlockchainActivityIndicator,
-  type BlockchainActivityItem,
-  formatActivityCaption,
-} from '@leather.io/features';
+import { type BlockchainActivityItem, formatActivityCaption } from '@leather.io/features';
 import {
   BlockchainActivityAvatarIcon,
   BlockchainActivityIndicatorIcon,
@@ -15,50 +11,31 @@ import {
   ListItemBox,
 } from '@leather.io/ui';
 
-import { analytics } from '@shared/utils/analytics';
-
-import { formatCurrency } from '@app/common/currency-formatter';
-import { useBitcoinExplorerLink } from '@app/common/hooks/use-bitcoin-explorer-link';
-import { useStacksExplorerLink } from '@app/common/hooks/use-stacks-explorer-link';
 import { openInNewTab } from '@app/common/utils/open-in-new-tab';
-import { Balance } from '@app/components/balance/balance';
+import { createActivityDetailsPath } from '@app/features/activity-details/activity-details-path';
 
 import type { SbtcDepositOverlay } from '../sbtc-deposit-overlay';
 import { ActivityRowActions, getActivityActionKind } from './activity-row-actions';
+import { ActivityRowAmount, ActivityRowAmountCaption } from './activity-row-amount';
 
 const indicatorSize = 12;
 
 interface ActivityRowProps {
   item: BlockchainActivityItem;
   sbtcOverlay?: SbtcDepositOverlay;
+  onOpen?(): void;
 }
 
-function resolveValueColor(
-  indicator: BlockchainActivityIndicator,
-  direction: BlockchainActivityDirection
-) {
-  if (indicator === 'pending' || indicator === 'failed') return 'ink.text-subdued';
-  if (direction === 'received') return 'green.action-primary-default';
-  return 'ink.text-primary';
-}
-
-function Row({ item, sbtcOverlay }: ActivityRowProps) {
+function Row({ item, sbtcOverlay, onOpen }: ActivityRowProps) {
   const { activity, view } = item;
-  const { handleOpenBitcoinTxLink } = useBitcoinExplorerLink();
-  const { handleOpenStacksTxLink } = useStacksExplorerLink();
+  const navigate = useNavigate();
 
   const { amount } = view;
-  const valueColor = amount ? resolveValueColor(view.indicator, amount.direction) : undefined;
   const actionKind = getActivityActionKind(activity);
 
-  function openInExplorer() {
-    if (view.chain === 'bitcoin') {
-      analytics.track('view_bitcoin_transaction');
-      handleOpenBitcoinTxLink({ txid: view.txid });
-      return;
-    }
-    analytics.track('view_transaction');
-    handleOpenStacksTxLink({ txid: view.txid });
+  function openDetails() {
+    onOpen?.();
+    void navigate(createActivityDetailsPath(view.chain, view.txid));
   }
 
   function renderAction() {
@@ -70,7 +47,7 @@ function Row({ item, sbtcOverlay }: ActivityRowProps) {
 
   return (
     <ListItemBox
-      onClick={sbtcOverlay?.reclaimUrl ? undefined : openInExplorer}
+      onClick={openDetails}
       leading={
         <BlockchainActivityAvatarIcon
           avatar={view.avatar}
@@ -102,27 +79,11 @@ function Row({ item, sbtcOverlay }: ActivityRowProps) {
         )
       }
       trailing={
-        amount ? (
-          <Balance
-            balance={amount.crypto ?? amount.quote}
-            operator={amount.direction === 'received' ? '+' : '−'}
-            formattingOptions={amount.crypto ? { showCurrency: false } : undefined}
-            color={valueColor}
-            textStyle="label.02"
-            whiteSpace="nowrap"
-            formatCurrency={formatCurrency}
-          />
-        ) : undefined
+        amount ? <ActivityRowAmount amount={amount} indicator={view.indicator} /> : undefined
       }
       trailingCaption={
-        amount?.crypto ? (
-          <Balance
-            balance={amount.quote}
-            color="ink.text-subdued"
-            textStyle="caption.01"
-            whiteSpace="nowrap"
-            formatCurrency={formatCurrency}
-          />
+        amount && (amount.caption || amount.crypto) ? (
+          <ActivityRowAmountCaption amount={amount} />
         ) : undefined
       }
       action={renderAction()}

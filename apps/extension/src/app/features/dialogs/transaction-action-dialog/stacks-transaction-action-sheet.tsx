@@ -25,6 +25,7 @@ import { useCurrentStacksAccountAddress } from '@app/store/accounts/blockchain/s
 import { IncreaseFeeField } from './components/increase-fee-field';
 import { TransactionActions } from './components/transaction-actions';
 import { useStacksTransactionAction } from './hooks/use-stacks-transaction-action';
+import { useCloseTransactionAction } from './transaction-action-opener';
 
 interface StacksTransactionActionSheetProps {
   description: string;
@@ -76,8 +77,8 @@ export function StacksTransactionActionSheet({
   routeUrl,
   actionType,
 }: StacksTransactionActionSheetProps) {
-  const navigate = useNavigate();
   const location = useLocation();
+  const closeTransactionAction = useCloseTransactionAction();
 
   const StacksAddress = useCurrentStacksAccountAddress();
   const availableUnlockedBalance = useStxAddressAvailableUnlockedBalance(StacksAddress);
@@ -107,7 +108,7 @@ export function StacksTransactionActionSheet({
     <FormProvider {...methods}>
       <Sheet
         isShowing={location.pathname === routeUrl.replace(':txid', txid)}
-        onClose={() => void navigate(RouteUrls.Home)}
+        onClose={closeTransactionAction}
         header={<SheetHeader title={title} />}
         footer={
           <TransactionActions
@@ -116,7 +117,7 @@ export function StacksTransactionActionSheet({
               stxToMicroStx(feeValue).isLessThanOrEqualTo(initialTransactionFee)
             }
             isLoading={isBroadcasting}
-            onCancel={() => void navigate(RouteUrls.Home)}
+            onCancel={closeTransactionAction}
             onSubmit={() => void methods.handleSubmit(onSubmit)()}
           />
         }

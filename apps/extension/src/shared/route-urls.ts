@@ -17,6 +17,7 @@ export const RouteUrls = {
   IncreaseStacksFee: '/increase-fee/stacks/:txid',
   IncreaseBtcFee: '/increase-fee/btc',
   CancelStacksTransaction: '/cancel-transaction/stacks/:txid',
+  ActivityDetails: '/activity/:chain/:txid',
   Send: '/send-transaction',
   ViewSecretKey: '/view-secret-key',
   Settings: '/settings',
