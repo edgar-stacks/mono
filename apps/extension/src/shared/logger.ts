@@ -2,6 +2,7 @@ import pino from 'pino';
 import { Subject, defer, mergeMap } from 'rxjs';
 
 import { IS_TEST_ENV } from './environment';
+import { redactLogMessages } from './logger-redaction';
 import { appendLogToBrowserStorage } from './logger-storage';
 
 const logs$ = new Subject<pino.LogEvent>();
@@ -27,7 +28,7 @@ const pinoLogger = pino({
       level: 'info',
       send(_level, logEvent) {
         if (!chrome) return;
-        logs$.next(logEvent);
+        logs$.next({ ...logEvent, messages: redactLogMessages(logEvent.messages) });
       },
     },
   },

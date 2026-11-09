@@ -9,6 +9,7 @@ import {
 } from '@leather.io/bitcoin';
 import { keyOriginToDerivationPath } from '@leather.io/crypto';
 import type { Money, OwnedUtxo } from '@leather.io/models';
+import { sumNumbers } from '@leather.io/utils';
 
 import { type BitcoinInputSigningConfig } from '@shared/crypto/bitcoin/signer-config';
 import { logger } from '@shared/logger';
@@ -59,15 +60,15 @@ export function useGenerateUnsignedBitcoinTx({
           ? determineUtxosForSpendAll(determineUtxosArgs)
           : determineUtxosForSpend(determineUtxosArgs);
 
-        logger.info('Coin selection', { inputs, outputs, fee });
-
         if (!inputs.length) throw new Error('No inputs to sign');
         if (!outputs.length) throw new Error('No outputs to sign');
 
         const signingConfig: BitcoinInputSigningConfig[] = [];
+        const inputPaymentTypes = new Set<string>();
 
         for (const input of inputs) {
           const inputPayer = getPayerForInput(input);
+          inputPaymentTypes.add(inputPayer.paymentType);
           const tapInternalKey = isTaprootPayer(inputPayer)
             ? { tapInternalKey: inputPayer.payment.tapInternalKey }
             : {};
@@ -88,6 +89,14 @@ export function useGenerateUnsignedBitcoinTx({
             derivationPath: keyOriginToDerivationPath(inputPayer.keyOrigin),
           });
         }
+
+        logger.info('Coin selection', {
+          inputCount: inputs.length,
+          inputTotal: sumNumbers(inputs.map(input => input.value)).toNumber(),
+          inputPaymentTypes: [...inputPaymentTypes],
+          outputCount: outputs.length,
+          fee: fee.amount.toNumber(),
+        });
 
         outputs.forEach(output => {
           // When coin selection returns output with no address we assume it is
