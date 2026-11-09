@@ -1,6 +1,7 @@
 import { type Route } from './+types/help-center-wildcard.route';
-import { helpCenterRedirectLoader } from './shared-redirect-logic';
+import { parseHelpCenterSplat } from './legacy-section-paths';
+import { legacySectionRedirect } from './legacy-section-redirect';
 
-export function loader({ request }: Route.LoaderArgs) {
-  return helpCenterRedirectLoader(request);
+export async function loader({ params, request }: Route.LoaderArgs) {
+  throw await legacySectionRedirect(parseHelpCenterSplat(params['*']), request);
 }

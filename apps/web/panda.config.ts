@@ -34,6 +34,18 @@ export default defineConfig({
     },
     extend: {
       keyframes: {
+        marketingWordTicker: {
+          '0%, 15%': { transform: 'translateY(0)' },
+          '20%, 35%': { transform: 'translateY(-16.6667%)' },
+          '40%, 55%': { transform: 'translateY(-33.3333%)' },
+          '60%, 75%': { transform: 'translateY(-50%)' },
+          '80%, 95%': { transform: 'translateY(-66.6667%)' },
+          '100%': { transform: 'translateY(-83.3333%)' },
+        },
+        marketingFadeUp: {
+          '0%': { opacity: 0, transform: 'translateY(16px)' },
+          '100%': { opacity: 1, transform: 'translateY(0)' },
+        },
         stakingIconAttention: {
           '0%': {
             transform: 'scale(1)',

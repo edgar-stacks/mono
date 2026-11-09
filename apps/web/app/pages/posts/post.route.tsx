@@ -1,26 +1,32 @@
-import { cmsClient } from '~/constants/cms-client';
 import { Post } from '~/pages/posts/post';
-import { getDeprecationRedirect } from '~/pages/redirects/shared-redirect-logic';
+import {
+  contentResolutionResponse,
+  sanityContentFetchers,
+} from '~/pages/redirects/content-slug-loader';
+import { resolveContentSlug } from '~/pages/redirects/content-slug-resolver';
+import { marketingMeta } from '~/pages/seo/marketing-meta';
 
-import { type PostBySlugQueryResult, postBySlugQuery } from '@leather.io/cms';
+import { type PostBySlugQueryResult } from '@leather.io/cms';
 
 import { type Route } from './+types/post.route';
 
-export async function loader({
-  params,
-}: Route.LoaderArgs): Promise<{ post: NonNullable<PostBySlugQueryResult> } | Response> {
-  const slug = params.postSlug;
+interface PostLoaderData {
+  post: NonNullable<PostBySlugQueryResult>;
+  path: string;
+}
 
-  const deprecationRedirect = getDeprecationRedirect(slug);
-  if (deprecationRedirect) return deprecationRedirect;
+export async function loader({ params, request }: Route.LoaderArgs): Promise<PostLoaderData> {
+  const resolution = await resolveContentSlug(params.postSlug, sanityContentFetchers);
 
-  const post = await cmsClient.fetch(postBySlugQuery, { slug });
+  if (resolution.kind !== 'post') throw contentResolutionResponse(resolution, request);
 
-  if (!post) {
-    throw new Error('Post not found', { cause: 404 });
-  }
+  return { post: resolution.post, path: resolution.path };
+}
 
-  return { post };
+export function meta({ loaderData }: Route.MetaArgs) {
+  if (!loaderData) return [];
+  const { post, path } = loaderData;
+  return marketingMeta({ title: post.title, path, description: post.summary });
 }
 
 export default function PostRoute() {

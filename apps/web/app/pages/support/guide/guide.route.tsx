@@ -1,28 +1,32 @@
-import { redirect } from 'react-router';
-
-import { cmsClient } from '~/constants/cms-client';
-import { getDeprecationRedirect } from '~/pages/redirects/shared-redirect-logic';
+import {
+  contentResolutionResponse,
+  sanityContentFetchers,
+} from '~/pages/redirects/content-slug-loader';
+import { resolveContentSlug } from '~/pages/redirects/content-slug-resolver';
+import { marketingMeta } from '~/pages/seo/marketing-meta';
 import { Guide } from '~/pages/support/guide/guide';
 
-import { type HelpCenterGuideBySlugQueryResult, helpCenterGuideBySlugQuery } from '@leather.io/cms';
+import { type HelpCenterGuideBySlugQueryResult } from '@leather.io/cms';
 
 import { type Route } from './+types/guide.route';
 
-export async function loader({
-  params,
-}: Route.LoaderArgs): Promise<{ guide: NonNullable<HelpCenterGuideBySlugQueryResult> } | Response> {
-  const slug = params.guideSlug;
+interface GuideLoaderData {
+  guide: NonNullable<HelpCenterGuideBySlugQueryResult>;
+  path: string;
+}
 
-  const deprecationRedirect = getDeprecationRedirect(slug);
-  if (deprecationRedirect) return deprecationRedirect;
+export async function loader({ params, request }: Route.LoaderArgs): Promise<GuideLoaderData> {
+  const resolution = await resolveContentSlug(params.guideSlug, sanityContentFetchers);
 
-  const guide = await cmsClient.fetch(helpCenterGuideBySlugQuery, { slug });
+  if (resolution.kind !== 'guide') throw contentResolutionResponse(resolution, request);
 
-  if (!guide) {
-    return redirect(`/posts/${slug}`);
-  }
+  return { guide: resolution.guide, path: resolution.path };
+}
 
-  return { guide };
+export function meta({ loaderData }: Route.MetaArgs) {
+  if (!loaderData) return [];
+  const { guide, path } = loaderData;
+  return marketingMeta({ title: guide.title, path, description: guide.summary });
 }
 
 export default function GuideRoute() {

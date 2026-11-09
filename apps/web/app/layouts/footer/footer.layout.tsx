@@ -1,3 +1,6 @@
+import { type ReactNode } from 'react';
+import { Link } from 'react-router';
+
 import {
   Box,
   type BoxProps,
@@ -51,6 +54,30 @@ function FooterColumn({ title, children, ...props }: FooterColumnProps) {
   );
 }
 
+const StyledLink = styled(Link);
+
+interface FooterInternalLinkProps {
+  to: string;
+  children: ReactNode;
+}
+
+function FooterInternalLink({ to, children }: FooterInternalLinkProps) {
+  return (
+    <StyledLink
+      to={to}
+      textStyle="label.02"
+      borderBottom="1px solid"
+      borderColor="ink.border-default"
+      prefetch="intent"
+      _hover={{ borderColor: 'ink.action-primary-hover' }}
+      _focus={{ borderColor: 'ink.action-primary-hover' }}
+      outline={0}
+    >
+      {children}
+    </StyledLink>
+  );
+}
+
 interface FooterLegalTextProps extends BoxProps {
   product: string;
   copyright: string;
@@ -76,5 +103,6 @@ function FooterLegalText({ product, copyright, ...props }: FooterLegalTextProps)
 FooterLayout.Grid = FooterGrid;
 FooterLayout.Column = FooterColumn;
 FooterLayout.Link = ExternalLink;
+FooterLayout.InternalLink = FooterInternalLink;
 FooterLayout.LegalText = FooterLegalText;
 FooterLayout.LeatherIcon = FooterLeatherIcon;
