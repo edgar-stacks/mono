@@ -75,6 +75,9 @@ function renderHookValue<T>(useHook: () => T) {
       if (value === undefined) throw new Error('Hook did not render a value');
       return value;
     },
+    unmount() {
+      act(() => root.unmount());
+    },
   };
 }
 
@@ -90,6 +93,9 @@ interface SetupOptions {
   connectAppError?: unknown;
   connectApp?(options: ConnectLedgerDeviceOptions): Promise<LedgerBitcoinApp>;
   passesAdditionalVersionCheck?(appVersion: unknown): Promise<boolean>;
+  pullKeysFromDevice?(
+    app: LedgerBitcoinApp
+  ): Promise<{ status: 'success' } | { status: 'failure' }>;
 }
 
 function setupRequestKeys({
@@ -98,14 +104,16 @@ function setupRequestKeys({
   connectAppError,
   connectApp,
   passesAdditionalVersionCheck,
+  pullKeysFromDevice: pullKeysFromDeviceImpl,
 }: SetupOptions) {
   const onSuccess = vi.fn();
   const pullKeysFromDevice = pullKeysError
     ? vi.fn().mockRejectedValue(pullKeysError)
     : vi.fn().mockResolvedValue(pullKeysResult);
+  if (pullKeysFromDeviceImpl) pullKeysFromDevice.mockImplementation(pullKeysFromDeviceImpl);
   const app = makeFakeLedgerBitcoinApp();
 
-  const { getValue } = renderHookValue(() =>
+  const { getValue, unmount } = renderHookValue(() =>
     useRequestLedgerKeys<LedgerBitcoinApp>({
       chain: 'bitcoin',
       connectApp:
@@ -121,7 +129,7 @@ function setupRequestKeys({
     })
   );
 
-  return { getValue, onSuccess, pullKeysFromDevice };
+  return { getValue, unmount, onSuccess, pullKeysFromDevice };
 }
 
 describe(useRequestLedgerKeys.name, () => {
@@ -341,5 +349,127 @@ describe(useRequestLedgerKeys.name, () => {
     expect(mocks.toConnectStep).not.toHaveBeenCalled();
     expect(onSuccess).not.toHaveBeenCalled();
     expect(mocks.disconnect).not.toHaveBeenCalled();
+  });
+
+  test('ignores a second attempt while the first is still in flight', async () => {
+    const connection = Promise.withResolvers<LedgerBitcoinApp>();
+    const connectApp = vi.fn(() => connection.promise);
+    const { getValue, onSuccess, pullKeysFromDevice } = setupRequestKeys({
+      pullKeysResult: { status: 'success' },
+      connectApp,
+    });
+
+    const { firstRequest, secondRequest } = await act(() => ({
+      firstRequest: getValue().requestKeys(),
+      secondRequest: getValue().requestKeys(),
+    }));
+
+    await act(async () => {
+      connection.resolve(makeFakeLedgerBitcoinApp());
+      await Promise.all([firstRequest, secondRequest]);
+    });
+
+    expect(connectApp).toHaveBeenCalledOnce();
+    expect(pullKeysFromDevice).toHaveBeenCalledOnce();
+    expect(mocks.publicKeysPulledFromLedgerSuccessfully).toHaveBeenCalledOnce();
+    expect(onSuccess).toHaveBeenCalledOnce();
+    expect(mocks.disconnect).toHaveBeenCalledOnce();
+  });
+
+  test('allows a new attempt once the previous one settled', async () => {
+    const { getValue, onSuccess, pullKeysFromDevice } = setupRequestKeys({
+      pullKeysResult: { status: 'success' },
+    });
+
+    await act(async () => {
+      await getValue().requestKeys();
+    });
+    await act(async () => {
+      await getValue().requestKeys();
+    });
+
+    expect(pullKeysFromDevice).toHaveBeenCalledTimes(2);
+    expect(onSuccess).toHaveBeenCalledTimes(2);
+    expect(mocks.disconnect).toHaveBeenCalledTimes(2);
+  });
+
+  test('does nothing visible but closes the session when the flow closes while connecting', async () => {
+    const connection = Promise.withResolvers<LedgerBitcoinApp>();
+    const { getValue, unmount, onSuccess, pullKeysFromDevice } = setupRequestKeys({
+      pullKeysResult: { status: 'success' },
+      connectApp: () => connection.promise,
+    });
+
+    const { requesting } = await act(() => ({ requesting: getValue().requestKeys() }));
+    unmount();
+
+    await act(async () => {
+      connection.resolve(makeFakeLedgerBitcoinApp());
+      await requesting;
+    });
+
+    expect(mocks.toCheckingAppVersion).not.toHaveBeenCalled();
+    expect(mocks.toConnectionSuccessStep).not.toHaveBeenCalled();
+    expect(pullKeysFromDevice).not.toHaveBeenCalled();
+    expect(onSuccess).not.toHaveBeenCalled();
+    expect(mocks.disconnect).toHaveBeenCalledOnce();
+    expect(mocks.disconnect).toHaveBeenCalledWith({ sessionId: fakeLedgerSessionId });
+  });
+
+  test('does not fire success analytics or onSuccess when the key pull settles after the flow closed', async () => {
+    const pullStarted = Promise.withResolvers<void>();
+    const keysPull = Promise.withResolvers<{ status: 'success' }>();
+    const { getValue, unmount, onSuccess } = setupRequestKeys({
+      pullKeysFromDevice() {
+        pullStarted.resolve();
+        return keysPull.promise;
+      },
+    });
+
+    const { requesting } = await act(async () => {
+      const requesting = getValue().requestKeys();
+      await pullStarted.promise;
+      return { requesting };
+    });
+    unmount();
+
+    await act(async () => {
+      keysPull.resolve({ status: 'success' });
+      await requesting;
+    });
+
+    expect(mocks.publicKeysPulledFromLedgerSuccessfully).not.toHaveBeenCalled();
+    expect(onSuccess).not.toHaveBeenCalled();
+    expect(mocks.disconnect).toHaveBeenCalledOnce();
+    expect(mocks.disconnect).toHaveBeenCalledWith({ sessionId: fakeLedgerSessionId });
+  });
+
+  test('does not navigate when the key pull fails after the flow closed', async () => {
+    const pullStarted = Promise.withResolvers<void>();
+    const keysPull = Promise.withResolvers<{ status: 'success' }>();
+    const { getValue, unmount, onSuccess } = setupRequestKeys({
+      pullKeysFromDevice() {
+        pullStarted.resolve();
+        return keysPull.promise;
+      },
+    });
+
+    const { requesting } = await act(async () => {
+      const requesting = getValue().requestKeys();
+      await pullStarted.promise;
+      return { requesting };
+    });
+    unmount();
+
+    await act(async () => {
+      keysPull.reject({ _tag: 'DeviceDisconnectedWhileSendingError' });
+      await requesting;
+    });
+
+    expect(mocks.toDeviceDisconnectStep).not.toHaveBeenCalled();
+    expect(mocks.toErrorStep).not.toHaveBeenCalled();
+    expect(onSuccess).not.toHaveBeenCalled();
+    expect(mocks.disconnect).toHaveBeenCalledOnce();
+    expect(mocks.disconnect).toHaveBeenCalledWith({ sessionId: fakeLedgerSessionId });
   });
 });
