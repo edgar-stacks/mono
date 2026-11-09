@@ -152,16 +152,43 @@ export function endRound(paths: IssueFixPaths, round: number): RoundEnd {
   return { outcome, clean: outcome === 'clean', continue: outcome === 'failed', summary };
 }
 
-function reviewFollowUps(paths: IssueFixPaths, round: number): string[] {
-  const read = tryReadReview(path.join(roundDir(paths, round), path.basename(paths.reviewFile)));
-  if ('problem' in read) return [];
-  return read.review.minor.map(
-    finding => `\`${finding.location}\`: ${finding.note.replace(/\s+/g, ' ')}`
-  );
+interface FollowUp {
+  readonly file: string | null;
+  readonly line: string;
 }
 
-function mergeFollowUps(own: readonly string[], fromReview: readonly string[]): string[] {
-  return [...new Set([...own, ...fromReview])].slice(0, maxFollowUps);
+const followUpLocationPattern = /^`?([^`\s:]+)(:\d+)?`?:\s+(.+)$/s;
+
+function formatFollowUp(location: string, note: string): string {
+  return `\`${location}\`: ${note.replace(/\s+/g, ' ').trim()}`;
+}
+
+function parseOwnFollowUp(entry: string): FollowUp {
+  const match = followUpLocationPattern.exec(entry.trim());
+  if (!match?.[1] || !match[3]) return { file: null, line: entry };
+  return {
+    file: match[1],
+    line: formatFollowUp(`${match[1]}${match[2] ?? ''}`, match[3]),
+  };
+}
+
+function reviewFollowUps(paths: IssueFixPaths, round: number): FollowUp[] {
+  const read = tryReadReview(path.join(roundDir(paths, round), path.basename(paths.reviewFile)));
+  if ('problem' in read) return [];
+  return read.review.minor.map(finding => ({
+    file: finding.location.replace(/:\d+$/, ''),
+    line: formatFollowUp(finding.location, finding.note),
+  }));
+}
+
+function mergeFollowUps(own: readonly string[], fromReview: readonly FollowUp[]): string[] {
+  const ownFollowUps = own.map(parseOwnFollowUp);
+  const ownFiles = new Set(ownFollowUps.map(followUp => followUp.file));
+  const reviewOnly = fromReview.filter(followUp => !ownFiles.has(followUp.file));
+  return [...new Set([...ownFollowUps, ...reviewOnly].map(followUp => followUp.line))].slice(
+    0,
+    maxFollowUps
+  );
 }
 
 export function finishRounds(paths: IssueFixPaths): RoundOutcome {

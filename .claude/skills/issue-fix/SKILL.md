@@ -230,7 +230,8 @@ the top of the body and makes the pull request a draft; with no changes at all, 
 into the issue comment instead.
 `## Follow-ups` lists what the run deliberately left alone but thinks deserves its own issue: the
 fixer's `followUps` (things it noticed outside the issue, and ideas from changes the review made it
-restore) plus the last review's minor findings. Nothing opens issues automatically; turn the ones
+restore) plus the last review's minor findings, minus those on a file the fixer's entries already
+name, each as "`path`: note". Nothing opens issues automatically; turn the ones
 worth keeping into issues by hand.
 
 **Trust.** The fixer runs with `--permission-mode auto --permission-prompts none`: Claude Code's

@@ -279,6 +279,37 @@ describe('rounds', () => {
     ]);
   });
 
+  test('finishing drops minor findings on files the fixer already named and formats every entry alike', () => {
+    repo.makeFix();
+    repo.writeStatus({
+      ...doneStatus,
+      followUps: [
+        'apps/extension/fee-row.tsx: the wrap logic is duplicated and could be shared',
+        'packages/utils/run.sh:4:   quote the   variable',
+        'Consider a lint rule for raw widths',
+      ],
+    });
+    reviewedRound(1, {
+      blocking: [],
+      minor: [
+        {
+          location: 'apps/extension/fee-row.tsx:9',
+          note: 'The duplicated wrap logic could move to a helper.',
+        },
+        { location: 'packages/utils/run.sh:1', note: 'quote the variable' },
+        { location: 'apps/extension/fee-row.spec.tsx:1', note: 'cover the narrow popup' },
+      ],
+    });
+    finishRounds(repo.paths);
+    const status = readStatus(repo.paths.statusFile);
+    expect(status.ok && status.status.followUps).toEqual([
+      '`apps/extension/fee-row.tsx`: the wrap logic is duplicated and could be shared',
+      '`packages/utils/run.sh:4`: quote the variable',
+      'Consider a lint rule for raw widths',
+      '`apps/extension/fee-row.spec.tsx:1`: cover the narrow popup',
+    ]);
+  });
+
   test('finishing caps follow-ups so the status stays valid', () => {
     repo.makeFix();
     repo.writeStatus(doneStatus);
