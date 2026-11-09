@@ -16,7 +16,11 @@ import { useTokenDetailsTab } from '@app/store/settings/settings.selectors';
 import type { TokenDetailsTab } from '@app/store/settings/settings.slice';
 
 import { TokenPriceHistory } from './components/price-history/token-price-history';
-import { type SwapChain, TokenDetailsActionsRow } from './components/token-details-actions';
+import {
+  type SwapChain,
+  TokenDetailsActionsRow,
+  type TokenDetailsMoreAction,
+} from './components/token-details-actions';
 import { TokenDetailsRow } from './components/token-details-row';
 import { TokenDetailsScreen } from './components/token-details-screen';
 import { TokenDetailsTabs, resolveVisibleTokenDetailsTab } from './components/token-details-tabs';
@@ -41,6 +45,7 @@ interface TokenDetailsLayoutProps {
   isActivityLoading: boolean;
   isBuyEnabled?: boolean;
   isSwapEnabled?: boolean;
+  moreActions?: TokenDetailsMoreAction[];
 }
 
 export function TokenDetailsLayout({
@@ -62,6 +67,7 @@ export function TokenDetailsLayout({
   isActivityLoading,
   isBuyEnabled = true,
   isSwapEnabled = true,
+  moreActions,
 }: TokenDetailsLayoutProps) {
   const activeTab = resolveVisibleTokenDetailsTab(useTokenDetailsTab(), !!balancesContent);
   const selectTab = useSelectTokenDetailsTab();
@@ -107,6 +113,7 @@ export function TokenDetailsLayout({
             swapChain={swapChain}
             isBuyEnabled={isBuyEnabled}
             isSwapEnabled={isSwapEnabled}
+            moreActions={moreActions}
           />
         }
       />

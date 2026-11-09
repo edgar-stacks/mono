@@ -2,6 +2,7 @@ import { AllBalancesSelectors } from '@tests/selectors/all-balances.selectors';
 import { OnboardingSelectors } from '@tests/selectors/onboarding.selectors';
 import { SettingsSelectors } from '@tests/selectors/settings.selectors';
 import { SharedComponentsSelectors } from '@tests/selectors/shared-component.selectors';
+import { TokenDetailsSelectors } from '@tests/selectors/token-details.selectors';
 
 import { RouteUrls } from '@shared/route-urls';
 
@@ -266,5 +267,35 @@ export const settingsFeatures = [
     ],
     description:
       'What locking does (useKeyActions.lockWallet in apps/extension/src/app/common/hooks/use-key-actions.ts): clear the wallet session in chrome.storage.session (the encryptionKey), the in-memory key store and the keychain selector caches, broadcast a wallet-lock message, call afterLock (both callers navigate to /unlock with a from route), then reload the window. Other open windows receive the message (useOnWalletLock in features/container/container.tsx), clear their in-memory keys and caches and reload, after which AccountGate shows /unlock; the window stays open (wallet-lock.spec). There is no idle timer: the wallet locks only on this action, on an extension update, or when the browser discards session storage. A locked wallet can still sign out from the settings menu. password-memory-leak.spec checks that the password is not left in the heap after locking.',
+  },
+  {
+    id: 'move-to-fresh-account',
+    anchor: { kind: 'route' },
+    routes: [RouteUrls.MoveToFreshAccount],
+    params: [],
+    entry: [
+      {
+        kind: 'nav',
+        steps: [
+          'Open the STX token details (token-details entry), click the round "..." button (TokenDetailsSelectors.TokenDetailsMoreButton, aria-label "More actions") and choose "Move to a fresh account"; only STX token details passes this menu',
+        ],
+      },
+      { kind: 'deepLink', steps: ['Open #/move-to-fresh-account while the flag is on'] },
+    ],
+    gate: 'account',
+    flags: ['accountShuffle'],
+    preconditions: {
+      session: 'signed-in',
+      network: 'mainnet',
+      mocks: [...defaultMocks],
+    },
+    selectors: {
+      ready: SharedComponentsSelectors.HeaderBackBtn,
+      others: [TokenDetailsSelectors.TokenDetailsMoreButton],
+    },
+    actions: [],
+    specs: [],
+    description:
+      'A proof of concept that moves every Stacks asset of the current account to a fresh account (pages/move-to-fresh-account). The fresh account is the highest index + 1 for a software wallet and the current index + 1 for a Ledger wallet (useFreshStacksAccount); it is available only when its next nonce is 0 and no policy account is active, otherwise a "No fresh account available" warning shows. The page, headed "Move assets", lists the fresh address, the STX amount, each SIP-10 token and NFT that moves, a "Stays behind" group (stacked STX, BNS-V2 names listed for sale or in a manager-transferable namespace), the number of transactions and the total fee, with a "Move Stacks assets" button. It builds one transaction per SIP-10 token and NFT with sequential nonces and a sender post-condition, then an STX transfer of the available unlocked balance minus every fee; if nothing is left the plan shows "Not enough STX to pay the fees". All transactions are signed first, then broadcast in order, stopping at the first failure. On success a software wallet creates the next account and a Ledger wallet switches to the next index, then it toasts and navigates home. Both the menu item and the route exist only while the accountShuffle LaunchDarkly flag is on; the E2E LaunchDarkly mock does not set it, so a spec must enable it with overrideLaunchDarklyFlags before signing in. The ready selector, SharedComponentsSelectors.HeaderBackBtn, renders on every PageHeader screen, so pair it with the /move-to-fresh-account URL.',
   },
 ] as const satisfies readonly ExtensionFeatureEntry[];
