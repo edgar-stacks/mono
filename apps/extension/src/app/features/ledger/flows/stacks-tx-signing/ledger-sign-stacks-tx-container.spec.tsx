@@ -282,6 +282,49 @@ describe('LedgerSignStacksTxContainer', () => {
     expect(mocks.disconnect).toHaveBeenCalledWith({ sessionId: fakeLedgerSessionId });
   });
 
+  test('shows the rejected step with the reason when the payload is blocked before signing', async () => {
+    const { context } = setupSignTransaction({ returnCode: 0, errorMessage: '' });
+    mocks.signTransaction.mockReturnValue(() =>
+      Promise.resolve({ error: 'Ledger transactions require Deny post-condition mode.' })
+    );
+
+    await act(async () => {
+      await context.signTransaction();
+    });
+
+    expect(mocks.toOperationRejectedStep).toHaveBeenCalledOnce();
+    expect(mocks.toOperationRejectedStep).toHaveBeenCalledWith(
+      'Ledger transactions require Deny post-condition mode.'
+    );
+    expectSettledOnceWith({ status: 'cancelled' });
+    expect(mocks.signWithSignature).not.toHaveBeenCalled();
+    expect(mocks.transactionSignedOnLedgerSuccessfully).not.toHaveBeenCalled();
+    expect(mocks.disconnect).toHaveBeenCalledOnce();
+  });
+
+  test('forwards a blocked payload reason to the swap when it opted in', async () => {
+    const { context } = setupSignTransaction({
+      returnCode: 0,
+      errorMessage: '',
+      settleOnRejection: true,
+    });
+    mocks.signTransaction.mockReturnValue(() =>
+      Promise.resolve({ error: 'Ledger transactions require Deny post-condition mode.' })
+    );
+
+    await act(async () => {
+      await context.signTransaction();
+    });
+
+    expectSettledOnceWith({
+      status: 'failed',
+      error: 'Ledger transactions require Deny post-condition mode.',
+    });
+    expect(mocks.toOperationRejectedStep).not.toHaveBeenCalled();
+    expect(mocks.signWithSignature).not.toHaveBeenCalled();
+    expect(mocks.disconnect).toHaveBeenCalledOnce();
+  });
+
   test('shows the invalid payload step for other flows', async () => {
     const { context } = setupSignTransaction({
       returnCode: LedgerError.DataIsInvalid,

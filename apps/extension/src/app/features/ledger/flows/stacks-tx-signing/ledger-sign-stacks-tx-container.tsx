@@ -81,6 +81,16 @@ export function LedgerSignStacksTxContainer({ request }: LedgerSignStacksTxConta
         account.derivationPath
       );
 
+      if ('error' in resp) {
+        if (settleOnRejection) {
+          ledgerNavigate.settleLedgerAction(request, toSigningFailure(resp.error));
+        } else {
+          ledgerNavigate.toOperationRejectedStep(resp.error);
+          ledgerNavigate.settleLedgerAction(request, { status: 'cancelled' });
+        }
+        return;
+      }
+
       if (hasLedgerReturnCode(resp, LedgerError.DataIsInvalid)) {
         if (settleOnRejection) {
           ledgerNavigate.settleLedgerAction(request, toSigningFailure(resp.errorMessage));
