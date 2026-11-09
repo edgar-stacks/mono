@@ -1,4 +1,5 @@
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
+import path from 'node:path';
 import { afterEach, describe, expect, test } from 'vitest';
 
 import {
@@ -120,12 +121,38 @@ describe('verifyFix', () => {
     expect(pnpm.calls).toEqual([]);
   });
 
-  test('accepts a lockfile change', () => {
+  test('reinstalls from the lockfile into empty node_modules, without build info, when dependencies change', () => {
     repo = createTestRepo();
+    repo.write('.gitignore', 'tmp/\nnode_modules/\n*.tsbuildinfo\n');
+    repo.write('packages/utils/package.json', '{"name":"utils"}\n');
+    repo.git(['add', '-A']);
+    repo.git(['commit', '-q', '-m', 'utils manifest']);
+    repo.write('node_modules/stale/index.js', 'stale\n');
+    repo.write('packages/utils/node_modules/stale/index.js', 'stale\n');
+    repo.write('apps/web/tsconfig.node.tsbuildinfo', '{}\n');
     repo.makeFix();
     repo.write('pnpm-lock.yaml', "lockfileVersion: '9.0'\n");
     repo.writeStatus(doneStatus);
-    expect(verify(fakePnpm(repo)).passed).toBe(true);
+    const pnpm = fakePnpm(repo);
+    expect(verify(pnpm).passed).toBe(true);
+    expect(pnpm.calls).toEqual(['install --frozen-lockfile --prefer-offline', ...gate]);
+    expect(existsSync(path.join(repo.root, 'node_modules'))).toBe(false);
+    expect(existsSync(path.join(repo.root, 'packages/utils/node_modules'))).toBe(false);
+    expect(existsSync(path.join(repo.root, 'apps/web/tsconfig.node.tsbuildinfo'))).toBe(false);
+  });
+
+  test('fails when the clean reinstall fails', () => {
+    repo = createTestRepo();
+    repo.makeFix();
+    repo.write('apps/extension/package.json', '{"name":"extension"}\n');
+    repo.writeStatus(doneStatus);
+    const pnpm = fakePnpm(repo, { fail: 'install --frozen-lockfile --prefer-offline' });
+    expect(verify(pnpm)).toMatchObject({
+      passed: false,
+      message:
+        '`pnpm install --frozen-lockfile --prefer-offline` failed after removing node_modules',
+    });
+    expect(pnpm.calls).toEqual(['install --frozen-lockfile --prefer-offline']);
   });
 
   test('reports the problems of an invalid status', () => {

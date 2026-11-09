@@ -172,7 +172,10 @@ fix → verify → review:
 - **Fix.** Round 1 follows `.github/prompts/fix-issue.md`; later rounds follow
   `.github/prompts/fix-issue-round.md` and fix only what the previous round reported.
 - **Verify.** `pnpm lt fix-issue round verify`: the status in `status.json` must be valid, every
-  change must be under the allowed paths, `pnpm format` must change nothing, then syncpack,
+  change must be under the allowed paths; when `pnpm-lock.yaml` or a `package.json` changed, every
+  `node_modules` and ignored `*.tsbuildinfo` is removed and the dependencies reinstalled from the
+  lockfile, as CI starts; `pnpm format` must
+  change nothing, then syncpack,
   filenames, lint, typecheck, knip, the extension's unused exports, the dependency rules (after
   building the changed packages) and the unit tests of every changed package and its
   dependents. A failure is written to `verify.md` with the tail of the failing output and sends the

@@ -29,7 +29,13 @@ to write in the status file.
    `pnpm typecheck`, `pnpm knip`, `pnpm --filter @leather.io/extension lint:unused-exports`), the
    checks CI adds (`pnpm syncpack:lint`, `pnpm lint:filenames`, and `pnpm lint:deps` after building
    the packages you changed) and the unit tests of the packages you changed. Fix what fails. Leave the tree formatted: the workflow
-   runs `pnpm format` again and fails the run if it changes anything.
+   runs `pnpm format` again and fails the run if it changes anything. When you change a dependency,
+   `node_modules` and the ignored `*.tsbuildinfo` files keep traces of every install, and a later
+   `pnpm install --frozen-lockfile` does not undo them. Before you blame a failure on `dev`, remove
+   every `node_modules` (`git ls-files package.json '*/package.json'` lists their parents) and every
+   file `git ls-files --others --ignored --exclude-standard -- '*.tsbuildinfo'` lists, then run
+   `pnpm install --frozen-lockfile --prefer-offline`, as CI starts from; the workflow does the same
+   before its own checks whenever `pnpm-lock.yaml` or a `package.json` changed.
 4. Run the extension end-to-end specs the brief names, after reproducing the bug with one first when
    you can. `apps/extension/.env` is already written and the Chromium browser is installed; build
    with `pnpm --filter @leather.io/extension build:test`, then run a spec with

@@ -1,4 +1,4 @@
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 
 import { type CommandRunner, runAndEcho, runCommand } from './exec.js';
@@ -45,7 +45,50 @@ function formatVerifyReport(result: {
     : `FAILED: ${result.message}\n`;
 }
 
-function checkGate(root: string, run: CommandRunner): VerifyResult {
+const cleanInstallCommand: readonly string[] = ['install', '--frozen-lockfile', '--prefer-offline'];
+
+function changesDependencies(paths: readonly string[]): boolean {
+  return paths.some(file => file === 'pnpm-lock.yaml' || path.basename(file) === 'package.json');
+}
+
+function removeInstalledDependencies(root: string): void {
+  const manifests = runCommand('git', ['ls-files', '--', 'package.json', '*/package.json'], {
+    cwd: root,
+  }).stdout;
+  const dirs = new Set(['.', ...manifests.split('\n').filter(Boolean).map(path.dirname)]);
+  for (const dir of dirs) {
+    rmSync(path.join(root, dir, 'node_modules'), { recursive: true, force: true });
+  }
+}
+
+function removeTypeScriptBuildInfo(root: string): void {
+  const buildInfo = runCommand(
+    'git',
+    ['ls-files', '--others', '--ignored', '--exclude-standard', '--', '*.tsbuildinfo'],
+    { cwd: root }
+  ).stdout;
+  for (const file of buildInfo.split('\n').filter(Boolean)) {
+    rmSync(path.join(root, file), { force: true });
+  }
+}
+
+function cleanInstall(root: string, run: CommandRunner): VerifyResult | null {
+  removeInstalledDependencies(root);
+  removeTypeScriptBuildInfo(root);
+  const install = run('pnpm', cleanInstallCommand, { cwd: root });
+  if (install.status === 0) return null;
+  return {
+    passed: false,
+    message: `\`pnpm ${cleanInstallCommand.join(' ')}\` failed after removing node_modules`,
+    details: install.stdout + install.stderr,
+  };
+}
+
+function checkGate(root: string, run: CommandRunner, dependenciesChanged: boolean): VerifyResult {
+  if (dependenciesChanged) {
+    const failed = cleanInstall(root, run);
+    if (failed) return failed;
+  }
   const before = treeSnapshot(root);
   const format = run('pnpm', formatCommand, { cwd: root });
   if (format.status !== 0) {
@@ -123,7 +166,7 @@ function evaluate(root: string, statusFile: string, run: CommandRunner): VerifyR
   if (changes.length === 0) {
     return { passed: false, message: 'state is done but nothing changed', details: '' };
   }
-  const gate = checkGate(root, run);
+  const gate = checkGate(root, run, changesDependencies(changes.map(change => change.path)));
   return gate.passed
     ? { passed: true, message: `${changes.length} changed files pass the verification gate` }
     : gate;
