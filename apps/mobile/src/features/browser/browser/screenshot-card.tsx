@@ -1,5 +1,6 @@
 import { Dimensions } from 'react-native';
 
+import { BrowserSelectors } from '@/shared/selectors/browser.selectors';
 import { userRemovesApp } from '@/store/apps/apps.write';
 import { type App } from '@/store/apps/utils';
 import { useAppDispatch } from '@/store/utils';
@@ -24,7 +25,11 @@ export function ScreenshotCard({ app, onPress }: ScreenshotCardProps) {
   const { name, icon } = getAppDetails(app, { iconSize: 16 });
 
   return (
-    <Pressable onPress={onPress} maxWidth={width * 0.4}>
+    <Pressable
+      onPress={onPress}
+      maxWidth={width * 0.4}
+      testID={BrowserSelectors.RecentlyViewedCard}
+    >
       <Box py="3" flexDirection="row" alignItems="center" justifyContent="space-between">
         <Box
           flexDirection="row"
@@ -45,6 +50,7 @@ export function ScreenshotCard({ app, onPress }: ScreenshotCardProps) {
           justifyContent="center"
           alignItems="center"
           onPress={onDeleteApp}
+          testID={BrowserSelectors.RecentlyViewedRemoveButton}
         >
           <CloseIcon height={16} width={16} />
         </Pressable>

@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 
 import { SheetLayout } from '@/components/sheets/sheet.layout';
 import { type GuardResult } from '@/features/send/components/recipient/use-recipient-evaluator';
+import { SendSelectors } from '@/shared/selectors/send.selectors';
 import { t } from '@lingui/core/macro';
 
 import { AddressDisplayer, Box, Button, type SheetRef, Text } from '@leather.io/ui/native';
@@ -55,13 +56,27 @@ export function RecipientGuardSheet({ sheetRef, config, onConfirm }: RecipientWa
           {
             warn: (
               <>
-                <Button onPress={() => onConfirm(address)}>{primaryActionLabel}</Button>
-                <Button variant="ghost" onPress={handleDismiss}>
+                <Button
+                  testID={SendSelectors.RecipientGuardConfirmButton}
+                  onPress={() => onConfirm(address)}
+                >
+                  {primaryActionLabel}
+                </Button>
+                <Button
+                  testID={SendSelectors.RecipientGuardCancelButton}
+                  variant="ghost"
+                  onPress={handleDismiss}
+                >
                   {secondaryActionLabel}
                 </Button>
               </>
             ),
-            block: <Button onPress={handleDismiss}>{t`Dismiss`}</Button>,
+            block: (
+              <Button
+                testID={SendSelectors.RecipientGuardDismissButton}
+                onPress={handleDismiss}
+              >{t`Dismiss`}</Button>
+            ),
           }[severity]
         }
       </Box>

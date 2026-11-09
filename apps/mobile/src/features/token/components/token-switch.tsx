@@ -1,6 +1,6 @@
 import { type ReactNode, useEffect, useState } from 'react';
 
-import { TestId } from '@/shared/test-id';
+import { TokenSelectors } from '@/shared/selectors/token.selectors';
 
 import { Box, Cell, type PressableProps, Switch, Text } from '@leather.io/ui/native';
 
@@ -23,7 +23,7 @@ export function TokenSwitch({ icon, tokenName, value, onValueChange, ...rest }: 
   return (
     <Cell.Root
       pressable
-      testID={`${TestId.tokenSwitchItem}-${rest.ticker}`}
+      testID={`${TokenSelectors.SwitchItem}-${rest.ticker}`}
       accessibilityRole="switch"
       accessibilityState={{ checked: switchValue }}
       onPress={() => {

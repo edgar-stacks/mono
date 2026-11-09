@@ -1,0 +1,18 @@
+export const HomeSelectors = {
+  AccountHeader: 'homeAccountHeader',
+  AvailableBalance: 'homeAvailableBalance',
+  CollectiblesTab: 'homeCollectiblesTab',
+  CreateWalletCard: 'homeCreateWalletCard',
+  FirstTokenBanner: 'homeFirstTokenBanner',
+  HiddenTokensButton: 'homeHiddenTokensButton',
+  LearnSection: 'homeLearnSection',
+  ManageTokensButton: 'homeManageTokensButton',
+  PrivacyButton: 'homePrivacyButton',
+  SettingsButton: 'homeSettingsButton',
+  TabBarActivity: 'homeTabBarActivity',
+  TabBarBrowser: 'homeTabBarBrowser',
+  TabBarHome: 'homeTabBarHome',
+  TokensTab: 'homeTokensTab',
+  TotalBalance: 'homeTotalBalance',
+  TrendingTokens: 'homeTrendingTokens',
+} as const;

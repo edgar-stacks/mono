@@ -1,4 +1,5 @@
 import { SpinnerIcon } from '@/components/spinner-icon';
+import { ApproverSelectors } from '@/shared/selectors/approver.selectors';
 import { t } from '@lingui/core/macro';
 
 import { Approver, Box, Button, CheckmarkCircleIcon } from '@leather.io/ui/native';
@@ -45,13 +46,19 @@ export function ApproverButtons(props: ApproverButtonsProps) {
     case 'start_approver':
       return (
         <Approver.Actions>
-          <Button variant="outline" flex={1} onPress={onBack}>
+          <Button
+            variant="outline"
+            flex={1}
+            onPress={onBack}
+            testID={ApproverSelectors.CancelButton}
+          >
             {t`Cancel`}
           </Button>
           <Button
             flex={1}
             onPress={() => void onApproveWrapper()}
             disabled={props.isSubmitDisabled}
+            testID={ApproverSelectors.ApproveButton}
           >
             {approveLabel}
           </Button>
@@ -61,13 +68,19 @@ export function ApproverButtons(props: ApproverButtonsProps) {
     case 'retry':
       return (
         <Approver.Actions>
-          <Button variant="outline" flex={1} onPress={onBack}>
+          <Button
+            variant="outline"
+            flex={1}
+            onPress={onBack}
+            testID={ApproverSelectors.CancelButton}
+          >
             {t`Cancel`}
           </Button>
           <Button
             flex={1}
             onPress={() => void onApproveWrapper()}
             disabled={props.isSubmitDisabled}
+            testID={ApproverSelectors.RetryButton}
           >
             {t`Retry`}
           </Button>
@@ -99,18 +112,30 @@ export function ApproverButtons(props: ApproverButtonsProps) {
         <Box gap="4">
           <Approver.Actions>
             {onCopy && (
-              <Button flex={1} variant="outline" onPress={onCopy}>
+              <Button
+                flex={1}
+                variant="outline"
+                onPress={onCopy}
+                testID={ApproverSelectors.CopyIdButton}
+              >
                 {t`Copy ID`}
               </Button>
             )}
 
             {onViewDetails && (
-              <Button flex={1} variant="outline" onPress={onViewDetails}>
+              <Button
+                flex={1}
+                variant="outline"
+                onPress={onViewDetails}
+                testID={ApproverSelectors.ViewDetailsButton}
+              >
                 {t`View details`}
               </Button>
             )}
           </Approver.Actions>
-          <Button onPress={onClose}>{t`Close window`}</Button>
+          <Button onPress={onClose} testID={ApproverSelectors.CloseWindowButton}>
+            {t`Close window`}
+          </Button>
         </Box>
       );
 

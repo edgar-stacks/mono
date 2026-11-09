@@ -1,5 +1,6 @@
 import { useState } from 'react';
 
+import { ApproverSelectors } from '@/shared/selectors/approver.selectors';
 import { t } from '@lingui/core/macro';
 
 import {
@@ -55,10 +56,18 @@ export function AllowModeWarningSheet({ ref, onDismiss: _onDismiss }: AllowModeW
           />
 
           <Box gap="3">
-            <Button disabled={!hasAgreedToRisks} onPress={onProceed}>
+            <Button
+              disabled={!hasAgreedToRisks}
+              onPress={onProceed}
+              testID={ApproverSelectors.AllowModeWarningProceedButton}
+            >
               {t`Proceed to transaction`}
             </Button>
-            <Button onPress={onDismiss} variant="ghost">
+            <Button
+              onPress={onDismiss}
+              variant="ghost"
+              testID={ApproverSelectors.AllowModeWarningDismissButton}
+            >
               {t`Do not proceed`}
             </Button>
           </Box>

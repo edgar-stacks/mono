@@ -1,4 +1,5 @@
 import unavailableFeatureImage from '@/assets/unavailable-feature.png';
+import { GlobalSheetSelectors } from '@/shared/selectors/global-sheet.selectors';
 import { analytics } from '@/utils/analytics';
 import { t } from '@lingui/core/macro';
 import { Image } from 'expo-image';
@@ -40,7 +41,10 @@ export function NotifyUserSheetLayout({
               {t`This feature is not available yet, but we can notify you when ready.`}
             </Text>
           </Box>
-          <Button onPress={onNotify}>{t`I'm interested`}</Button>
+          <Button
+            onPress={onNotify}
+            testID={GlobalSheetSelectors.NotifyUserButton}
+          >{t`I'm interested`}</Button>
         </Box>
       </Sheet.View>
     </Sheet>

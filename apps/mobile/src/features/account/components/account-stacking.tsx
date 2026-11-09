@@ -2,6 +2,7 @@ import { Balance } from '@/components/balance/balance';
 import { useGlobalSheets } from '@/core/global-sheet-provider';
 import { isStacking } from '@/features/balances/utils';
 import { useStxAccountBalance } from '@/queries/balance/stx-balance.query';
+import { AccountSelectors } from '@/shared/selectors/account.selectors';
 import { t } from '@lingui/core/macro';
 
 import { type AccountId } from '@leather.io/models';
@@ -41,7 +42,7 @@ export function AccountStacking({ account }: AccountStacking) {
 function AccountStackingComponent({ children }: HasChildren) {
   const { descriptionSheetRef } = useGlobalSheets();
   return (
-    <Box px="5" pb="5">
+    <Box px="5" pb="5" testID={AccountSelectors.LockedBalance}>
       <Box mb="3" height={1} flex={1} bg="ink.component-background-non-interactive" />
       <Box gap="1">
         <Pressable

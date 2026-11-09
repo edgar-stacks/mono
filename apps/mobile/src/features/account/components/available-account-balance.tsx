@@ -1,6 +1,7 @@
 import { Balance } from '@/components/balance/balance';
 import { useGlobalSheets } from '@/core/global-sheet-provider';
 import { useAccountUnlockedBalance } from '@/queries/balance/account-balance.query';
+import { HomeSelectors } from '@/shared/selectors/home.selectors';
 import { t } from '@lingui/core/macro';
 
 import { type AccountId } from '@leather.io/models';
@@ -26,7 +27,12 @@ export function AvailableAccountBalance({
     accountIndex: account.accountIndex,
   });
   return (
-    <Box p="5" flexDirection="row" justifyContent="space-between">
+    <Box
+      p="5"
+      flexDirection="row"
+      justifyContent="space-between"
+      testID={HomeSelectors.AvailableBalance}
+    >
       <Box flexDirection="column">
         <Pressable
           onPress={() => {
@@ -66,7 +72,7 @@ export function AvailableAccountBalance({
           <Balance balance={unlockedBalance.value} variant="heading05" />
         )}
       </Box>
-      <Pressable p="2" onPress={onOpenManageTokens}>
+      <Pressable p="2" onPress={onOpenManageTokens} testID={HomeSelectors.ManageTokensButton}>
         <SettingsSliderHorIcon />
       </Pressable>
     </Box>

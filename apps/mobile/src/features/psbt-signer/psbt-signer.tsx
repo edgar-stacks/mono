@@ -12,6 +12,7 @@ import { useBtcMarketDataQuery } from '@/queries/market-data/btc-market-data.que
 import { useGenerateBtcUnsignedTransactionNativeSegwit } from '@/queries/transaction/bitcoin-transactions.hooks';
 import { useBitcoinBroadcastTransaction } from '@/queries/transaction/use-bitcoin-broadcast-transaction';
 import { useAccountUtxos } from '@/queries/utxos/utxos.query';
+import { ApproverSelectors } from '@/shared/selectors/approver.selectors';
 import { useBitcoinAccounts } from '@/store/keychains/bitcoin/bitcoin-keychains.read';
 import { analytics } from '@/utils/analytics';
 import { formatCurrency } from '@/utils/currency-formatter';
@@ -286,14 +287,14 @@ function BasePsbtSigner(props: BasePsbtSignerProps) {
           {broadcastedTxid && <BtcStatusRow txid={broadcastedTxid} />}
 
           <Approver.Overview>
-            <Approver.Section mb="-3">
+            <Approver.Section mb="-3" testID={ApproverSelectors.OutcomeSection}>
               <Approver.Subheader icon={<SentIcon variant="small" />}>
                 {t`You’ll send`}
               </Approver.Subheader>
               <BitcoinOutcome amount={principalSpend} />
             </Approver.Section>
 
-            <Approver.Section>
+            <Approver.Section testID={ApproverSelectors.RecipientSection}>
               <Approver.Subheader>{t`To address`}</Approver.Subheader>
               <OutcomeAddressesCard addresses={recipients.map(r => r.address)} />
               {unrecognizedOutputs.length > 0 && (
@@ -302,11 +303,11 @@ function BasePsbtSigner(props: BasePsbtSignerProps) {
             </Approver.Section>
           </Approver.Overview>
 
-          <Approver.Section>
+          <Approver.Section testID={ApproverSelectors.AccountSection}>
             <ApproverAccountCard accounts={psbtAccounts} />
           </Approver.Section>
 
-          <Approver.Section>
+          <Approver.Section testID={ApproverSelectors.FeeSection}>
             <BitcoinFeeCard
               disabled={!feeEditorEnabled || !feeRates}
               feeType={selectedFeeType}

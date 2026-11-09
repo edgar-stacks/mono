@@ -4,6 +4,7 @@ import { HeaderTitle } from '@/components/screen/screen-header/components/header
 import { Sticker } from '@/components/sticker';
 import { ScreenshotCard } from '@/features/browser/browser/screenshot-card';
 import { useOpenUrl } from '@/features/browser/browser/use-open-url';
+import { BrowserSelectors } from '@/shared/selectors/browser.selectors';
 import { useApps } from '@/store/apps/apps.read';
 import { t } from '@lingui/core/macro';
 
@@ -17,7 +18,11 @@ export default function RecentlyViewedScreen() {
   const emptyState = (
     <>
       <Box position="absolute" style={{ width: '100%' }}>
-        <Screen.Header centerElement={<HeaderTitle title={title} />} />
+        <Screen.Header
+          centerElement={
+            <HeaderTitle title={title} testID={BrowserSelectors.RecentlyViewedTitle} />
+          }
+        />
       </Box>
       <Screen.Body width={270} alignSelf="center" justifyContent="center" alignItems="center">
         <Sticker source={flowerImage} />
@@ -29,7 +34,9 @@ export default function RecentlyViewedScreen() {
   );
   const withApps = (
     <>
-      <Screen.Header centerElement={<HeaderTitle title={title} />} />
+      <Screen.Header
+        centerElement={<HeaderTitle title={title} testID={BrowserSelectors.RecentlyViewedTitle} />}
+      />
       <Screen.ScrollView>
         <Box flexDirection="row" flexWrap="wrap" gap="5" px="5">
           {appList.reverse().map(app => (

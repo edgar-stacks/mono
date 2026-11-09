@@ -5,6 +5,7 @@ import {
   type AmountFieldProps as RawAmountFieldProps,
 } from '@/components/amount-field/amount-field';
 import { FieldConnectorArrow } from '@/features/send/components/field-connector-arrow';
+import { SendSelectors } from '@/shared/selectors/send.selectors';
 import { analytics } from '@/utils/analytics';
 
 import { Box } from '@leather.io/ui/native';
@@ -25,6 +26,7 @@ export function AmountField({
 
   return (
     <AnimatedBox
+      testID={SendSelectors.AmountField}
       zIndex="10"
       mt="-3"
       entering={enteringAnimationEnabled ? enteringAnimation : undefined}

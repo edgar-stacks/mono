@@ -15,6 +15,7 @@ interface SettingsSheetLayoutProps extends HasChildren {
   title: string;
   onPressSupport?(): void;
   onChange?(index: number): void;
+  testID?: string;
 }
 export function SettingsSheetLayout({
   children,
@@ -22,6 +23,7 @@ export function SettingsSheetLayout({
   title,
   onPressSupport,
   onChange,
+  testID,
 }: SettingsSheetLayoutProps) {
   const maxHeight = useSettingsSheetMaxHeight();
 
@@ -38,7 +40,9 @@ export function SettingsSheetLayout({
             ) : undefined
           }
         />
-        <Box pb="5">{children}</Box>
+        <Box pb="5" testID={testID}>
+          {children}
+        </Box>
       </Sheet.ScrollView>
     </Sheet>
   );

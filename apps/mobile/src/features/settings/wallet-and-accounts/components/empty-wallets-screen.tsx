@@ -1,4 +1,5 @@
 import walletImage from '@/assets/stickers/wallet.png';
+import { WalletSettingsSelectors } from '@/shared/selectors/wallet-settings.selectors';
 import { t } from '@lingui/core/macro';
 import { Image } from 'expo-image';
 
@@ -20,6 +21,7 @@ export function EmptyWalletsScreen({ onPressCreateWallet }: EmptyWalletsScreenPr
       <Button
         onPress={onPressCreateWallet}
         iconStart={() => <PlusIcon color="ink.background-primary" />}
+        testID={WalletSettingsSelectors.ListEmptyAddWalletButton}
       >
         {t`Add wallet`}
       </Button>

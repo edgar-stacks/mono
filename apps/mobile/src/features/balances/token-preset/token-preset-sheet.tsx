@@ -1,6 +1,7 @@
 import { SettingsList } from '@/components/settings/settings-list';
 import { SettingsListItem } from '@/components/settings/settings-list-item';
 import { SettingsSheetLayout } from '@/features/settings/settings-sheet.layout';
+import { TokenSelectors } from '@/shared/selectors/token.selectors';
 import { useSettings } from '@/store/settings/settings';
 import { type TokenPreset, tokenPresets } from '@/store/settings/utils';
 import { t } from '@lingui/core/macro';
@@ -35,6 +36,7 @@ export function TokenPresetSheet({ sheetRef }: TokenPresetSheetProps) {
           return (
             <SettingsListItem
               key={preset}
+              testID={`${TokenSelectors.PresetItem}-${preset}`}
               title={label.title}
               caption={label.caption}
               onPress={() => {

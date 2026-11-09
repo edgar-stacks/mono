@@ -7,6 +7,7 @@ import {
   withTiming,
 } from 'react-native-reanimated';
 
+import { SwapSelectors } from '@/shared/selectors/swap.selectors';
 import { t } from '@lingui/core/macro';
 
 import { ArrowsRepeatLeftRightIcon, Pressable, usePressedState } from '@leather.io/ui/native';
@@ -51,6 +52,7 @@ export function FlipButton({ isVisible, onPress }: FlipButtonProps) {
       borderRadius="round"
       borderColor="ink.border-transparent"
       accessibilityLabel={t`Flip assets`}
+      testID={SwapSelectors.FlipButton}
       zIndex="10"
       onPressIn={onPressIn}
       onPressOut={onPressOut}

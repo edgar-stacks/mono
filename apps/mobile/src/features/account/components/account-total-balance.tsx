@@ -2,6 +2,7 @@ import { useGlobalSheets } from '@/core/global-sheet-provider';
 import { AccountBalance } from '@/features/balances/total-balance';
 import { NetworkBadge } from '@/features/settings/network-badge';
 import { useAccountTotalBalance } from '@/queries/balance/account-balance.query';
+import { HomeSelectors } from '@/shared/selectors/home.selectors';
 import { useWallets } from '@/store/wallets/wallets.read';
 import { t } from '@lingui/core/macro';
 
@@ -22,7 +23,7 @@ export function AccountTotalBalance({ account }: AccountTotalBalanceProps) {
   if (!hasWallets) return null;
 
   return (
-    <Box px="5" pb="5" pt="3" gap="1">
+    <Box px="5" pb="5" pt="3" gap="1" testID={HomeSelectors.TotalBalance}>
       <Box flexDirection="row" justifyContent="space-between">
         <Pressable
           onPress={() => {

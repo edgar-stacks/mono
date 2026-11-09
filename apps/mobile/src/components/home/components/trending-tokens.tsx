@@ -3,6 +3,7 @@ import { ScrollView } from 'react-native-gesture-handler';
 
 import { useGlobalSheets } from '@/core/global-sheet-provider';
 import { useTrendingTokensQuery } from '@/queries/asset-list/trending-tokens.query';
+import { HomeSelectors } from '@/shared/selectors/home.selectors';
 import { t } from '@lingui/core/macro';
 
 import { prepTrendingItems } from '@leather.io/features';
@@ -23,7 +24,7 @@ export function TrendingTokens() {
   if (rows.length === 0) return null;
 
   return (
-    <Box py="3">
+    <Box py="3" testID={HomeSelectors.TrendingTokens}>
       <Pressable
         onPress={() => {
           descriptionSheetRef.current?.present({

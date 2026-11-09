@@ -1,6 +1,7 @@
 import { memo } from 'react';
 
 import { Balance } from '@/components/balance/balance';
+import { ActivitySelectors } from '@/shared/selectors/activity.selectors';
 import { t } from '@lingui/core/macro';
 
 import { type ActivityView } from '@leather.io/features';
@@ -40,6 +41,7 @@ function ActivityItemComponent({ item }: ActivityItemProps) {
 
   return (
     <Cell.Root
+      testID={ActivitySelectors.Item}
       pressable={Boolean(activityLink)}
       onPress={activityLink ? () => openUrl(activityLink) : undefined}
     >

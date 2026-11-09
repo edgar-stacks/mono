@@ -3,6 +3,7 @@ import { useColorScheme } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useAppState } from '@/hooks/use-app-state';
+import { SharedSelectors } from '@/shared/selectors/shared.selectors';
 import { useSettings } from '@/store/settings/settings';
 import { t } from '@lingui/core/macro';
 import * as SplashScreen from 'expo-splash-screen';
@@ -122,11 +123,13 @@ export function SplashScreenGuard({ children }: HasChildren) {
           bottom={0}
           flex={1}
           zIndex="max"
+          testID={SharedSelectors.LockOverlay}
         >
           {splash}
           {authState.status === 'failed' && (
             <Button
               onPress={onUnlock}
+              testID={SharedSelectors.UnlockButton}
               style={{
                 bottom: insets.bottom + theme.spacing[5],
                 left: theme.spacing[5],

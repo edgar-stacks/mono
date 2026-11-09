@@ -9,6 +9,7 @@ import { SendFormContainer, SendFormFooter } from '@/features/send/components/se
 import { locale } from '@/features/send/constants';
 import { useBtcForm } from '@/features/send/forms/btc/use-btc-form';
 import { useSendFlowContext } from '@/features/send/send-flow-provider';
+import { SendSelectors } from '@/shared/selectors/send.selectors';
 import { whenInputCurrencyMode } from '@/utils/when-currency-input-mode';
 import { t } from '@lingui/core/macro';
 
@@ -124,6 +125,7 @@ export function BtcForm({
         />
 
         <Button
+          testID={SendSelectors.ReviewButton}
           onPress={event => void onSubmit(event)}
           disabled={!form.formState.isValid}
         >{t`Review`}</Button>

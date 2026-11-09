@@ -8,7 +8,7 @@ import Animated, {
 
 import addWalletImage from '@/assets/stickers/add-wallet.png';
 import { useWaitlistFlag } from '@/features/feature-flags';
-import { TestId } from '@/shared/test-id';
+import { GlobalSheetSelectors } from '@/shared/selectors/global-sheet.selectors';
 import { t } from '@lingui/core/macro';
 import { Image } from 'expo-image';
 
@@ -76,14 +76,14 @@ export function AddWalletSheetLayout({
                 onPress={createWallet}
                 title={t`Create new wallet`}
                 caption={t`Generate new Secret Key for self-custody`}
-                testID={TestId.createNewWalletSheetButton}
+                testID={GlobalSheetSelectors.CreateNewWalletButton}
                 icon={<PlusIcon />}
               />
               <AddWalletCell
                 onPress={restoreWallet}
                 title={t`Restore wallet`}
                 caption={t`Import existing accounts from self-custody`}
-                testID={TestId.restoreWalletSheetButton}
+                testID={GlobalSheetSelectors.RestoreWalletButton}
                 icon={<ArrowRotateClockwiseIcon />}
               />
               {releaseWaitlistFeatures && (

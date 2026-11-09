@@ -1,5 +1,7 @@
 import { ApproverAccountCard } from '@/features/approver/components/approver-account-card';
 import { ApproverButtons } from '@/features/approver/components/approver-buttons';
+import { ApproverSelectors } from '@/shared/selectors/approver.selectors';
+import { RpcBitcoinSelectors } from '@/shared/selectors/rpc-bitcoin.selectors';
 import { type Account } from '@/store/accounts/accounts';
 import { t } from '@lingui/core/macro';
 
@@ -27,7 +29,7 @@ export function SignMessageApproverLayout({
     <Approver>
       <Approver.Container>
         <Approver.Header title={t`Sign Message`} />
-        <Approver.Section>
+        <Approver.Section testID={ApproverSelectors.AccountSection}>
           {selectedAccountId ? (
             <ApproverAccountCard
               accounts={accounts.filter(
@@ -36,7 +38,11 @@ export function SignMessageApproverLayout({
               onPress={onOpenAccountSelection}
             />
           ) : (
-            <Cell.Root pressable={true} onPress={onOpenAccountSelection}>
+            <Cell.Root
+              pressable={true}
+              onPress={onOpenAccountSelection}
+              testID={ApproverSelectors.ChooseAccountCell}
+            >
               <Cell.Content>
                 <Cell.Label variant="primary">{t`Choose an account`}</Cell.Label>
               </Cell.Content>
@@ -46,7 +52,7 @@ export function SignMessageApproverLayout({
             </Cell.Root>
           )}
         </Approver.Section>
-        <Approver.Section>
+        <Approver.Section testID={RpcBitcoinSelectors.SignMessageSection}>
           <Text variant="label01">{t`Message`}</Text>
           <Cell.Root pressable={false}>
             <Cell.Content>

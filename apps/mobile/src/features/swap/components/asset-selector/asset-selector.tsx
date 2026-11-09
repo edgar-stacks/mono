@@ -6,6 +6,7 @@ import { AssetSelectorItem } from '@/features/swap/components/asset-selector/ass
 import { useSwapAssetSearch } from '@/features/swap/components/asset-selector/use-swap-asset-search';
 import { getFungibleAssetDisplayName } from '@/features/swap/swap.utils';
 import { matchQueryResult } from '@/queries/match-query-result';
+import { SwapSelectors } from '@/shared/selectors/swap.selectors';
 import { t } from '@lingui/core/macro';
 import { type ListRenderItemInfo } from '@shopify/flash-list';
 import { type UseQueryResult } from '@tanstack/react-query';
@@ -89,6 +90,7 @@ export function AssetSelector({
           return (
             <AnimatedBox flex={1} entering={FadeIn.duration(100)} exiting={FadeOut.duration(100)}>
               <Sheet.FlashList
+                testID={SwapSelectors.AssetSelectorList}
                 data={assets}
                 maintainVisibleContentPosition={{ disabled: true }}
                 keyExtractor={(item: AccountSwapAsset) => serializeAssetId(getAssetId(item.asset))}

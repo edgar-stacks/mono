@@ -1,4 +1,4 @@
-import { TestId } from '@/shared/test-id';
+import { SharedSelectors } from '@/shared/selectors/shared.selectors';
 import { useSettings } from '@/store/settings/settings';
 import { useRouter } from 'expo-router';
 
@@ -13,7 +13,12 @@ export function NetworkBadge(props: NetworkBadgeProps) {
 
   return (
     <Pressable onPress={() => router.navigate('/settings/networks')}>
-      <Badge testID={TestId.networkBadge} label={networkPreference.name} mr="2" {...props} />
+      <Badge
+        testID={SharedSelectors.NetworkBadge}
+        label={networkPreference.name}
+        mr="2"
+        {...props}
+      />
     </Pressable>
   );
 }

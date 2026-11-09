@@ -1,0 +1,15 @@
+export const SendSelectors = {
+  AmountField: 'sendAmountField',
+  MemoInput: 'sendMemoInput',
+  MemoToggle: 'sendMemoToggle',
+  QrScannerCloseButton: 'qrScannerCloseButton',
+  RecipientGuardCancelButton: 'sendRecipientGuardCancelButton',
+  RecipientGuardConfirmButton: 'sendRecipientGuardConfirmButton',
+  RecipientGuardDismissButton: 'sendRecipientGuardDismissButton',
+  RecipientQrButton: 'sendRecipientQrButton',
+  RecipientSearch: 'sendRecipientSearch',
+  RecipientSelectorQrButton: 'sendRecipientSelectorQrButton',
+  RecipientToggle: 'sendRecipientToggle',
+  ReviewButton: 'sendReviewButton',
+  SelectAssetList: 'sendSelectAssetList',
+} as const;

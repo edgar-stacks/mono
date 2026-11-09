@@ -9,6 +9,7 @@ import { Recipient } from '@/features/send/components/recipient/recipient';
 import { SendFormContainer, SendFormFooter } from '@/features/send/components/send-form-layout';
 import { locale } from '@/features/send/constants';
 import { useSendFlowContext } from '@/features/send/send-flow-provider';
+import { SendSelectors } from '@/shared/selectors/send.selectors';
 import { whenInputCurrencyMode } from '@/utils/when-currency-input-mode';
 import { t } from '@lingui/core/macro';
 
@@ -152,6 +153,7 @@ export function Sip10Form({
         />
 
         <Button
+          testID={SendSelectors.ReviewButton}
           onPress={event => void onSubmit(event)}
           disabled={!form.formState.isValid}
         >{t`Review`}</Button>

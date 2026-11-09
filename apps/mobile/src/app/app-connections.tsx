@@ -3,6 +3,7 @@ import { Screen } from '@/components/screen/screen';
 import { HeaderTitle } from '@/components/screen/screen-header/components/header-title';
 import { Sticker } from '@/components/sticker';
 import { LinkCard } from '@/features/browser/browser/link-card';
+import { BrowserSelectors } from '@/shared/selectors/browser.selectors';
 import { useApps } from '@/store/apps/apps.read';
 import { t } from '@lingui/core/macro';
 
@@ -15,7 +16,9 @@ export default function ConnectionsScreen() {
   const emptyState = (
     <>
       <Box position="absolute" style={{ width: '100%' }}>
-        <Screen.Header centerElement={<HeaderTitle title={title} />} />
+        <Screen.Header
+          centerElement={<HeaderTitle title={title} testID={BrowserSelectors.ConnectionsTitle} />}
+        />
       </Box>
       <Screen.Body width={270} alignSelf="center" justifyContent="center" alignItems="center">
         <Sticker source={ufoImage} />
@@ -27,7 +30,9 @@ export default function ConnectionsScreen() {
   );
   const withApps = (
     <>
-      <Screen.Header centerElement={<HeaderTitle title={title} />} />
+      <Screen.Header
+        centerElement={<HeaderTitle title={title} testID={BrowserSelectors.ConnectionsTitle} />}
+      />
       <Screen.ScrollView>
         <Box flexDirection="row" flexWrap="wrap" gap="4" px="5">
           {appList.reverse().map(app => (

@@ -10,6 +10,7 @@ import {
   useSip10AccountBalance,
   type useSip10TotalBalance,
 } from '@/queries/balance/sip10-balance.query';
+import { SendSelectors } from '@/shared/selectors/send.selectors';
 import { type ListRenderItemInfo } from '@shopify/flash-list';
 
 import { btcAsset, stxAsset } from '@leather.io/constants';
@@ -39,6 +40,7 @@ function AssetPickerFlashList({ sip10Data, header, handleSelectAsset }: AssetPic
 
   return (
     <Sheet.FlashList
+      testID={SendSelectors.SelectAssetList}
       data={sip10Memo}
       renderItem={({ item }: ListRenderItemInfo<Sip10Balance>) => (
         <AssetPickerItem onPress={handleSelectAsset(item.asset)}>

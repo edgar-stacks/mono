@@ -1,5 +1,7 @@
 import { useRef } from 'react';
 
+import { ApproverSelectors } from '@/shared/selectors/approver.selectors';
+
 import { Approver, type SheetInstance } from '@leather.io/ui/native';
 
 import { NonceCard } from './components/nonce-card';
@@ -15,7 +17,7 @@ export function NonceSection({ nonce, onChangeNonce, disabled }: NonceSectionPro
 
   return (
     <>
-      <Approver.Section>
+      <Approver.Section testID={ApproverSelectors.NonceSection}>
         <NonceCard
           nonce={nonce}
           onPress={() => {

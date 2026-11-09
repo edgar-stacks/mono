@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 
 import { useOpenUrl } from '@/features/browser/browser/use-open-url';
+import { HomeSelectors } from '@/shared/selectors/home.selectors';
 import { t } from '@lingui/core/macro';
 import { useQuery } from '@tanstack/react-query';
 
@@ -58,7 +59,7 @@ export function LearnSection() {
   const items = data ?? getDefaultItems();
 
   return (
-    <Box pb="5">
+    <Box pb="5" testID={HomeSelectors.LearnSection}>
       <Text variant="label01" px="5" pb="3">
         {t`Learn`}
       </Text>

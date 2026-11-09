@@ -1,3 +1,4 @@
+import { HomeSelectors } from '@/shared/selectors/home.selectors';
 import { t } from '@lingui/core/macro';
 import { Image } from 'expo-image';
 
@@ -6,7 +7,7 @@ import { Box, Text } from '@leather.io/ui/native';
 
 export function FirstTokenBanner() {
   return (
-    <Box p="5" alignItems="center" flexDirection="row">
+    <Box p="5" alignItems="center" flexDirection="row" testID={HomeSelectors.FirstTokenBanner}>
       <Box flexShrink={1}>
         <Text variant="label01">{t`Get your first token`}</Text>
         <Text variant="caption01">

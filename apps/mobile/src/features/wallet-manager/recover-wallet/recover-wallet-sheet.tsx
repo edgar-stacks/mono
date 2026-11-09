@@ -1,4 +1,5 @@
 import { InputSheetLayout } from '@/components/sheets/input-sheet.layout';
+import { OnboardingSelectors } from '@/shared/selectors/onboarding.selectors';
 import { t } from '@lingui/core/macro';
 
 import { type SheetRef } from '@leather.io/ui/native';
@@ -24,6 +25,8 @@ export function RecoverWalletSheet({
         recoverWalletSheetRef.current?.close();
         setPassphrase(newPassphrase);
       }}
+      inputTestId={OnboardingSelectors.RestoreWalletPassphraseInput}
+      submitTestId={OnboardingSelectors.RestoreWalletPassphraseConfirmButton}
     />
   );
 }

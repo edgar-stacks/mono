@@ -1,4 +1,5 @@
 import { InputSheetLayout } from '@/components/sheets/input-sheet.layout';
+import { ApproverSelectors } from '@/shared/selectors/approver.selectors';
 import { t } from '@lingui/core/macro';
 
 import { type SheetRef } from '@leather.io/ui/native';
@@ -16,6 +17,8 @@ export function NonceSheet({ sheetRef, nonce, onChangeNonce }: NonceSheetProps) 
       title={t`Add memo`}
       placeholder={t`Memo`}
       submitTitle={t`Confirm`}
+      inputTestId={ApproverSelectors.NonceSheetInput}
+      submitTestId={ApproverSelectors.NonceSheetSubmitButton}
       onSubmit={value => {
         onChangeNonce(value);
         sheetRef.current?.close();

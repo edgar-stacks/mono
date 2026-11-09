@@ -21,6 +21,7 @@ import {
   useRecipientSuggestions,
 } from '@/features/send/components/recipient/use-recipient-suggestions';
 import { SendFormLoadingSpinner } from '@/features/send/components/send-form-layout';
+import { SendSelectors } from '@/shared/selectors/send.selectors';
 import { BottomSheetSectionList } from '@gorhom/bottom-sheet';
 import { t } from '@lingui/core/macro';
 import { type ZodSchema } from 'zod';
@@ -68,7 +69,7 @@ export function RecipientSelector({
   return (
     <>
       <RecipientSelectorHeader>
-        <Box>
+        <Box testID={SendSelectors.RecipientSearch}>
           <SearchInput
             value={searchTerm}
             onChange={setSearchTerm}
@@ -80,6 +81,7 @@ export function RecipientSelector({
             <Box position="absolute" top={12} right={8} flexDirection="row">
               {pasteButtonEnabled && <IosRecipientPasteButton onPress={handlePasteButtonPress} />}
               <IconButton
+                testID={SendSelectors.RecipientSelectorQrButton}
                 label={t`Scan a QR code`}
                 onPress={() => onQrButtonPress('input')}
                 icon={<QrCodeIcon />}

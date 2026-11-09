@@ -2,6 +2,7 @@ import { SettingsList } from '@/components/settings/settings-list';
 import { SettingsListItem } from '@/components/settings/settings-list-item';
 import { useToastContext } from '@/components/toast/toast-context';
 import { LEATHER_GUIDES_MOBILE_BITCOIN_UNIT } from '@/shared/constants';
+import { SettingsSelectors } from '@/shared/selectors/settings.selectors';
 import { useSettings } from '@/store/settings/settings';
 import { t } from '@lingui/core/macro';
 import { capitalize } from 'remeda';
@@ -31,6 +32,7 @@ export function BitcoinUnitSheet({ sheetRef }: BitcoinUnitSheetProps) {
 
   return (
     <SettingsSheetLayout
+      testID={SettingsSelectors.BitcoinUnitSheet}
       sheetRef={sheetRef}
       title={t`Bitcoin unit`}
       onPressSupport={() => openUrl(LEATHER_GUIDES_MOBILE_BITCOIN_UNIT)}
