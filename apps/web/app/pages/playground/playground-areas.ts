@@ -84,4 +84,13 @@ export const playgroundAreas: PlaygroundArea[] = [
     issue: 2643,
     appShell: true,
   },
+  {
+    slug: 'spending-sources',
+    title: 'Spending sources',
+    description:
+      'Proposal for the sendTransfer approval naming the address types a Bitcoin send spends from, with an Edit sources sheet to keep Taproot coins out.',
+    status: 'exploration',
+    section: 'extension',
+    appShell: true,
+  },
 ];
