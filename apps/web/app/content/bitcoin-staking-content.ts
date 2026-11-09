@@ -273,6 +273,20 @@ export const bitcoinStakingContent = {
     title: `Re-stake your STX`,
     description: `PoX-5 replaced the previous staking protocol and your STX has unlocked. Choose a pool to start earning sBTC rewards.`,
   },
+  connectGate: {
+    installStep: `Install Leather to stake`,
+    connectStep: `Connect Leather to stake`,
+    installAction: `Install`,
+    connectAction: `Connect`,
+    installBalance: `Install Leather to see your balance`,
+    connectBalance: `Connect Leather to see your balance`,
+    updateTitle: `Connect Leather to update your staking`,
+    updateDescription: `Your current position and available balance come from your wallet, so this page needs a connection before it can load.`,
+    installRowTitle: `Install`,
+    installRowDescription: `Add Leather extension to your browser`,
+    connectRowTitle: `Connect`,
+    connectRowDescription: `Connect Leather to load your staking position`,
+  },
 };
 
 export const bitcoinStakingExplainer: ExplainerStep[] = [

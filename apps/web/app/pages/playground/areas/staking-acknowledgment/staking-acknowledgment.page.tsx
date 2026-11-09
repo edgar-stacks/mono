@@ -156,6 +156,7 @@ function StakingReviewSurface({ pool, isSwitching }: StakingReviewSurfaceProps) 
               cycles={cycleNumber}
               estimatedUnlockDate={scheduledEnd}
               acknowledgment={acknowledgment}
+              connectAction={{ status: 'connected' }}
               onConfirm={confirmPreview}
               isDisabled={!isValid}
             />

@@ -1,12 +1,17 @@
+import { type ReactNode } from 'react';
+
 import BigNumber from 'bignumber.js';
 import { Box, styled } from 'leather-styles/jsx';
 import { link as linkRecipe } from 'leather-styles/recipes';
 import { BasicHoverCard } from '~/components/basic-hover-card';
+import { bitcoinStakingContent } from '~/content/bitcoin-staking-content';
 import { STAKING_TX_FEE_RESERVE_USTX } from '~/pages/bitcoin-staking/bitcoin-staking.constants';
 import { toHumanReadableMicroStx } from '~/utils/unit-convert';
 
 import { InfoCircleIcon, Spinner } from '@leather.io/ui';
 import { microStxToStx } from '@leather.io/utils';
+
+import { type StakingConnectAction } from '../hooks/use-staking-connect-action';
 
 const feeReserveExplanation = `${microStxToStx(STAKING_TX_FEE_RESERVE_USTX).toString()} STX reserved for transaction fees`;
 
@@ -18,13 +23,61 @@ interface AvailableBalanceRowProps {
   isLoading: boolean;
   availableAmount: BigNumber | undefined;
   onSelectMax(maxStakeableStx: number): void;
+  connectAction?: StakingConnectAction;
+}
+
+interface BalanceLinkButtonProps {
+  children: ReactNode;
+  onClick(): void;
+}
+
+function BalanceLinkButton({ children, onClick }: BalanceLinkButtonProps) {
+  return (
+    <styled.button
+      type="button"
+      className={linkRecipe({ variant: 'underlined' })}
+      bg="transparent"
+      border="none"
+      p="0"
+      ml="space.02"
+      color="ink.text-primary"
+      cursor="pointer"
+      onClick={onClick}
+    >
+      {children}
+    </styled.button>
+  );
 }
 
 export function AvailableBalanceRow({
   isLoading,
   availableAmount,
   onSelectMax,
+  connectAction,
 }: AvailableBalanceRowProps) {
+  const content = bitcoinStakingContent.connectGate;
+
+  if (connectAction?.status === 'pending') {
+    return (
+      <Box textStyle="body.02" color="ink.text-subdued" aria-busy>
+        <styled.span textStyle="caption">Available balance:</styled.span>
+        <Spinner />
+      </Box>
+    );
+  }
+
+  if (connectAction?.status === 'install' || connectAction?.status === 'connect') {
+    const { run } = connectAction;
+    return (
+      <Box textStyle="body.02" color="ink.text-subdued">
+        <styled.span textStyle="caption">Available balance:</styled.span>
+        <BalanceLinkButton onClick={() => void run()}>
+          {connectAction.status === 'install' ? content.installBalance : content.connectBalance}
+        </BalanceLinkButton>
+      </Box>
+    );
+  }
+
   const maxAmount = availableAmount ? maxStakeableAmount(availableAmount) : undefined;
 
   return (
@@ -33,19 +86,9 @@ export function AvailableBalanceRow({
       {isLoading && <Spinner />}
       {!isLoading && maxAmount && (
         <>
-          <styled.button
-            type="button"
-            className={linkRecipe({ variant: 'underlined' })}
-            bg="transparent"
-            border="none"
-            p="0"
-            ml="space.02"
-            color="ink.text-primary"
-            cursor="pointer"
-            onClick={() => onSelectMax(microStxToStx(maxAmount).toNumber())}
-          >
+          <BalanceLinkButton onClick={() => onSelectMax(microStxToStx(maxAmount).toNumber())}>
             {toHumanReadableMicroStx(maxAmount)}
-          </styled.button>
+          </BalanceLinkButton>
           <BasicHoverCard title="Available balance" content={feeReserveExplanation}>
             <styled.span
               display="inline-flex"
