@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 
+import { MultisigSelectors } from '@tests/selectors/multisig.selectors';
 import { Box, Flex, styled } from 'leather-styles/jsx';
 
 import { ChainPill } from '../components/chain-pill';
@@ -91,7 +92,11 @@ function ChainSettings({ chain }: { chain: Chain }) {
 
 export function MultisigSettingsPage() {
   return (
-    <MultisigPage title="Multisig settings" backTo={multisigPaths.index}>
+    <MultisigPage
+      title="Multisig settings"
+      backTo={multisigPaths.index}
+      testId={MultisigSelectors.Settings}
+    >
       <Flex direction="column" gap="space.06" maxWidth="640px">
         <SettingsSection
           head={

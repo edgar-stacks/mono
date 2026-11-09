@@ -23,6 +23,7 @@ export interface RoutedRoute {
   readonly flags: readonly string[];
   readonly parentKeys: readonly string[];
   readonly isIndex: boolean;
+  readonly module?: string;
 }
 
 export interface RouteReference {
@@ -239,7 +240,7 @@ function collectLazyGates(lazyAttribute: ts.JsxAttribute, state: WalkState): str
   return declaration ? collectGatesWithin(declaration) : [];
 }
 
-function joinPath(parent: string, own: string): string {
+export function joinPath(parent: string, own: string): string {
   if (own.startsWith('/')) return own;
   if (own === '') return parent;
   if (parent === '' || parent === '/') return `/${own}`;
@@ -562,7 +563,7 @@ interface RouterSource {
   readonly text: string;
 }
 
-interface ImportAliases {
+export interface ImportAliases {
   readonly [prefix: string]: string;
 }
 
@@ -605,7 +606,7 @@ export function createImportResolver(
   };
 }
 
-function readFromDisk(file: string): string | undefined {
+export function readFromDisk(file: string): string | undefined {
   return existsSync(file) ? readFileSync(file, 'utf8') : undefined;
 }
 

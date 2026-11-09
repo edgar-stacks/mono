@@ -11,7 +11,7 @@ import { type RpcHandler, type SelectorObject } from './test-assets.js';
 const config = getFeatureMapAppConfig('extension');
 const appRoutes = path.join(config.appDir, 'src/app/routes/app-routes.tsx');
 const sendRoutes = path.join(config.appDir, 'src/app/pages/send/send.routes.tsx');
-const mockApis = path.join(config.mocksDir, 'mock-apis.ts');
+const mockApis = path.join(config.appDir, 'tests/mocks/mock-apis.ts');
 
 function route(overrides: Partial<RoutedRoute>): RoutedRoute {
   return {
@@ -347,7 +347,12 @@ function selectorObject(name: string, fileName: string, members: string[]): Sele
 }
 
 function rpcHandler(name: string, methods: string[]): RpcHandler {
-  return { name, file: path.join(config.rpcMethodsDir, `${name}.ts`), line: 1, methods };
+  return {
+    name,
+    file: path.join(config.appDir, 'src/background/messaging/rpc-methods', `${name}.ts`),
+    line: 1,
+    methods,
+  };
 }
 
 const selectorObjects = new Map([
@@ -509,5 +514,52 @@ describe('router flags and orphan sheets', () => {
     expect(result.errors).toEqual([
       "entry 'orphan' (apps/extension/tests/feature-map/home.features.ts:1): route 'edit-tx-nonce' is not mounted under any of this entry's routes; it only nests under other screens. Fix: move it to the entry whose route mounts it.",
     ]);
+  });
+});
+
+describe('web config rules', () => {
+  const keyedConfig = { ...config, routeKeysRequired: true };
+
+  test('requires a key for every mounted route and a route for every key', () => {
+    const contact = route({ path: '/contact', mountedPath: '/contact', module: 'contact.tsx' });
+    const result = checkFeatureMap(
+      model({
+        config: keyedConfig,
+        router: { routes: [...routes, contact], references: new Map(), unresolved: [] },
+      })
+    );
+    expect(result.errors).toContain(
+      "route '/contact' (contact.tsx) is mounted at apps/extension/src/app/routes/app-routes.tsx:1 but no RouteUrls key has that value.\nFix: add a key with the value '/contact' to RouteUrls in apps/extension/src/shared/route-urls.ts, then claim it in an entry."
+    );
+    expect(result.errors).toContain(
+      "RouteUrls.Unrouted ('/unrouted') in apps/extension/src/shared/route-urls.ts is not mounted by any route.\nFix: correct its value to a mounted path or remove the key."
+    );
+  });
+
+  test('allows a route entry without a ready selector when the app does not require one', () => {
+    const withoutReady = feature({ selectors: { others: [] } });
+    const features = [...claimersExcept('home-tokens'), withoutReady];
+    expect(checkFeatureMap(model({ features })).errors).toEqual([
+      "entry 'home-tokens' (apps/extension/tests/feature-map/home.features.ts:1): selectors.ready is required for a route anchor; name the element whose presence means the screen is usable.",
+    ]);
+    expect(
+      checkFeatureMap(model({ config: { ...config, readySelectorRequired: false }, features }))
+        .errors
+    ).toEqual([]);
+  });
+
+  test('rejects an rpc anchor when the app has no rpc handlers', () => {
+    const rpcEntry = feature({
+      id: 'rpc-entry',
+      anchor: { kind: 'rpc', handlers: ['rpc-open'] },
+      routes: [],
+      selectors: { others: [] },
+    });
+    const result = checkFeatureMap(
+      model({ config: { ...config, rpcMethodsDir: undefined }, features: [...claimers, rpcEntry] })
+    );
+    expect(result.errors).toContain(
+      "entry 'rpc-entry' (apps/extension/tests/feature-map/home.features.ts:1): anchor 'rpc' is not available for extension. Fix: use a route, selectors or behavior anchor."
+    );
   });
 });

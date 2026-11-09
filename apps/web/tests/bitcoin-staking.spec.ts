@@ -1,4 +1,5 @@
 import { type Page } from '@playwright/test';
+import { BitcoinStakingSelectors } from '@tests/selectors/bitcoin-staking.selectors';
 
 import { test } from './fixtures';
 
@@ -38,18 +39,26 @@ test.describe('Bitcoin Staking', () => {
 
     // Let the connect-quest POST settle before a full-page navigation aborts it
     await page.goto('/staking');
-    await page.getByTestId('start-staking-button-stacking-dao').click();
+    await page
+      .getByTestId(BitcoinStakingSelectors.StartStakingButton.replace('[slug]', 'stacking-dao'))
+      .click();
     await amountInput(page).fill('500');
     await cyclesInput(page).fill('12');
-    await page.getByTestId('staking-acknowledgment-checkbox').check();
-    await page.getByTestId('confirmation-stake-button').click();
+    await page.getByTestId(BitcoinStakingSelectors.StakingAcknowledgmentCheckbox).check();
+    await page.getByTestId(BitcoinStakingSelectors.ConfirmationStakeButton).click();
     await setMockFlag(page, 'leather-mock-pox5-staked', 'true');
     await page.getByRole('button', { name: 'Resolve' }).click();
 
     await page.waitForURL('**/staking/pool/stacking-dao/active', { timeout: 15_000 });
-    await test.expect(page.getByTestId('claimable-rewards-card')).toBeVisible({ timeout: 15_000 });
-    await test.expect(page.getByTestId('unstake-button')).toBeVisible({ timeout: 15_000 });
-    await test.expect(page.getByTestId('update-stake-button')).toBeVisible({ timeout: 15_000 });
+    await test
+      .expect(page.getByTestId(BitcoinStakingSelectors.ClaimableRewardsCard))
+      .toBeVisible({ timeout: 15_000 });
+    await test
+      .expect(page.getByTestId(BitcoinStakingSelectors.UnstakeButton))
+      .toBeVisible({ timeout: 15_000 });
+    await test
+      .expect(page.getByTestId(BitcoinStakingSelectors.UpdateStakeButton))
+      .toBeVisible({ timeout: 15_000 });
   });
 
   test('the confirming screen holds until the transaction confirms', async ({ page, mode }) => {
@@ -58,21 +67,27 @@ test.describe('Bitcoin Staking', () => {
     await setMockFlag(page, 'leather-mock-pox5-tx-status', 'pending');
 
     await page.goto('/staking');
-    await page.getByTestId('start-staking-button-stacking-dao').click();
+    await page
+      .getByTestId(BitcoinStakingSelectors.StartStakingButton.replace('[slug]', 'stacking-dao'))
+      .click();
     await amountInput(page).fill('500');
     await cyclesInput(page).fill('12');
-    await page.getByTestId('staking-acknowledgment-checkbox').check();
-    await page.getByTestId('confirmation-stake-button').click();
+    await page.getByTestId(BitcoinStakingSelectors.StakingAcknowledgmentCheckbox).check();
+    await page.getByTestId(BitcoinStakingSelectors.ConfirmationStakeButton).click();
     await page.getByRole('button', { name: 'Resolve' }).click();
 
-    await test.expect(page.getByTestId('pox5-tx-status-screen')).toBeVisible({ timeout: 15_000 });
+    await test
+      .expect(page.getByTestId(BitcoinStakingSelectors.Pox5TxStatusScreen))
+      .toBeVisible({ timeout: 15_000 });
     await test.expect(page).toHaveURL(/\/staking\/pool\/stacking-dao$/);
 
     await setMockFlag(page, 'leather-mock-pox5-staked', 'true');
     await setMockFlag(page, 'leather-mock-pox5-tx-status', 'success');
 
     await page.waitForURL('**/staking/pool/stacking-dao/active', { timeout: 30_000 });
-    await test.expect(page.getByTestId('claimable-rewards-card')).toBeVisible({ timeout: 15_000 });
+    await test
+      .expect(page.getByTestId(BitcoinStakingSelectors.ClaimableRewardsCard))
+      .toBeVisible({ timeout: 15_000 });
   });
 
   test('a failed transaction shows the failure state', async ({ page, mode }) => {
@@ -83,12 +98,14 @@ test.describe('Bitcoin Staking', () => {
     await page.goto('/staking/pool/stacking-dao');
     await amountInput(page).fill('500');
     await cyclesInput(page).fill('12');
-    await page.getByTestId('staking-acknowledgment-checkbox').check();
-    await page.getByTestId('confirmation-stake-button').click();
+    await page.getByTestId(BitcoinStakingSelectors.StakingAcknowledgmentCheckbox).check();
+    await page.getByTestId(BitcoinStakingSelectors.ConfirmationStakeButton).click();
     await page.getByRole('button', { name: 'Resolve' }).click();
 
-    await test.expect(page.getByTestId('pox5-tx-status-failed')).toBeVisible({ timeout: 15_000 });
-    await page.getByTestId('pox5-tx-dismiss-button').click();
+    await test
+      .expect(page.getByTestId(BitcoinStakingSelectors.Pox5TxStatusFailed))
+      .toBeVisible({ timeout: 15_000 });
+    await page.getByTestId(BitcoinStakingSelectors.Pox5TxDismissButton).click();
     await test.expect(amountInput(page)).toBeVisible();
   });
 
@@ -99,12 +116,12 @@ test.describe('Bitcoin Staking', () => {
     await page.goto('/staking/pool/stacking-dao');
     await amountInput(page).fill('500');
     await cyclesInput(page).fill('12');
-    await page.getByTestId('staking-acknowledgment-checkbox').check();
-    await page.getByTestId('confirmation-stake-button').click();
+    await page.getByTestId(BitcoinStakingSelectors.StakingAcknowledgmentCheckbox).check();
+    await page.getByTestId(BitcoinStakingSelectors.ConfirmationStakeButton).click();
     await page.getByRole('button', { name: 'Reject' }).click();
 
     await test
-      .expect(page.getByTestId('pox5-submit-error').first())
+      .expect(page.getByTestId(BitcoinStakingSelectors.Pox5SubmitError).first())
       .toBeVisible({ timeout: 15_000 });
     await test.expect(page).toHaveURL(/\/staking\/pool\/stacking-dao$/);
   });
@@ -116,11 +133,13 @@ test.describe('Bitcoin Staking', () => {
     await page.goto('/staking/pool/stacking-dao');
 
     await page.waitForURL('**/staking/pool/stacking-dao/active', { timeout: 15_000 });
-    await test.expect(page.getByTestId('claimable-rewards-card')).toBeVisible();
+    await test.expect(page.getByTestId(BitcoinStakingSelectors.ClaimableRewardsCard)).toBeVisible();
     await test
-      .expect(page.getByTestId('active-pool-tvl'))
+      .expect(page.getByTestId(BitcoinStakingSelectors.ActivePoolTvl))
       .toHaveText('1,050,000 STX', { timeout: 15_000 });
-    await test.expect(page.getByTestId('active-pool-tvl-usd')).toHaveText('$843,380.30');
+    await test
+      .expect(page.getByTestId(BitcoinStakingSelectors.ActivePoolTvlUsd))
+      .toHaveText('$843,380.30');
   });
 
   test('the status page resolves to the pool the user is staking with', async ({ page, mode }) => {
@@ -130,7 +149,9 @@ test.describe('Bitcoin Staking', () => {
     await page.goto('/staking/status');
 
     await page.waitForURL('**/staking/pool/stacking-dao/active', { timeout: 15_000 });
-    await test.expect(page.getByTestId('claimable-rewards-card')).toBeVisible({ timeout: 15_000 });
+    await test
+      .expect(page.getByTestId(BitcoinStakingSelectors.ClaimableRewardsCard))
+      .toBeVisible({ timeout: 15_000 });
   });
 
   test('the status page falls back to the overview with no position', async ({ page, mode }) => {
@@ -139,9 +160,15 @@ test.describe('Bitcoin Staking', () => {
     await page.goto('/staking/status');
 
     await page.waitForURL(url => url.pathname === '/staking', { timeout: 15_000 });
-    await test.expect(page.getByTestId('start-staking-button-stacking-dao')).toBeVisible({
-      timeout: 15_000,
-    });
+    await test
+      .expect(
+        page.getByTestId(
+          BitcoinStakingSelectors.StartStakingButton.replace('[slug]', 'stacking-dao')
+        )
+      )
+      .toBeVisible({
+        timeout: 15_000,
+      });
   });
 
   test('users can claim accrued sBTC rewards', async ({ page, mode }) => {
@@ -153,7 +180,7 @@ test.describe('Bitcoin Staking', () => {
     await page.goto('/staking/pool/stacking-dao');
     await page.waitForURL('**/staking/pool/stacking-dao/active', { timeout: 15_000 });
 
-    const claimButton = page.getByTestId('claim-rewards-button');
+    const claimButton = page.getByTestId(BitcoinStakingSelectors.ClaimRewardsButton);
     await test.expect(claimButton).toBeEnabled({ timeout: 15_000 });
     await claimButton.click();
     await page.getByRole('button', { name: 'Resolve' }).click();
@@ -169,10 +196,12 @@ test.describe('Bitcoin Staking', () => {
 
     await page.goto('/staking/pool/stacking-dao');
     await amountInput(page).fill('500');
-    await page.getByTestId('staking-acknowledgment-checkbox').check();
+    await page.getByTestId(BitcoinStakingSelectors.StakingAcknowledgmentCheckbox).check();
 
-    await test.expect(page.getByTestId('prepare-phase-callout')).toBeVisible();
-    await test.expect(page.getByTestId('confirmation-stake-button')).toBeDisabled();
+    await test.expect(page.getByTestId(BitcoinStakingSelectors.PreparePhaseCallout)).toBeVisible();
+    await test
+      .expect(page.getByTestId(BitcoinStakingSelectors.ConfirmationStakeButton))
+      .toBeDisabled();
   });
 
   test('users can stake with a custom signer manager', async ({ page, mode }) => {
@@ -180,24 +209,32 @@ test.describe('Bitcoin Staking', () => {
     await setMockFlag(page, 'leather-mock-stx-balance', fundedBalanceMicroStx);
 
     await page.goto('/staking');
-    await page.getByTestId('byosm-entry-link').click();
-    await page.getByTestId('byosm-contract-input').fill(customSignerManagerContractId);
-    await page.getByTestId('byosm-contract-continue').click();
+    await page.getByTestId(BitcoinStakingSelectors.ByosmEntryLink).click();
+    await page
+      .getByTestId(BitcoinStakingSelectors.ByosmContractInput)
+      .fill(customSignerManagerContractId);
+    await page.getByTestId(BitcoinStakingSelectors.ByosmContractContinue).click();
 
     await test.expect(page).toHaveURL(/\/staking\/pool\/byosm\?contract=/, { timeout: 15_000 });
     await test.expect(amountInput(page)).toBeVisible({ timeout: 15_000 });
 
     await amountInput(page).fill('500');
     await cyclesInput(page).fill('12');
-    await page.getByTestId('staking-acknowledgment-checkbox').check();
-    await page.getByTestId('confirmation-stake-button').click();
+    await page.getByTestId(BitcoinStakingSelectors.StakingAcknowledgmentCheckbox).check();
+    await page.getByTestId(BitcoinStakingSelectors.ConfirmationStakeButton).click();
     await setMockFlag(page, 'leather-mock-pox5-staked-custom', 'true');
     await page.getByRole('button', { name: 'Resolve' }).click();
 
     await page.waitForURL('**/staking/pool/byosm/active**', { timeout: 15_000 });
-    await test.expect(page.getByTestId('claimable-rewards-card')).toBeVisible({ timeout: 15_000 });
-    await test.expect(page.getByTestId('unstake-button')).toBeVisible({ timeout: 15_000 });
-    await test.expect(page.getByTestId('update-stake-button')).toBeVisible({ timeout: 15_000 });
+    await test
+      .expect(page.getByTestId(BitcoinStakingSelectors.ClaimableRewardsCard))
+      .toBeVisible({ timeout: 15_000 });
+    await test
+      .expect(page.getByTestId(BitcoinStakingSelectors.UnstakeButton))
+      .toBeVisible({ timeout: 15_000 });
+    await test
+      .expect(page.getByTestId(BitcoinStakingSelectors.UpdateStakeButton))
+      .toBeVisible({ timeout: 15_000 });
   });
 
   test('an unlisted position links to the byosm active page', async ({ page, mode }) => {
@@ -205,11 +242,18 @@ test.describe('Bitcoin Staking', () => {
     await setMockFlag(page, 'leather-mock-pox5-staked-custom', 'true');
 
     await page.goto('/staking');
-    await page.getByTestId('staking-user-position').getByText('View position').click();
+    await page
+      .getByTestId(BitcoinStakingSelectors.StakingUserPosition)
+      .getByText('View position')
+      .click();
 
     await page.waitForURL('**/staking/pool/byosm/active**', { timeout: 15_000 });
-    await test.expect(page.getByTestId('claimable-rewards-card')).toBeVisible({ timeout: 15_000 });
-    await test.expect(page.getByTestId('unstake-button')).toBeVisible({ timeout: 15_000 });
+    await test
+      .expect(page.getByTestId(BitcoinStakingSelectors.ClaimableRewardsCard))
+      .toBeVisible({ timeout: 15_000 });
+    await test
+      .expect(page.getByTestId(BitcoinStakingSelectors.UnstakeButton))
+      .toBeVisible({ timeout: 15_000 });
   });
 
   test('the status page resolves an unlisted position to the byosm active page', async ({
@@ -222,15 +266,17 @@ test.describe('Bitcoin Staking', () => {
     await page.goto('/staking/status');
 
     await page.waitForURL('**/staking/pool/byosm/active**', { timeout: 15_000 });
-    await test.expect(page.getByTestId('claimable-rewards-card')).toBeVisible({ timeout: 15_000 });
+    await test
+      .expect(page.getByTestId(BitcoinStakingSelectors.ClaimableRewardsCard))
+      .toBeVisible({ timeout: 15_000 });
   });
 
   test('the byosm entry form rejects malformed contract principals', async ({ page, mode }) => {
     await mode({ mode: 'mock-connected' });
 
     await page.goto('/staking/pool/byosm');
-    await page.getByTestId('byosm-contract-input').fill('not-a-contract');
-    await page.getByTestId('byosm-contract-continue').click();
+    await page.getByTestId(BitcoinStakingSelectors.ByosmContractInput).fill('not-a-contract');
+    await page.getByTestId(BitcoinStakingSelectors.ByosmContractContinue).click();
 
     await test
       .expect(page.getByText('Enter a contract principal in address.contract-name format.'))
@@ -245,8 +291,10 @@ test.describe('Bitcoin Staking', () => {
     await mode({ mode: 'mock-connected' });
 
     await page.goto('/staking/pool/byosm');
-    await page.getByTestId('byosm-contract-input').fill(stackingDaoSignerManagerContractId);
-    await page.getByTestId('byosm-contract-continue').click();
+    await page
+      .getByTestId(BitcoinStakingSelectors.ByosmContractInput)
+      .fill(stackingDaoSignerManagerContractId);
+    await page.getByTestId(BitcoinStakingSelectors.ByosmContractContinue).click();
 
     await test.expect(page).toHaveURL(/\/staking\/pool\/stacking-dao$/, { timeout: 15_000 });
   });
@@ -271,26 +319,34 @@ test.describe('Bitcoin Staking', () => {
 
     await page.goto('/staking');
     await test
-      .expect(page.getByTestId('pool-tvl-xverse-pool'))
+      .expect(page.getByTestId(BitcoinStakingSelectors.PoolTvl.replace('[slug]', 'xverse-pool')))
       .toHaveText('225,000 STX', { timeout: 15_000 });
-    await test.expect(page.getByTestId('pool-tvl-xverse-pool-usd')).toHaveText('$180,724.35');
-    await test.expect(page.getByTestId('pool-tvl-fast-pool')).toHaveText('225,000 STX');
-    await test.expect(page.getByTestId('pool-tvl-stacking-dao')).toHaveText('1,050,000 STX');
+    await test
+      .expect(page.getByTestId(BitcoinStakingSelectors.PoolTvlUsd.replace('[slug]', 'xverse-pool')))
+      .toHaveText('$180,724.35');
+    await test
+      .expect(page.getByTestId(BitcoinStakingSelectors.PoolTvl.replace('[slug]', 'fast-pool')))
+      .toHaveText('225,000 STX');
+    await test
+      .expect(page.getByTestId(BitcoinStakingSelectors.PoolTvl.replace('[slug]', 'stacking-dao')))
+      .toHaveText('1,050,000 STX');
 
     // Xverse has three signer-manager contracts; the mock answers 75k STX for
     // each, so the overview must show the 225k sum.
     await page.goto('/staking/pool/xverse-pool');
     await test
-      .expect(page.getByTestId('pool-total-staked'))
+      .expect(page.getByTestId(BitcoinStakingSelectors.PoolTotalStaked))
       .toHaveText('225,000 STX', { timeout: 15_000 });
-    await test.expect(page.getByTestId('pool-health-warning')).toHaveCount(0);
+    await test.expect(page.getByTestId(BitcoinStakingSelectors.PoolHealthWarning)).toHaveCount(0);
 
     await setMockFlag(page, 'leather-mock-pox5-delegated-low', 'true');
     await page.goto('/staking/pool/xverse-pool');
     await test
-      .expect(page.getByTestId('pool-total-staked'))
+      .expect(page.getByTestId(BitcoinStakingSelectors.PoolTotalStaked))
       .toHaveText('30,000 STX', { timeout: 15_000 });
-    await test.expect(page.getByTestId('pool-health-warning')).toBeVisible({ timeout: 15_000 });
+    await test
+      .expect(page.getByTestId(BitcoinStakingSelectors.PoolHealthWarning))
+      .toBeVisible({ timeout: 15_000 });
   });
 
   test('form validation blocks invalid amounts and durations', async ({ page, mode }) => {

@@ -1,3 +1,4 @@
+import { BitcoinStakingSelectors } from '@tests/selectors/bitcoin-staking.selectors';
 import { css, cx } from 'leather-styles/css';
 import { styled } from 'leather-styles/jsx';
 import { link as linkRecipe } from 'leather-styles/recipes';
@@ -213,7 +214,7 @@ export function BondPoolTable(props: HTMLStyledProps<'div'>) {
             <styled.td colSpan={columnWidths.length} textAlign="center" borderTop="default">
               <styled.button
                 onClick={() => openExternalLink(bondPools.directBond.url)}
-                data-testid="direct-bond-entry-link"
+                data-testid={BitcoinStakingSelectors.DirectBondEntryLink}
                 className={cx(
                   linkRecipe({ size: 'sm' }),
                   css({

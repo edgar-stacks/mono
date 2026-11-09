@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router';
 
+import { MultisigSelectors } from '@tests/selectors/multisig.selectors';
 import { Box, Flex } from 'leather-styles/jsx';
 import { useMultisigNetworks } from '~/features/multisig/auth/use-multisig-networks';
 import { useSession } from '~/features/multisig/auth/use-session';
@@ -156,7 +157,7 @@ export function VaultDetailPage() {
   }
 
   return (
-    <MultisigPage title={vault.name} backTo={multisigPaths.index}>
+    <MultisigPage title={vault.name} backTo={multisigPaths.index} testId={MultisigSelectors.Vault}>
       {isInvited && myMembership && (
         <Callout variant="info" title="You've been invited to this vault">
           <Flex gap="space.03" mt="space.03">

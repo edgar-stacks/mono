@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router';
 
+import { MultisigSelectors } from '@tests/selectors/multisig.selectors';
 import { Box, Flex } from 'leather-styles/jsx';
 import { Balance } from '~/components/balance/balance';
 import { useVaultAccountAssets } from '~/features/multisig/assets/use-vault-account-assets';
@@ -115,7 +116,11 @@ export function AccountDetailPage() {
   const isCreator = vault.data.createdBy === me.data?.id;
 
   return (
-    <MultisigPage title={account.data.name} backTo={multisigPaths.vault(vault.data.id)}>
+    <MultisigPage
+      title={account.data.name}
+      backTo={multisigPaths.vault(vault.data.id)}
+      testId={MultisigSelectors.Account}
+    >
       <Flex
         direction={['column', 'column', 'row']}
         gap={['space.06', 'space.06', 'space.08', 'space.10']}

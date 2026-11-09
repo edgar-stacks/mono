@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router';
 
+import { MultisigSelectors } from '@tests/selectors/multisig.selectors';
 import { Box, Flex } from 'leather-styles/jsx';
 import { useMultisigNetworks } from '~/features/multisig/auth/use-multisig-networks';
 import { useSession } from '~/features/multisig/auth/use-session';
@@ -98,7 +99,13 @@ export function ActivityDetailPage() {
       : undefined;
 
   return (
-    <MultisigPage title="Activity" backTo={backTo} onBack={onBack} maxWidth="685px">
+    <MultisigPage
+      title="Activity"
+      backTo={backTo}
+      onBack={onBack}
+      maxWidth="685px"
+      testId={MultisigSelectors.ActivityDetail}
+    >
       <VaultActivityDetail
         item={detail}
         themeId={vaultThemeFromName(vault.data?.theme).id}

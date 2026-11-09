@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 
+import { ConnectSelectors } from '@tests/selectors/connect.selectors';
 import { Box, type BoxProps, Flex, styled } from 'leather-styles/jsx';
 
 import { Flag } from '@leather.io/ui';
@@ -30,6 +31,7 @@ export function ConnectCard({ title, description, footer, children, ...props }: 
       opacity="0"
       transform="translateY(20px)"
       pointerEvents="auto"
+      data-testid={ConnectSelectors.ConnectCard}
       {...props}
     >
       <Flag

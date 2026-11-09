@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router';
 
+import { MultisigSelectors } from '@tests/selectors/multisig.selectors';
 import { Box, Flex } from 'leather-styles/jsx';
 import { z } from 'zod';
 import { useProposalActivityItem } from '~/features/multisig/activity/use-proposal-activity-item';
@@ -240,6 +241,7 @@ export function TxDetailPage() {
       title="Transaction details"
       backTo={multisigPaths.account(vault.data.id, tx.vaultAccountId)}
       onBack={canGoBack ? () => void navigate(-1) : undefined}
+      testId={MultisigSelectors.Transaction}
     >
       <Flex
         direction={['column', 'column', 'row']}
