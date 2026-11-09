@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router';
 
 import { PsbtSelectors } from '@tests/selectors/requests.selectors';
@@ -82,6 +82,7 @@ export function PsbtSigner(props: PsbtSignerProps) {
     addressNativeSegwitTotal,
     addressTaprootTotal,
     fee,
+    hasOutputWithoutScript,
     isPsbtMutable,
     psbtInputs,
     psbtOutputs,
@@ -99,6 +100,13 @@ export function PsbtSigner(props: PsbtSignerProps) {
     psbtOutputs.map(output => output.address ?? '')
   );
 
+  useEffect(() => {
+    if (!hasOutputWithoutScript) return;
+    void navigate(RouteUrls.RequestError, {
+      state: { message: 'The PSBT has an output without a script', title: 'Failed request' },
+    });
+  }, [hasOutputWithoutScript, navigate]);
+
   const psbtSignerContext: PsbtSignerContext = {
     addressNativeSegwit,
     addressTaproot,
@@ -110,6 +118,8 @@ export function PsbtSigner(props: PsbtSignerProps) {
     psbtOutputs,
     shouldDefaultToAdvancedView,
   };
+
+  if (hasOutputWithoutScript) return null;
 
   if (shouldDefaultToAdvancedView && psbtRaw) return <Psbt.PsbtRequestRaw psbt={psbtRaw} />;
 

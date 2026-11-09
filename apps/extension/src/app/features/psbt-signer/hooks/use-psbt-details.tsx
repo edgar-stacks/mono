@@ -25,7 +25,11 @@ export function usePsbtDetails({ inputs, indexesToSign, outputs }: UsePsbtDetail
     inputs,
     indexesToSign,
   });
-  const parsedOutputs = useParsedOutputs({ isPsbtMutable, outputs, network });
+  const { hasOutputWithoutScript, parsedOutputs } = useParsedOutputs({
+    isPsbtMutable,
+    outputs,
+    network,
+  });
 
   const {
     inputsTotalNativeSegwit,
@@ -57,6 +61,7 @@ export function usePsbtDetails({ inputs, indexesToSign, outputs }: UsePsbtDetail
     addressNativeSegwitTotal: subtractMoney(inputsTotalNativeSegwit, outputsTotalNativeSegwit),
     addressTaprootTotal: subtractMoney(inputsTotalTaproot, outputsTotalTaproot),
     fee,
+    hasOutputWithoutScript,
     isPsbtMutable,
     psbtInputs: parsedInputs,
     psbtOutputs: parsedOutputs,

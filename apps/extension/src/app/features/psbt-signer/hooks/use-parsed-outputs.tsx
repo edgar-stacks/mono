@@ -4,7 +4,7 @@ import type { TransactionOutput } from '@scure/btc-signer/psbt';
 
 import { getAddressFromOutScript, getBtcSignerLibNetworkConfigByMode } from '@leather.io/bitcoin';
 import type { NetworkConfiguration } from '@leather.io/models';
-import { isDefined, isUndefined } from '@leather.io/utils';
+import { isUndefined } from '@leather.io/utils';
 
 import { logger } from '@shared/logger';
 
@@ -28,27 +28,25 @@ export function useParsedOutputs({ isPsbtMutable, outputs, network }: UseParsedO
   const { address: bitcoinAddressTaproot } = useCurrentAccountTaprootIndexZeroPayer();
   const bitcoinNetwork = getBtcSignerLibNetworkConfigByMode(network.chain.bitcoin.mode);
 
-  return useMemo(
-    () =>
-      outputs
-        .map(output => {
-          if (isUndefined(output.script)) {
-            logger.error('Output has no script');
-            return;
-          }
-          const outputAddress = getAddressFromOutScript(output.script, bitcoinNetwork);
+  return useMemo(() => {
+    const parsedOutputs: PsbtOutput[] = [];
+    for (const output of outputs) {
+      if (isUndefined(output.script)) {
+        logger.error('Output has no script');
+        return { hasOutputWithoutScript: true, parsedOutputs: [] };
+      }
+      const outputAddress = getAddressFromOutScript(output.script, bitcoinNetwork);
 
-          const isCurrentAddress =
-            outputAddress === bitcoinAddressNativeSegwit || outputAddress === bitcoinAddressTaproot;
+      const isCurrentAddress =
+        outputAddress === bitcoinAddressNativeSegwit || outputAddress === bitcoinAddressTaproot;
 
-          return {
-            address: outputAddress,
-            isMutable: isPsbtMutable,
-            toSign: isCurrentAddress,
-            value: Number(output.amount),
-          };
-        })
-        .filter(isDefined),
-    [bitcoinAddressNativeSegwit, bitcoinAddressTaproot, bitcoinNetwork, isPsbtMutable, outputs]
-  );
+      parsedOutputs.push({
+        address: outputAddress,
+        isMutable: isPsbtMutable,
+        toSign: isCurrentAddress,
+        value: Number(output.amount),
+      });
+    }
+    return { hasOutputWithoutScript: false, parsedOutputs };
+  }, [bitcoinAddressNativeSegwit, bitcoinAddressTaproot, bitcoinNetwork, isPsbtMutable, outputs]);
 }
