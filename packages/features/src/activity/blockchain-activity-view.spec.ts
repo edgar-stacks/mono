@@ -9,6 +9,7 @@ import {
 } from '@leather.io/models';
 import { createMoney } from '@leather.io/utils';
 
+import { buildBlockchainActivityStatusHeadline } from './blockchain-activity-copy';
 import { createBlockchainActivityView } from './blockchain-activity-view';
 
 const sbtcAsset: Sip10Asset = {
@@ -414,5 +415,38 @@ describe('createBlockchainActivityView', () => {
     expect(view.chain).toBe('bitcoin');
     expect(view.timestamp).toBe(1727000000);
     expect(view.key).toBe('bitcoin:abc');
+  });
+});
+
+describe('buildBlockchainActivityStatusHeadline', () => {
+  function t(template: string) {
+    return template;
+  }
+
+  it.each([
+    { action: 'send', status: 'pending', expected: 'Sending' },
+    { action: 'send', status: 'success', expected: 'Sent' },
+    { action: 'send', status: 'failed', expected: 'Failed to send' },
+    { action: 'receive', status: 'pending', expected: 'Receiving' },
+    { action: 'swap', status: 'success', expected: 'Swapped' },
+    { action: 'liquid-stack', status: 'pending', expected: 'Liquid stacking' },
+    { action: 'contract-deploy', status: 'pending', expected: 'Deploying' },
+  ] as const)('returns $expected for a $status $action', ({ action, status, expected }) => {
+    expect(buildBlockchainActivityStatusHeadline({ action, status }, t)).toBe(expected);
+  });
+
+  it('falls back to the title for an unmapped call', () => {
+    expect(
+      buildBlockchainActivityStatusHeadline(
+        { action: 'contract-execution', status: 'success', fallbackTitle: 'supply' },
+        t
+      )
+    ).toBe('supply');
+  });
+
+  it('returns an empty headline for an unmapped call with no title', () => {
+    expect(
+      buildBlockchainActivityStatusHeadline({ action: 'contract-execution', status: 'success' }, t)
+    ).toBe('');
   });
 });

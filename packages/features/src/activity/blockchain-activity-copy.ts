@@ -120,6 +120,19 @@ const transferSubtitlesWithoutCounterparty: Record<'sent' | 'received', StatusTe
   },
 };
 
+const transferHeadlines: Record<'send' | 'receive', StatusTemplates> = {
+  send: {
+    pending: 'Sending',
+    success: 'Sent',
+    failed: 'Failed to send',
+  },
+  receive: {
+    pending: 'Receiving',
+    success: 'Received',
+    failed: 'Failed to receive',
+  },
+};
+
 const deployTitles: StatusTemplates = {
   pending: 'Deploying',
   success: 'Deployed',
@@ -198,4 +211,28 @@ export function buildBlockchainActivityDeployTitle(
   t: BlockchainActivityTranslate
 ): string {
   return t(deployTitles[status]);
+}
+
+interface StatusHeadlineParams {
+  action: StacksProtocolAction;
+  status: OnChainActivityStatus;
+  fallbackTitle?: string;
+}
+
+export function buildBlockchainActivityStatusHeadline(
+  { action, status, fallbackTitle }: StatusHeadlineParams,
+  t: BlockchainActivityTranslate
+): string {
+  switch (action) {
+    case 'send':
+    case 'receive':
+      return t(transferHeadlines[action][status]);
+    case 'contract-deploy':
+      return buildBlockchainActivityDeployTitle(status, t);
+    default: {
+      const entry = protocolActionSubtitles[action];
+      if (!entry) return fallbackTitle ?? '';
+      return t(entry[status].replace(viaProtocolSuffix, ''));
+    }
+  }
 }
