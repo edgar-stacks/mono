@@ -166,6 +166,7 @@ function renderSignTxContext(settleOnRejection: boolean): LedgerTxSigningContext
 }
 
 const transportFailureReturnCode = 0xffff;
+const postConditionModeError = 'Ledger transactions require Deny post-condition mode.';
 
 interface SetupSignTransactionParams {
   returnCode: number;
@@ -280,6 +281,39 @@ describe('LedgerSignStacksTxContainer', () => {
     expect(mocks.settleLedgerAction).not.toHaveBeenCalled();
     expect(mocks.disconnect).toHaveBeenCalledOnce();
     expect(mocks.disconnect).toHaveBeenCalledWith({ sessionId: fakeLedgerSessionId });
+  });
+
+  test('shows the rejected step with the reason when Ledger cannot sign the transaction', async () => {
+    const { context } = setupSignTransaction({ returnCode: 0, errorMessage: '' });
+    mocks.signTransaction.mockReturnValue(() => Promise.resolve({ error: postConditionModeError }));
+
+    await act(async () => {
+      await context.signTransaction();
+    });
+
+    expect(mocks.toOperationRejectedStep).toHaveBeenCalledOnce();
+    expect(mocks.toOperationRejectedStep).toHaveBeenCalledWith(postConditionModeError);
+    expect(mocks.settleLedgerAction).not.toHaveBeenCalled();
+    expect(mocks.signWithSignature).not.toHaveBeenCalled();
+    expect(mocks.disconnect).toHaveBeenCalledOnce();
+  });
+
+  test('forwards the reason Ledger cannot sign the transaction to the swap when it opted in', async () => {
+    const { context } = setupSignTransaction({
+      returnCode: 0,
+      errorMessage: '',
+      settleOnRejection: true,
+    });
+    mocks.signTransaction.mockReturnValue(() => Promise.resolve({ error: postConditionModeError }));
+
+    await act(async () => {
+      await context.signTransaction();
+    });
+
+    expectSettledOnceWith({ status: 'failed', error: postConditionModeError });
+    expect(mocks.toOperationRejectedStep).not.toHaveBeenCalled();
+    expect(mocks.signWithSignature).not.toHaveBeenCalled();
+    expect(mocks.disconnect).toHaveBeenCalledOnce();
   });
 
   test('shows the invalid payload step for other flows', async () => {

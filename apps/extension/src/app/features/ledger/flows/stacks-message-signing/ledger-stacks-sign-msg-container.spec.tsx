@@ -276,6 +276,26 @@ describe(LedgerSignMsgContainer.name, () => {
     expect(mocks.disconnect).toHaveBeenCalledWith({ sessionId: fakeLedgerSessionId });
   });
 
+  test('stays on the rejected step with the reason when Ledger cannot sign the message', async () => {
+    const { context } = setupSignMessage();
+    const error = 'Ledger messages must be 270 bytes or fewer.';
+    mocks.signUtf8Message.mockReturnValue(() => Promise.resolve({ error }));
+
+    await act(async () => {
+      await context.signMessage();
+    });
+
+    expect(mocks.toOperationRejectedStep).toHaveBeenCalledOnce();
+    expect(mocks.toOperationRejectedStep).toHaveBeenCalledWith(error);
+    expect(mocks.settleLedgerAction).not.toHaveBeenCalled();
+    expect(mocks.toAwaitingDeviceOperation).not.toHaveBeenCalledWith({
+      hasApprovedOperation: true,
+    });
+    expect(mocks.messageSignedOnLedgerSuccessfully).not.toHaveBeenCalled();
+    expect(mocks.disconnect).toHaveBeenCalledOnce();
+    expect(mocks.disconnect).toHaveBeenCalledWith({ sessionId: fakeLedgerSessionId });
+  });
+
   test('resolves without signing or navigating when the connection is cancelled', async () => {
     const { context } = setupSignMessage();
     mocks.prepareConnection.mockRejectedValue(new Error('Unable to initiate Ledger app'));
