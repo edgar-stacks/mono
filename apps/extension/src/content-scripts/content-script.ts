@@ -9,7 +9,15 @@ import { z } from 'zod/mini';
 import type { RpcResponses } from '@leather.io/rpc';
 
 import { DomEventName } from '@shared/inpage-types';
-import { CONTENT_SCRIPT_PORT } from '@shared/message-types';
+import {
+  isSidePanelOverlayHideMessage,
+  parseSidePanelOverlayShowMessage,
+} from '@shared/utils/side-panel-request-overlay';
+
+import {
+  hideSidePanelRequestOverlay,
+  showSidePanelRequestOverlay,
+} from './side-panel-request-overlay-card';
 
 const inpageScriptUrl = 'inpage.js';
 
@@ -20,24 +28,24 @@ const rpcRequestEnvelopeSchema = z.looseObject({
 });
 type RpcRequestEnvelope = z.infer<typeof rpcRequestEnvelopeSchema>;
 
-let backgroundPort: chrome.runtime.Port;
-
-// Connection to background script - fires onConnect event in background script
-// and establishes two-way communication
-function connect() {
-  backgroundPort = chrome.runtime.connect({ name: CONTENT_SCRIPT_PORT });
-  backgroundPort.onDisconnect.addListener(connect);
-}
-
-connect();
+const isTopFrame = window.top === window;
 
 // Sends message to background script that an event has fired
 function sendMessageToBackground(message: RpcRequestEnvelope) {
-  backgroundPort.postMessage(message);
+  void chrome.runtime.sendMessage(message);
 }
 
 // Receives message from background script to execute in browser
 chrome.runtime.onMessage.addListener((message: RpcResponses) => {
+  const overlayShowMessage = isTopFrame ? parseSidePanelOverlayShowMessage(message) : null;
+  if (overlayShowMessage) {
+    showSidePanelRequestOverlay(overlayShowMessage);
+    return;
+  }
+  if (isTopFrame && isSidePanelOverlayHideMessage(message)) {
+    hideSidePanelRequestOverlay();
+    return;
+  }
   if (message.jsonrpc === '2.0') {
     window.postMessage(message, window.location.origin);
   }

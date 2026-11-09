@@ -4,6 +4,8 @@ import ecc from '@bitcoinerlab/secp256k1';
 import * as bitcoin from 'bitcoinjs-lib';
 
 import { initiateLeatherSessionTrackingPort } from '@shared/analytics/session-duration-tracking';
+import { isSidePanelPage } from '@shared/side-panel/side-panel';
+import { initSidePanelRequestSync } from '@shared/side-panel/side-panel-request-sync';
 import { initSentry } from '@shared/utils/analytics';
 import { warnUsersAboutDevToolsDangers } from '@shared/utils/dev-tools-warning-log';
 
@@ -24,6 +26,7 @@ initSentry();
 warnUsersAboutDevToolsDangers();
 setDebugOnGlobal();
 initiateLeatherSessionTrackingPort();
+if (isSidePanelPage()) void initSidePanelRequestSync();
 
 declare global {
   interface Window {

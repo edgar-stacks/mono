@@ -46,6 +46,18 @@ export const globalCss = defineGlobalStyles({
       height: '100%',
     },
   },
+  '.mode__side-panel': {
+    '&, body': {
+      height: '100%',
+      width: '100%',
+      minWidth: 'unset',
+      maxWidth: 'unset',
+      backgroundColor: 'ink.background-primary',
+    },
+    '#app, .radix-themes': {
+      height: '100%',
+    },
+  },
   '.mode__action-popup': {
     'html,body': {
       minWidth: tokens.sizes.popupWidth.value,

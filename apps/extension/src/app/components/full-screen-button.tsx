@@ -2,6 +2,7 @@ import { useLocation } from 'react-router';
 
 import { ExpandIcon, IconButton, Tooltip } from '@leather.io/ui';
 
+import { isSidePanelPage } from '@shared/side-panel/side-panel';
 import { analytics } from '@shared/utils/analytics';
 
 import { whenPageMode } from '@app/common/utils';
@@ -32,6 +33,7 @@ export function FullScreenButton() {
               });
               void analytics.identify(undefined, { hasVisitedFullPageMode: true });
               void openIndexPageInNewTab(location.pathname);
+              if (isSidePanelPage()) window.close();
             }}
           >
             <ExpandIcon />

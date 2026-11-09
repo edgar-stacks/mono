@@ -4,6 +4,12 @@ import { buildMetadata } from './tooling/build-metadata';
 
 export const inpageBuildMatch = 'https://inpage.invalid/*';
 
+const sidePanelOverlayResources = [
+  'assets/icons/leather-icon-128.png',
+  'assets/fonts/diatype/diatype-regular.woff2',
+  'assets/fonts/diatype/diatype-medium.woff2',
+];
+
 interface CreateManifestOptions {
   includeInpageBuildEntry?: boolean;
   previewRelease: boolean;
@@ -46,7 +52,7 @@ export function createManifest({
     version: version.includes('-') ? version.split('-')[0] : version,
     name: getManifestName(isProduction, previewRelease),
     description: 'Leather Bitcoin Wallet - Your Bitcoin Wallet for DeFi, NFTs, and dApps',
-    permissions: ['contextMenus', 'storage', 'unlimitedStorage', 'notifications'],
+    permissions: ['contextMenus', 'storage', 'unlimitedStorage', 'notifications', 'sidePanel'],
     commands: {
       _execute_browser_action: {
         suggested_key: {
@@ -64,6 +70,9 @@ export function createManifest({
       default_title: 'Leather',
       default_popup: 'action-popup.html',
       default_icon: generateImageAssetUrlsWithSuffix(iconSuffix),
+    },
+    side_panel: {
+      default_path: 'side-panel.html',
     },
     options_ui: {
       page: 'index.html',
@@ -89,6 +98,11 @@ export function createManifest({
     web_accessible_resources: [
       {
         resources: ['inpage.js'],
+        matches: ['*://*/*'],
+        use_dynamic_url: false,
+      },
+      {
+        resources: sidePanelOverlayResources,
         matches: ['*://*/*'],
         use_dynamic_url: false,
       },

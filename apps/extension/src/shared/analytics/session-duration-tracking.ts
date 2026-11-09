@@ -1,8 +1,10 @@
 import { isDefined } from '@leather.io/utils';
 
+import { sidePanelPath } from '@shared/side-panel/side-panel';
+
 const sessionTrackingPort = 'leather-session';
 
-type SessionFrame = 'fullscreen' | 'action-popup' | 'window-popup';
+type SessionFrame = 'fullscreen' | 'action-popup' | 'window-popup' | 'side-panel';
 
 export function initiateLeatherSessionTrackingPort() {
   chrome.runtime.connect({ name: sessionTrackingPort });
@@ -14,6 +16,7 @@ function createOriginUrlCheckFn(pathName: string) {
 const isFullPage = createOriginUrlCheckFn('index.html');
 const isActionPopup = createOriginUrlCheckFn('action-popup.html');
 const isWindowPopup = createOriginUrlCheckFn('popup.html');
+const isSidePanel = createOriginUrlCheckFn(sidePanelPath);
 
 function inferFrameType(sender: chrome.runtime.MessageSender) {
   if (!sender || !sender.url) return null;
@@ -21,6 +24,7 @@ function inferFrameType(sender: chrome.runtime.MessageSender) {
   if (isFullPage(url.pathname)) return 'fullscreen';
   if (isActionPopup(url.pathname)) return 'action-popup';
   if (isWindowPopup(url.pathname)) return 'window-popup';
+  if (isSidePanel(url.pathname)) return 'side-panel';
   return null;
 }
 
@@ -39,8 +43,7 @@ export function listenForSessionDurationPort({ onSessionEnd }: ListenForSessionD
     const sender = port.sender;
     if (!sender || !sender.origin) return;
 
-    if (port.name !== sessionTrackingPort && !chrome.runtime.getURL('').startsWith(sender.origin))
-      return;
+    if (port.name !== sessionTrackingPort) return;
 
     tabIdSessionStartMap.set(getOriginTabIdWithActionPopupFallback(sender), new Date().valueOf());
 
