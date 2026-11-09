@@ -12,11 +12,13 @@ const mocks = vi.hoisted(() => ({
     vi.fn<
       (
         port: chrome.runtime.Port,
-        otherParams: [string, string][]
+        otherParams: [string, string][],
+        options?: { network?: string }
       ) => Promise<{ frameId: number; urlParams: URLSearchParams; tabId: number }>
     >(),
   triggerRequestPopupWindowOpen: vi.fn(),
   sendErrorResponseOnUserPopupClose: vi.fn(),
+  validateRequestNetwork: vi.fn(),
   trackRpcRequestError: vi.fn(),
   trackRpcRequestSuccess: vi.fn(),
   sendMessage: vi.fn(),
@@ -35,6 +37,7 @@ vi.mock('../rpc-request-utils', () => ({
     mocks.createConnectingAppSearchParamsWithLastKnownAccount,
   triggerRequestPopupWindowOpen: mocks.triggerRequestPopupWindowOpen,
   sendErrorResponseOnUserPopupClose: mocks.sendErrorResponseOnUserPopupClose,
+  validateRequestNetwork: mocks.validateRequestNetwork,
 }));
 
 vi.mock('../rpc-helpers', () => ({
@@ -65,9 +68,23 @@ function buildRequestWithoutParams(): SendTransferRequest {
   return requestWithoutParams;
 }
 
-function invokeHandler(port: chrome.runtime.Port) {
+function invokeHandler(port: chrome.runtime.Port, sendTransferRequest = request) {
   const [, handler] = sendTransferHandler;
-  return handler(request, port);
+  return handler(sendTransferRequest, port);
+}
+
+function withParams(params: Partial<SendTransferRequest['params']>): SendTransferRequest {
+  return { ...request, params: { ...request.params, ...params } };
+}
+
+function getForwardedRequestParams() {
+  const [, otherParams] = mocks.createConnectingAppSearchParamsWithLastKnownAccount.mock.calls[0];
+  return new URLSearchParams(otherParams);
+}
+
+function getForwardedOptions() {
+  const [, , options] = mocks.createConnectingAppSearchParamsWithLastKnownAccount.mock.calls[0];
+  return options;
 }
 
 function objectContaining(expected: Record<string, unknown>): unknown {
@@ -83,6 +100,7 @@ describe('sendTransferHandler', () => {
       tabId,
     });
     mocks.triggerRequestPopupWindowOpen.mockResolvedValue({ id: 1 });
+    mocks.validateRequestNetwork.mockResolvedValue({ status: 'success' });
   });
 
   afterEach(() => {
@@ -110,5 +128,37 @@ describe('sendTransferHandler', () => {
       }),
       { frameId }
     );
+  });
+
+  test('forwards the requested network to the shared resolution', async () => {
+    await invokeHandler(buildPort(), withParams({ network: 'my-custom-network' }));
+
+    expect(mocks.validateRequestNetwork).toHaveBeenCalledWith(
+      expect.objectContaining({ network: 'my-custom-network' })
+    );
+    expect(getForwardedOptions()).toEqual({ network: 'my-custom-network' });
+    expect(getForwardedRequestParams().has('network')).toBe(false);
+  });
+
+  test('leaves the network unset when the request omits it', async () => {
+    await invokeHandler(buildPort(), withParams({ network: undefined }));
+
+    expect(getForwardedOptions()).toEqual({ network: undefined });
+    expect(getForwardedRequestParams().has('network')).toBe(false);
+  });
+
+  test('rejects an unknown network without opening the popup', async () => {
+    mocks.validateRequestNetwork.mockResolvedValue({ status: 'failure' });
+
+    await invokeHandler(buildPort(), withParams({ network: 'Testnet' }));
+
+    expect(mocks.createConnectingAppSearchParamsWithLastKnownAccount).not.toHaveBeenCalled();
+    expect(mocks.triggerRequestPopupWindowOpen).not.toHaveBeenCalled();
+  });
+
+  test('honours an explicit account 0', async () => {
+    await invokeHandler(buildPort(), withParams({ account: 0 }));
+
+    expect(getForwardedRequestParams().get('accountIndex')).toBe('0');
   });
 });

@@ -1,7 +1,9 @@
 import type { To } from 'react-router';
 
+import { values } from 'remeda';
 import { type z } from 'zod';
 
+import { WalletDefaultNetworkConfigurationIds } from '@leather.io/models';
 import {
   RpcErrorCode,
   type RpcMethodNames,
@@ -16,10 +18,7 @@ import {
   type OriginatingFrame,
   sendMessageToOriginatingFrame,
 } from '@shared/messaging/send-message-to-originating-frame';
-import {
-  getPermissionsByOrigin,
-  isConnectedToExistingWallet,
-} from '@shared/permissions/permission.helpers';
+import { isConnectedToExistingWallet } from '@shared/permissions/permission.helpers';
 import { type RouteUrls } from '@shared/route-urls';
 import {
   RpcErrorMessage,
@@ -132,7 +131,7 @@ export function listenForOriginTabClose({ tabId }: ListenForOriginTabCloseArgs) 
 
 export type RequestParams = [string, string][];
 
-export function createConnectingAppMetadataSearchParams(
+function createConnectingAppMetadataSearchParams(
   port: chrome.runtime.Port,
   otherParams: RequestParams = []
 ) {
@@ -149,25 +148,42 @@ export function createConnectingAppMetadataSearchParams(
   return { urlParams, origin, frameId, tabId };
 }
 
+type MaybePrePolicyRootState = Omit<RootState, 'policy'> & {
+  policy?: RootState['policy'];
+};
+
+interface ConnectingAppSearchParamsOptions {
+  network?: string;
+}
+
 export async function createConnectingAppSearchParamsWithLastKnownAccount(
   port: chrome.runtime.Port,
-  otherParams: RequestParams = []
+  otherParams: RequestParams = [],
+  { network }: ConnectingAppSearchParamsOptions = {}
 ) {
   const { urlParams, origin, frameId, tabId } = createConnectingAppMetadataSearchParams(
     port,
     otherParams
   );
+  let boundPolicyNetworkId: string | undefined;
   if (origin) {
-    const appPermissions = await getPermissionsByOrigin(getHostnameFromPort(port));
-    if (appPermissions) {
+    const state: MaybePrePolicyRootState | null = await getRootState();
+    const appPermissions = state?.appPermissions.entities[getHostnameFromPort(port)];
+    if (appPermissions && Number.isInteger(appPermissions.accountIndex)) {
       const hasRequestScopedAccount = urlParams.has('accountIndex');
       if (!hasRequestScopedAccount)
         urlParams.set('accountIndex', appPermissions.accountIndex.toString());
       urlParams.set('fingerprint', appPermissions.fingerprint);
-      if (!hasRequestScopedAccount && appPermissions.policyId)
+      if (!hasRequestScopedAccount && appPermissions.policyId) {
         urlParams.set('policyId', appPermissions.policyId);
+        boundPolicyNetworkId = state?.policy?.entities[appPermissions.policyId]?.networkId;
+      }
     }
   }
+  urlParams.set(
+    'network',
+    network ?? boundPolicyNetworkId ?? WalletDefaultNetworkConfigurationIds.mainnet
+  );
   return { urlParams, origin, frameId, tabId };
 }
 
@@ -227,6 +243,43 @@ export function validateRequestParams({
     return { status: 'failure' };
   }
   return { status: 'success' };
+}
+
+const defaultNetworkIds: string[] = values(WalletDefaultNetworkConfigurationIds);
+
+function formatUnknownNetworkMessage(network: string) {
+  return `${RpcErrorMessage.UnknownNetwork}: '${network}'. Expected one of the wallet's default networks (${defaultNetworkIds.join(', ')}) or the id of a custom network added to the wallet`;
+}
+
+async function isKnownNetworkId(network: string) {
+  if (defaultNetworkIds.includes(network)) return true;
+  const state = await getRootState();
+  return state?.networks.ids.includes(network) ?? false;
+}
+
+interface ValidateRequestNetworkArgs {
+  id: string;
+  method: RpcMethodNames;
+  network: string | undefined;
+  port: chrome.runtime.Port;
+}
+export async function validateRequestNetwork({
+  id,
+  method,
+  network,
+  port,
+}: ValidateRequestNetworkArgs): Promise<{ status: ValidationResult }> {
+  if (isUndefined(network) || (await isKnownNetworkId(network))) return { status: 'success' };
+
+  void trackRpcRequestError({ endpoint: method, error: RpcErrorMessage.UnknownNetwork });
+  void sendMessageToOriginatingFrame(
+    getOriginatingFrameFromPort(port),
+    createRpcErrorResponse(method, {
+      id,
+      error: { code: RpcErrorCode.INVALID_PARAMS, message: formatUnknownNetworkMessage(network) },
+    })
+  );
+  return { status: 'failure' };
 }
 
 const walletNoLongerAvailableMessage =

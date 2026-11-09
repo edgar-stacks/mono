@@ -14,11 +14,13 @@ const mocks = vi.hoisted(() => ({
     vi.fn<
       (
         port: chrome.runtime.Port,
-        otherParams: [string, string][]
+        otherParams: [string, string][],
+        options?: { network?: string }
       ) => Promise<{ frameId: number; urlParams: URLSearchParams; tabId: number }>
     >(),
   triggerRequestPopupWindowOpen: vi.fn(),
   sendErrorResponseOnUserPopupClose: vi.fn(),
+  validateRequestNetwork: vi.fn(),
   trackRpcRequestError: vi.fn(),
   trackRpcRequestSuccess: vi.fn(),
   sendMessage: vi.fn(),
@@ -37,6 +39,7 @@ vi.mock('../rpc-request-utils', () => ({
     mocks.createConnectingAppSearchParamsWithLastKnownAccount,
   triggerRequestPopupWindowOpen: mocks.triggerRequestPopupWindowOpen,
   sendErrorResponseOnUserPopupClose: mocks.sendErrorResponseOnUserPopupClose,
+  validateRequestNetwork: mocks.validateRequestNetwork,
 }));
 
 vi.mock('../rpc-helpers', () => ({
@@ -97,6 +100,7 @@ describe('signPsbtHandler', () => {
       tabId,
     });
     mocks.triggerRequestPopupWindowOpen.mockResolvedValue({ id: 1 });
+    mocks.validateRequestNetwork.mockResolvedValue({ status: 'success' });
   });
 
   afterEach(() => {

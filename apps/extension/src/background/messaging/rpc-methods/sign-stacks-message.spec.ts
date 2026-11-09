@@ -3,20 +3,23 @@ import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { RpcErrorCode } from '@leather.io/rpc';
 
 import { createMockPort } from '../create-mock-port';
-import { stxSignMessageHandler } from './sign-stacks-message';
+import { stxSignMessageHandler, stxSignStructuredMessageHandler } from './sign-stacks-message';
 
 type StxSignMessageRequest = Parameters<(typeof stxSignMessageHandler)[1]>[0];
+type StxSignStructuredMessageRequest = Parameters<(typeof stxSignStructuredMessageHandler)[1]>[0];
 
 const mocks = vi.hoisted(() => ({
   createConnectingAppSearchParamsWithLastKnownAccount:
     vi.fn<
       (
         port: chrome.runtime.Port,
-        otherParams: [string, string][]
+        otherParams: [string, string][],
+        options?: { network?: string }
       ) => Promise<{ frameId: number; urlParams: URLSearchParams; tabId: number }>
     >(),
   triggerRequestPopupWindowOpen: vi.fn(),
   sendErrorResponseOnUserPopupClose: vi.fn(),
+  validateRequestNetwork: vi.fn(),
   trackRpcRequestError: vi.fn(),
   trackRpcRequestSuccess: vi.fn(),
   sendMessage: vi.fn(),
@@ -37,6 +40,7 @@ vi.mock('../rpc-request-utils', () => ({
     mocks.createConnectingAppSearchParamsWithLastKnownAccount,
   triggerRequestPopupWindowOpen: mocks.triggerRequestPopupWindowOpen,
   sendErrorResponseOnUserPopupClose: mocks.sendErrorResponseOnUserPopupClose,
+  validateRequestNetwork: mocks.validateRequestNetwork,
 }));
 
 vi.mock('../rpc-helpers', () => ({
@@ -83,6 +87,7 @@ describe('stxSignMessageHandler', () => {
       tabId,
     });
     mocks.triggerRequestPopupWindowOpen.mockResolvedValue({ id: 1 });
+    mocks.validateRequestNetwork.mockResolvedValue({ status: 'success' });
   });
 
   afterEach(() => {
@@ -113,5 +118,69 @@ describe('stxSignMessageHandler', () => {
     expect(mocks.sendMessage).not.toHaveBeenCalled();
     expect(mocks.triggerRequestPopupWindowOpen).toHaveBeenCalled();
     expect(mocks.sendErrorResponseOnUserPopupClose).toHaveBeenCalled();
+  });
+
+  test('forwards the requested network to the shared resolution', async () => {
+    await invokeHandler(makeRequest({ message: 'hello', messageType: 'utf8', network: 'testnet' }));
+
+    const [, otherParams, options] =
+      mocks.createConnectingAppSearchParamsWithLastKnownAccount.mock.calls[0];
+    expect(options).toEqual({ network: 'testnet' });
+    expect(new URLSearchParams(otherParams).has('network')).toBe(false);
+  });
+
+  test('rejects an unknown network without opening the popup', async () => {
+    mocks.validateRequestNetwork.mockResolvedValue({ status: 'failure' });
+
+    await invokeHandler(makeRequest({ message: 'hello', messageType: 'utf8', network: 'Testnet' }));
+
+    expect(mocks.triggerRequestPopupWindowOpen).not.toHaveBeenCalled();
+  });
+});
+
+describe('stxSignStructuredMessageHandler', () => {
+  beforeEach(() => {
+    vi.stubGlobal('chrome', { tabs: { sendMessage: mocks.sendMessage } });
+    mocks.createConnectingAppSearchParamsWithLastKnownAccount.mockResolvedValue({
+      frameId,
+      urlParams: new URLSearchParams(),
+      tabId,
+    });
+    mocks.triggerRequestPopupWindowOpen.mockResolvedValue({ id: 1 });
+    mocks.validateRequestNetwork.mockResolvedValue({ status: 'success' });
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.clearAllMocks();
+  });
+
+  function invokeStructuredHandler(network?: string) {
+    const [, handler] = stxSignStructuredMessageHandler;
+    const request: StxSignStructuredMessageRequest = {
+      jsonrpc: '2.0',
+      id: 'req-2',
+      method: 'stx_signStructuredMessage',
+      params: { domain: '0c', message: '0c', network },
+    };
+    return handler(request, buildPort());
+  }
+
+  test('validates and forwards the requested network', async () => {
+    await invokeStructuredHandler('testnet');
+
+    expect(mocks.validateRequestNetwork).toHaveBeenCalledWith(
+      expect.objectContaining({ method: 'stx_signStructuredMessage', network: 'testnet' })
+    );
+    const [, , options] = mocks.createConnectingAppSearchParamsWithLastKnownAccount.mock.calls[0];
+    expect(options).toEqual({ network: 'testnet' });
+  });
+
+  test('rejects an unknown network without opening the popup', async () => {
+    mocks.validateRequestNetwork.mockResolvedValue({ status: 'failure' });
+
+    await invokeStructuredHandler('unknown');
+
+    expect(mocks.triggerRequestPopupWindowOpen).not.toHaveBeenCalled();
   });
 });

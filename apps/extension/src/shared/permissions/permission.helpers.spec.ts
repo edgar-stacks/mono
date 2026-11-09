@@ -45,6 +45,14 @@ describe('isConnectedToExistingWallet', () => {
     );
   });
 
+  test.each([undefined, '0', 1.5])('returns false when the stored accountIndex is %j', value => {
+    const permission = createPermission();
+    Reflect.set(permission, 'accountIndex', value);
+    expect(isConnectedToExistingWallet(permission, createWalletEntities([fingerprint]))).toBe(
+      false
+    );
+  });
+
   test('returns true when the permission is granted and its wallet still exists', () => {
     const permission = createPermission({ fingerprint });
     expect(isConnectedToExistingWallet(permission, createWalletEntities([fingerprint]))).toBe(true);

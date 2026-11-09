@@ -1,4 +1,5 @@
-import type { BrowserContext, Page } from '@playwright/test';
+import type { BrowserContext, Page, Request } from '@playwright/test';
+import { TransactionVersion } from '@stacks/network';
 import {
   PayloadType,
   type StacksTransactionWire,
@@ -14,7 +15,7 @@ import { getConnectedTestAppPermissionsState } from '@tests/page-object-models/o
 import { SharedComponentsSelectors } from '@tests/selectors/shared-component.selectors';
 import { z } from 'zod';
 
-import type { RpcParams, stxTransferStx } from '@leather.io/rpc';
+import { RpcErrorCode, type RpcParams, type stxTransferStx } from '@leather.io/rpc';
 
 import { RpcErrorMessage } from '@shared/rpc/methods/validation.utils';
 
@@ -23,6 +24,12 @@ import { test } from '../../fixtures/fixtures';
 const broadcastRequestBodySchema = z.object({ tx: z.string() });
 
 const transferStxResultSchema = z.object({ txid: z.string(), transaction: z.string().optional() });
+
+function parseBroadcastedTx(broadcastRequest: Request) {
+  const requestBody = broadcastRequest.postData();
+  if (!requestBody) throw new Error('Broadcast request has no body');
+  return deserializeTransaction(broadcastRequestBodySchema.parse(JSON.parse(requestBody)).tx);
+}
 
 function getTokenTransferPayload(tx: StacksTransactionWire): TokenTransferPayloadWire {
   if (tx.payload.payloadType !== PayloadType.TokenTransfer) {
@@ -215,5 +222,57 @@ test.describe('RPC: stx_transferStx', () => {
         message: RpcErrorMessage.UserRejectedOperation,
       },
     });
+  });
+});
+
+test.describe('RPC: stx_transferStx with the wallet on testnet', () => {
+  test.beforeEach(async ({ extensionId, globalPage, onboardingPage, page }) => {
+    await globalPage.setupAndUseApiCalls(extensionId);
+    await onboardingPage.signInWithTestAccount(extensionId, {
+      ...getConnectedTestAppPermissionsState(),
+      networks: { ids: [], entities: {}, currentNetworkId: 'testnet4' },
+    });
+    await page.goto('localhost:3000');
+  });
+
+  test('a request without a network opens on mainnet', async ({ page, context }) => {
+    const mockedTxid = await mockStacksBroadcastTransaction(context);
+
+    async function approveAndCaptureBroadcastedTx() {
+      const popup = await context.waitForEvent('page');
+      await test.expect(popup.getByText('0.0001 STX', { exact: true })).toBeVisible();
+      const broadcastRequestPromise = popup.waitForRequest('**/v2/transactions');
+      await popup.getByText('Approve', { exact: true }).click();
+      return parseBroadcastedTx(await broadcastRequestPromise);
+    }
+
+    const [result, broadcastedTx] = await Promise.all([
+      page.evaluate(requestLeatherProvider, {
+        method: 'stx_transferStx',
+        params: { amount: 100, recipient: TEST_ACCOUNT_2_STX_ADDRESS },
+      }),
+      approveAndCaptureBroadcastedTx(),
+    ]);
+
+    test.expect(broadcastedTx.transactionVersion).toEqual(TransactionVersion.Mainnet);
+    test.expect(transferStxResultSchema.parse(result.result).txid).toEqual(mockedTxid);
+  });
+
+  test('a request with an unknown network is rejected without opening a popup', async ({
+    page,
+    context,
+  }) => {
+    const pagesBeforeRequest = context.pages().length;
+
+    const result = await page.evaluate(requestLeatherProvider, {
+      method: 'stx_transferStx',
+      params: { amount: 100, recipient: TEST_ACCOUNT_2_STX_ADDRESS, network: 'Testnet' },
+    });
+
+    test.expect(result.error).toMatchObject({
+      code: RpcErrorCode.INVALID_PARAMS,
+      message: test.expect.stringContaining("Unknown network: 'Testnet'."),
+    });
+    test.expect(context.pages()).toHaveLength(pagesBeforeRequest);
   });
 });

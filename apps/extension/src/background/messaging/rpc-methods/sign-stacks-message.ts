@@ -7,7 +7,7 @@ import {
   stxSignMessage,
   stxSignStructuredMessage,
 } from '@leather.io/rpc';
-import { isDefined, isString, isUndefined } from '@leather.io/utils';
+import { isString, isUndefined } from '@leather.io/utils';
 
 import { sendMessageToOriginatingFrame } from '@shared/messaging/send-message-to-originating-frame';
 import { RouteUrls } from '@shared/route-urls';
@@ -26,6 +26,7 @@ import {
   getOriginatingFrameFromPort,
   sendErrorResponseOnUserPopupClose,
   triggerRequestPopupWindowOpen,
+  validateRequestNetwork,
 } from '../rpc-request-utils';
 
 async function handleRpcSignStacksMessage(
@@ -61,11 +62,20 @@ async function handleRpcSignStacksMessage(
     return;
   }
 
+  const { status } = await validateRequestNetwork({
+    id: request.id,
+    method,
+    network: request.params.network,
+    port,
+  });
+  if (status === 'failure') return;
+
   void trackRpcRequestSuccess({ endpoint: method });
 
   const { frameId, urlParams, tabId } = await createConnectingAppSearchParamsWithLastKnownAccount(
     port,
-    requestParams
+    requestParams,
+    { network: request.params.network }
   );
 
   const { id } = await triggerRequestPopupWindowOpen(RouteUrls.RpcStacksSignature, urlParams);
@@ -99,10 +109,6 @@ export const stxSignMessageHandler = defineRpcRequestHandler(
       ['messageType', request.params.messageType ?? 'utf8'],
       ['requestId', request.id],
     ];
-
-    if (isDefined(request.params.network)) {
-      requestParams.push(['network', request.params.network.toString()]);
-    }
 
     if ('domain' in request.params) {
       requestParams.push(['domain', request.params.domain.toString()]);

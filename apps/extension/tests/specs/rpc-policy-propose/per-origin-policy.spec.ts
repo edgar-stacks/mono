@@ -81,6 +81,17 @@ async function approveGetAddresses(context: BrowserContext) {
   await button.click();
 }
 
+async function approveGetAddressesWithSinglesigAccount(context: BrowserContext) {
+  const popup = await context.waitForEvent('page');
+  const currentAccount = popup.getByTestId('switch-account-item-0');
+  await expect(currentAccount).toBeVisible({ timeout: 10_000 });
+  await currentAccount.click();
+  await popup.getByRole('dialog').getByTestId('switch-account-item-0').click();
+  const button = popup.getByTestId('get-addresses-approve-button');
+  await expect(button).toBeVisible();
+  await button.click();
+}
+
 async function clickPropose(context: BrowserContext) {
   const popup = await context.waitForEvent('page');
   await popup.getByText('Propose transaction', { exact: true }).click({ timeout: 20_000 });
@@ -177,6 +188,35 @@ test.describe('RPC: per-origin policy binding', () => {
     });
   });
 
+  test('a policy-bound request without a network proposes on the policy network', async ({
+    page,
+    context,
+    extensionId,
+    onboardingPage,
+  }) => {
+    test.slow();
+
+    await mockProposeMultisigTransaction(context);
+    await mockFundedStacksAddress(context, stacksPolicy.address);
+    await onboardingPage.signInWithTestAccount(extensionId, {
+      ...getConnectedTestAppPermissionsState({ policyId: stacksPolicy.id }),
+      ...policyStateOverrides({ policies: [stacksPolicy] }),
+      networks: { ids: [], entities: {}, currentNetworkId: 'testnet' },
+    });
+    await page.goto('localhost:3000');
+
+    const [result] = await Promise.all([
+      requestStxCallContract(page, TEST_ACCOUNT_2_STX_ADDRESS),
+      clickPropose(context),
+    ]);
+
+    assertExistence(result, 'Expected result');
+    test.expect(result.result).toMatchObject({
+      proposalId: exampleMultisigTransactionId,
+      status: 'proposed',
+    });
+  });
+
   test('re-connecting single-sig clears a previously bound policy', async ({
     page,
     context,
@@ -192,7 +232,7 @@ test.describe('RPC: per-origin policy binding', () => {
     await page.goto('localhost:3000');
 
     const requestPromise = initiateGetAddresses(page, { allowPolicyAccounts: true });
-    await approveGetAddresses(context);
+    await approveGetAddressesWithSinglesigAccount(context);
     const connectResult = await requestPromise;
     test
       .expect(getResponseAddresses(connectResult).some(address => address.kind === 'single-sig'))

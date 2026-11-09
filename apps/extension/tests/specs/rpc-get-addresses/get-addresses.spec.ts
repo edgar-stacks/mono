@@ -197,3 +197,24 @@ getAddressesMethods.forEach(method => {
     });
   });
 });
+
+test.describe('Rpc: getAddresses with the wallet on testnet', () => {
+  test.beforeEach(async ({ extensionId, globalPage, onboardingPage }) => {
+    await globalPage.setupAndUseApiCalls(extensionId);
+    await onboardingPage.signInWithTestAccount(extensionId, {
+      networks: { ids: [], entities: {}, currentNetworkId: 'testnet4' },
+    });
+  });
+
+  test('it returns mainnet addresses when the request has no params', async ({ page, context }) => {
+    await page.goto('localhost:3000');
+    const getAddressesPromise = initiateGetAddresses(page, 'getAddresses');
+    const popup = await interceptRequestPopup(context);
+    await clickConnectLeatherButton(popup);
+
+    const result = await getAddressesPromise;
+    test
+      .expect(getResponseAddresses(result)[0].address)
+      .toEqual('bc1q530dz4h80kwlzywlhx2qn0k6vdtftd93c499yq');
+  });
+});

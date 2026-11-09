@@ -12,10 +12,11 @@ import { RouteUrls } from '@shared/route-urls';
 import { defineRpcRequestHandler } from '../define-rpc-request-handler';
 import { trackRpcRequestError, trackRpcRequestSuccess } from '../rpc-helpers';
 import {
-  createConnectingAppMetadataSearchParams,
+  createConnectingAppSearchParamsWithLastKnownAccount,
   getOriginatingFrameFromPort,
   sendErrorResponseOnUserPopupClose,
   triggerRequestPopupWindowOpen,
+  validateRequestNetwork,
   validateRequestParams,
 } from '../rpc-request-utils';
 
@@ -59,11 +60,22 @@ export const btcAddAccountHandler = defineRpcRequestHandler(
       return;
     }
 
-    const { frameId, urlParams, tabId } = createConnectingAppMetadataSearchParams(port, [
-      ['requestId', request.id],
-      ['rpcRequest', encodeBase64Json(request)],
-    ]);
-    if (request.params.network) urlParams.append('network', request.params.network);
+    const { status: networkStatus } = await validateRequestNetwork({
+      id: request.id,
+      method: request.method,
+      network: request.params.network,
+      port,
+    });
+    if (networkStatus === 'failure') return;
+
+    const { frameId, urlParams, tabId } = await createConnectingAppSearchParamsWithLastKnownAccount(
+      port,
+      [
+        ['requestId', request.id],
+        ['rpcRequest', encodeBase64Json(request)],
+      ],
+      { network: request.params.network }
+    );
 
     const { id } = await triggerRequestPopupWindowOpen(RouteUrls.RpcBtcAddAccount, urlParams);
     void trackRpcRequestSuccess({ endpoint: request.method });
