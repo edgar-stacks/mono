@@ -1,24 +1,18 @@
-import { UserInteractionRequired } from '@ledgerhq/device-management-kit';
-import { WalletPolicy } from '@ledgerhq/device-signer-kit-bitcoin';
-
 import {
-  buildLedgerWalletPolicy,
   compileWshDescriptor,
   findAccountDescriptorKey,
-  toLedgerSignableDescriptor,
+  toWalletPolicyDescriptor,
 } from '@leather.io/bitcoin';
+import {
+  type HardwareBitcoinSigner,
+  type OperationContext,
+  descriptorHasNonAccountRawKey,
+} from '@leather.io/ledger';
 
 import { useCurrentNativeSegwitAccount } from '@app/store/accounts/blockchain/bitcoin/native-segwit-account.hooks';
 
 import { useLedgerSteps } from '../flow/ledger-flow.context';
-import {
-  getMasterFingerprintHex,
-  getWalletAddressOnDevice,
-  registerLedgerWalletPolicyPrompt,
-  registerWalletPolicy,
-} from '../utils/bitcoin-signer-kit-utils';
-import type { LedgerBitcoinApp } from '../utils/ledger-app';
-import { descriptorHasNonAccountRawKey } from '../utils/ledger-descriptor-address';
+import { registerLedgerWalletPolicyPrompt } from '../utils/generic-ledger-utils';
 
 interface DisplayLedgerDescriptorAddressOptions {
   onWalletRegistered?(): void;
@@ -37,7 +31,8 @@ export function useDisplayLedgerDescriptorAddress() {
   const ledgerNavigate = useLedgerSteps();
 
   return async (
-    app: LedgerBitcoinApp,
+    signer: HardwareBitcoinSigner,
+    ctx: OperationContext,
     descriptor: string,
     { onWalletRegistered }: DisplayLedgerDescriptorAddressOptions = {}
   ): Promise<string> => {
@@ -56,27 +51,23 @@ export function useDisplayLedgerDescriptorAddress() {
         'Ledger cannot display this address: another signer is a raw public key. Ledger requires every key to be an extended public key (xpub).'
       );
 
-    const ledgerDescriptor = toLedgerSignableDescriptor(
+    const policyDescriptor = toWalletPolicyDescriptor(
       descriptor,
       accountDescriptorKey.key,
       nativeSegwitAccount.xpub,
       nativeSegwitAccount.keyOrigin
     );
 
-    const fingerprint = await getMasterFingerprintHex(app);
-    const policy = buildLedgerWalletPolicy(ledgerDescriptor, fingerprint);
-    const registeredWallet = await registerWalletPolicy(
-      app,
-      new WalletPolicy(policy.name, policy.descriptorTemplate, policy.keys),
+    return signer.showAddress(
+      { kind: 'policy', policyDescriptor, ...compiled.keyPathIndexes },
       {
-        onRequiredUserInteraction(interaction) {
-          if (interaction !== UserInteractionRequired.RegisterWallet) return;
-          ledgerNavigate.toDeviceBusyStep(registerLedgerWalletPolicyPrompt);
+        ...ctx,
+        onInteraction({ type }) {
+          if (type === 'approve-policy')
+            ledgerNavigate.toDeviceBusyStep(registerLedgerWalletPolicyPrompt);
+          if (type === 'verify-address') onWalletRegistered?.();
         },
       }
     );
-    onWalletRegistered?.();
-
-    return getWalletAddressOnDevice(app, registeredWallet, compiled.keyPathIndexes);
   };
 }

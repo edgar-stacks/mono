@@ -1,24 +1,17 @@
 import { useNavigate } from 'react-router';
 
-import { bitcoinNetworkModeToCoreNetworkMode } from '@leather.io/bitcoin';
+import { getBitcoinSigner } from '@leather.io/ledger';
+import { delay } from '@leather.io/utils';
 
-import { useLedgerDmk } from '@app/features/ledger/dmk/ledger-dmk.context';
 import { useLedgerFlow, useLedgerSteps } from '@app/features/ledger/flow/ledger-flow.context';
-import { pullBitcoinKeysFromLedgerDevice } from '@app/features/ledger/flows/request-bitcoin-keys/request-bitcoin-keys.utils';
 import { type LedgerRequestKeysContext } from '@app/features/ledger/generic-flows/request-keys/ledger-request-keys.context';
 import { RequestKeysFlow } from '@app/features/ledger/generic-flows/request-keys/request-keys-flow';
+import { useHardwareWalletOperation } from '@app/features/ledger/hardware-wallet/use-hardware-wallet-operation';
+import { useLedgerAnalytics } from '@app/features/ledger/hooks/use-ledger-analytics.hook';
 import {
   defaultNumberOfKeysToPullFromLedgerDevice,
-  useRequestLedgerKeys,
-} from '@app/features/ledger/generic-flows/request-keys/use-request-ledger-keys';
-import {
-  connectLedgerBitcoinApp,
-  getBitcoinAppVersion,
-  isBitcoinAppOpen,
-} from '@app/features/ledger/utils/bitcoin-ledger-utils';
-import { useSignerActionController } from '@app/features/ledger/utils/bitcoin-signer-kit-utils';
-import { useCancelLedgerAction } from '@app/features/ledger/utils/generic-ledger-utils';
-import type { LedgerBitcoinApp } from '@app/features/ledger/utils/ledger-app';
+  useCancelLedgerAction,
+} from '@app/features/ledger/utils/generic-ledger-utils';
 import { useToast } from '@app/features/toasts/use-toast';
 import { useAppDispatch } from '@app/store';
 import { activateFirstVisibleAccount } from '@app/store/active/active.actions';
@@ -38,41 +31,39 @@ export function LedgerRequestBitcoinKeys() {
   const wallets = useWalletEntities();
   const btcKeychainDescriptors = useBitcoinKeychainDescriptors();
 
-  const dmk = useLedgerDmk();
-  const signerActions = useSignerActionController();
   const ledgerNavigate = useLedgerSteps();
+  const ledgerAnalytics = useLedgerAnalytics();
   const { close } = useLedgerFlow();
   const network = useCurrentNetwork();
 
   const chain = 'bitcoin';
 
-  const { requestKeys, latestDeviceResponse, awaitingDeviceConnection, isConnectionCancellable } =
-    useRequestLedgerKeys<LedgerBitcoinApp>({
-      chain,
-      connectApp: connectLedgerBitcoinApp(dmk, network.chain.bitcoin.mode, signerActions.run),
-      getAppVersion: getBitcoinAppVersion(dmk),
-      isAppOpen: isBitcoinAppOpen({ network: network.chain.bitcoin.mode }),
-      onSuccess() {
-        close();
-        void navigate('/', { replace: true });
-      },
-      async pullKeysFromDevice(app) {
-        const { keys, fingerprint } = await pullBitcoinKeysFromLedgerDevice(app)({
-          network: bitcoinNetworkModeToCoreNetworkMode(network.chain.bitcoin.mode),
-          onRequestKey(index) {
-            const keyGroupFinalIndex = defaultNumberOfKeysToPullFromLedgerDevice - 1;
-            const isNativeSegwitkey = index <= keyGroupFinalIndex;
-            if (isNativeSegwitkey) {
+  const { run, cancel, latestDeviceResponse, awaitingDeviceConnection, isConnectionCancellable } =
+    useHardwareWalletOperation(chain);
+
+  async function requestKeys() {
+    const hasAddedKeys = await run(
+      { chain, network: network.chain.bitcoin.mode },
+      async (wallet, ctx) => {
+        const { keys, fingerprint } = await getBitcoinSigner(wallet).requestAccountKeys(
+          {
+            network: network.chain.bitcoin.mode,
+            count: defaultNumberOfKeysToPullFromLedgerDevice,
+            onRequestKey({ paymentType, accountIndex }) {
+              if (paymentType === 'p2wpkh') {
+                ledgerNavigate.toDeviceBusyStep(
+                  `Requesting Bitcoin Native Segwit address (${accountIndex + 1}…${defaultNumberOfKeysToPullFromLedgerDevice})`
+                );
+                return;
+              }
               ledgerNavigate.toDeviceBusyStep(
-                `Requesting Bitcoin Native Segwit address (${index + 1}…${defaultNumberOfKeysToPullFromLedgerDevice})`
+                `Requesting Bitcoin Taproot address (${accountIndex + 1}…${defaultNumberOfKeysToPullFromLedgerDevice})`
               );
-              return;
-            }
-            ledgerNavigate.toDeviceBusyStep(
-              `Requesting Bitcoin Taproot address (${index - keyGroupFinalIndex}…${defaultNumberOfKeysToPullFromLedgerDevice})`
-            );
+            },
           },
-        });
+          ctx
+        );
+        await delay(250);
 
         const addWalletError =
           getAddWalletError(wallets, fingerprint, 'ledger') ??
@@ -80,20 +71,25 @@ export function LedgerRequestBitcoinKeys() {
         if (addWalletError) {
           toast.error(addWalletError);
           ledgerNavigate.toErrorStep(chain, addWalletError);
-          return { status: 'failure' };
+          return false;
         }
 
         const keychains = keys
-          .map(key => ({ chain: 'bitcoin' as const, descriptor: key.policy }))
+          .map(key => ({ chain: 'bitcoin' as const, descriptor: key.descriptor }))
           .filter(keychain => {
             return !btcKeychainDescriptors.includes(keychain.descriptor);
           });
 
         await dispatch(addOrMigrateLedgerKeychains({ fingerprint, accountKeychains: keychains }));
         void dispatch(activateFirstVisibleAccount(fingerprint));
-        return { status: 'success' };
-      },
-    });
+        return true;
+      }
+    );
+    if (!hasAddedKeys) return;
+    ledgerAnalytics.publicKeysPulledFromLedgerSuccessfully();
+    close();
+    void navigate('/', { replace: true });
+  }
 
   const ledgerContextValue: LedgerRequestKeysContext = {
     chain: 'bitcoin',
@@ -110,7 +106,7 @@ export function LedgerRequestBitcoinKeys() {
     <RequestKeysFlow
       context={ledgerContextValue}
       isActionCancellableByUser={canCancelLedgerAction}
-      onCancelAction={signerActions.cancelActive}
+      onCancelAction={cancel}
     />
   );
 }

@@ -1,101 +1,98 @@
 import { useNavigate } from 'react-router';
 
+import {
+  getStacksSigner,
+  isHardwareWalletErrorKind,
+  isLedgerOnDeviceAddressConfirmed,
+} from '@leather.io/ledger';
+import { isError } from '@leather.io/utils';
+
 import { RouteUrls } from '@shared/route-urls';
 import { analytics } from '@shared/utils/analytics';
 
-import { useLedgerDmk } from '@app/features/ledger/dmk/ledger-dmk.context';
 import { useLedgerFlow, useLedgerSteps } from '@app/features/ledger/flow/ledger-flow.context';
 import { type LedgerRequestKeysContext } from '@app/features/ledger/generic-flows/request-keys/ledger-request-keys.context';
 import { RequestKeysFlow } from '@app/features/ledger/generic-flows/request-keys/request-keys-flow';
-import { useRequestLedgerKeys } from '@app/features/ledger/generic-flows/request-keys/use-request-ledger-keys';
-import { useSignerActionController } from '@app/features/ledger/utils/bitcoin-signer-kit-utils';
+import { useHardwareWalletOperation } from '@app/features/ledger/hardware-wallet/use-hardware-wallet-operation';
+import { useLedgerAnalytics } from '@app/features/ledger/hooks/use-ledger-analytics.hook';
 import { useCancelLedgerAction } from '@app/features/ledger/utils/generic-ledger-utils';
-import type { LedgerStacksApp } from '@app/features/ledger/utils/ledger-app';
-import { isLedgerOnDeviceAddressConfirmed } from '@app/features/ledger/utils/ledger-descriptor-address';
-import {
-  connectLedgerStacksApp,
-  getStacksAppVersion,
-  isStacksAppOpen,
-  isStxAddressResponseRejected,
-  isStxAddressResponseSuccess,
-  showStxAddressOnDevice,
-  stacksChainIdToSingleSigAddressVersion,
-} from '@app/features/ledger/utils/stacks-ledger-utils';
-import { stacksVersionGate } from '@app/features/ledger/utils/stacks-version-gate';
 import { toastDurations, useToast } from '@app/features/toasts/use-toast';
 import { useCurrentStacksAccount } from '@app/store/accounts/blockchain/stacks/stacks-account.hooks';
 import { useCurrentNetwork } from '@app/store/networks/networks.selectors';
 
+const addressCheckFailureKinds = ['rejected', 'invalid-payload', 'unknown'] as const;
+
+function trackFailedVerification() {
+  analytics.track('address_verification_completed', {
+    type: 'stx',
+    verified: false,
+  });
+}
+
 export function LedgerVerifyStxAddress() {
   const navigate = useNavigate();
   const toast = useToast();
-  const dmk = useLedgerDmk();
-  const signerActions = useSignerActionController();
   const ledgerNavigate = useLedgerSteps();
+  const ledgerAnalytics = useLedgerAnalytics();
   const { close } = useLedgerFlow();
   const network = useCurrentNetwork();
   const stacksAccount = useCurrentStacksAccount();
 
-  const { requestKeys, latestDeviceResponse, awaitingDeviceConnection, isConnectionCancellable } =
-    useRequestLedgerKeys<LedgerStacksApp>({
-      chain: 'stacks',
-      connectApp(options) {
-        return connectLedgerStacksApp(dmk, { ...options, runAction: signerActions.run });
-      },
-      getAppVersion: getStacksAppVersion,
-      isAppOpen: isStacksAppOpen,
-      passesAdditionalVersionCheck: stacksVersionGate(ledgerNavigate),
-      onSuccess() {
-        toast.success('Address verified on your Ledger', { duration: toastDurations.standard });
-        close();
-        void navigate(RouteUrls.Home, { replace: true });
-      },
-      async pullKeysFromDevice(app) {
-        if (!stacksAccount) {
-          ledgerNavigate.toErrorStep('stacks');
-          return { status: 'failure' };
-        }
-        const expectedAddress = stacksAccount.address;
-        ledgerNavigate.toDeviceBusyStep('Confirm the address on your Ledger…', expectedAddress);
-        const response = await showStxAddressOnDevice(app)(
-          stacksAccount.derivationPath,
-          stacksChainIdToSingleSigAddressVersion(network.chain.stacks.chainId)
+  const chain = 'stacks';
+
+  const { run, cancel, latestDeviceResponse, awaitingDeviceConnection, isConnectionCancellable } =
+    useHardwareWalletOperation(chain);
+
+  async function verifyAddress() {
+    const isVerified = await run({ chain }, async (wallet, ctx) => {
+      if (!stacksAccount) {
+        ledgerNavigate.toErrorStep('stacks');
+        return false;
+      }
+      const expectedAddress = stacksAccount.address;
+      ledgerNavigate.toDeviceBusyStep('Confirm the address on your Ledger…', expectedAddress);
+      try {
+        const onDeviceAddress = await getStacksSigner(wallet).showAddress(
+          { derivationPath: stacksAccount.derivationPath, chainId: network.chain.stacks.chainId },
+          ctx
         );
-        if (isStxAddressResponseRejected(response)) {
-          analytics.track('address_verification_completed', {
-            type: 'stx',
-            verified: false,
-          });
-          ledgerNavigate.toErrorStep('stacks', 'Address verification was rejected on the device.');
-          return { status: 'failure' };
-        }
-        if (!isStxAddressResponseSuccess(response)) {
-          analytics.track('address_verification_completed', {
-            type: 'stx',
-            verified: false,
-          });
-          ledgerNavigate.toErrorStep('stacks', response.errorMessage);
-          return { status: 'failure' };
-        }
-        if (!isLedgerOnDeviceAddressConfirmed(response.address, expectedAddress)) {
-          analytics.track('address_verification_completed', {
-            type: 'stx',
-            verified: false,
-          });
+        if (!isLedgerOnDeviceAddressConfirmed(onDeviceAddress, expectedAddress)) {
+          trackFailedVerification();
           ledgerNavigate.toErrorStep(
             'stacks',
             'The address shown on your Ledger does not match the one in Leather.'
           );
-          return { status: 'failure' };
+          return false;
         }
-        analytics.track('address_verification_completed', { type: 'stx', verified: true });
-        return { status: 'success' };
-      },
+      } catch (e) {
+        if (isHardwareWalletErrorKind(e, 'rejected')) {
+          trackFailedVerification();
+          ledgerNavigate.toErrorStep('stacks', 'Address verification was rejected on the device.');
+          return false;
+        }
+        if (
+          addressCheckFailureKinds.some(kind => isHardwareWalletErrorKind(e, kind)) &&
+          isError(e)
+        ) {
+          trackFailedVerification();
+          ledgerNavigate.toErrorStep('stacks', e.message);
+          return false;
+        }
+        throw e;
+      }
+      analytics.track('address_verification_completed', { type: 'stx', verified: true });
+      return true;
     });
+    if (!isVerified) return;
+    ledgerAnalytics.publicKeysPulledFromLedgerSuccessfully();
+    toast.success('Address verified on your Ledger', { duration: toastDurations.standard });
+    close();
+    void navigate(RouteUrls.Home, { replace: true });
+  }
 
   const ledgerContextValue: LedgerRequestKeysContext = {
     chain: 'stacks',
-    pullPublicKeysFromDevice: requestKeys,
+    pullPublicKeysFromDevice: verifyAddress,
     latestDeviceResponse,
     awaitingDeviceConnection,
   };
@@ -108,7 +105,7 @@ export function LedgerVerifyStxAddress() {
     <RequestKeysFlow
       context={ledgerContextValue}
       isActionCancellableByUser={canCancelLedgerAction}
-      onCancelAction={signerActions.cancelActive}
+      onCancelAction={cancel}
     />
   );
 }
