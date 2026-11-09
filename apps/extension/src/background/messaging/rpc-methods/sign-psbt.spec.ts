@@ -56,7 +56,10 @@ function makePsbtHex() {
   return bytesToHex(tx.toPSBT());
 }
 
-const bondDescriptor = 'wsh(and_v(v:after(1000),multi(1,unimportant)))';
+const compressedPubkey = '0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798';
+const bondDescriptor = `wsh(and_v(v:after(1000),multi(1,${compressedPubkey})))`;
+const p2wpkhScriptCodeDescriptor = `wsh(pkh(${compressedPubkey}))`;
+const malformedDescriptor = 'wsh(and_v(v:after(1000),multi(1,unimportant)))';
 
 function makeRequest(params: SignPsbtRequest['params']): SignPsbtRequest {
   return {
@@ -141,5 +144,33 @@ describe('signPsbtHandler', () => {
     expect(mocks.sendMessage).not.toHaveBeenCalled();
     expect(mocks.triggerRequestPopupWindowOpen).toHaveBeenCalled();
     expect(mocks.sendErrorResponseOnUserPopupClose).toHaveBeenCalled();
+  });
+
+  test('rejects a descriptor that compiles to a P2WPKH scriptCode before opening the popup', async () => {
+    await invokeHandler(
+      makeRequest({ hex: makePsbtHex(), descriptor: p2wpkhScriptCodeDescriptor })
+    );
+
+    expect(mocks.sendMessage).toHaveBeenCalledWith(
+      tabId,
+      expect.objectContaining({
+        error: objectContaining({
+          code: RpcErrorCode.INVALID_PARAMS,
+          message: 'Descriptor is not supported for signing',
+        }),
+      }),
+      { frameId }
+    );
+    expect(mocks.trackRpcRequestError).toHaveBeenCalledWith(
+      objectContaining({ error: 'Invalid descriptor' })
+    );
+    expect(mocks.triggerRequestPopupWindowOpen).not.toHaveBeenCalled();
+  });
+
+  test('opens the popup for a descriptor that does not compile', async () => {
+    await invokeHandler(makeRequest({ hex: makePsbtHex(), descriptor: malformedDescriptor }));
+
+    expect(mocks.sendMessage).not.toHaveBeenCalled();
+    expect(mocks.triggerRequestPopupWindowOpen).toHaveBeenCalled();
   });
 });
