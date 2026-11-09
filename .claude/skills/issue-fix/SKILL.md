@@ -172,8 +172,14 @@ fix → verify → review:
   checks every doubt in the fixer's questions and `Not verified` lines in the code instead of
   passing it over. Later rounds see earlier reviews and only re-raise unfixed or newly introduced
   findings, scope gaps and confirmed doubts.
-  The run fails if the review touched any file. Blocking findings send the change back to fix; minor
-  ones are left for the human review.
+  The run fails if the review touched any file. A review that ends without a valid `review.json`
+  (it crashed, or ended its turn waiting on something) fails the round, not the run, so the next
+  round runs the fix and review again. Both agents may use background commands and sub-agents, but
+  a headless session ends with the agent's turn and is never woken when they finish, so a Claude
+  Code `Stop` hook (`pnpm lt issue-fix stop-guard`) refuses to let the fixer stop until
+  `status.json` is valid, or the reviewer until `review.json` is, up to three times per round; the
+  failed round above is the backstop. Blocking findings send the change back to fix; minor ones are
+  left for the human review.
 
 Each round is kept in `tmp/issue-fix/rounds/<n>/` and recorded in `tmp/issue-fix/run.json` (both
 uploaded with the patch); `pnpm lt issue-fix round finish` adds one `Round <n>: …` entry per round

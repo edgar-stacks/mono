@@ -40,6 +40,9 @@ runs:
           --permission-mode auto
           --permission-prompts none
         show_full_output: true
+        settings: >-
+          {"hooks": {"Stop": [{"hooks": [{"type": "command",
+          "command": "node \"$CLAUDE_PROJECT_DIR/tools/dist/lt.js\" issue-fix stop-guard --output status"}]}]}}
         prompt: ${{ inputs.round == '1' && 'Follow the instructions in .github/prompts/issue-fix.md.' || format('Follow the instructions in .github/prompts/issue-fix-round.md. This is round {0}.', inputs.round) }}
 
     - name: begin-checks
@@ -63,6 +66,7 @@ runs:
 
     - name: review
       if: steps.verify.outputs.verified == 'true'
+      continue-on-error: true
       uses: anthropics/claude-code-action@ae68417a745a5df4b2124873632bd73a2255e6f6 # v1.0.259
       with:
         claude_code_oauth_token: ${{ inputs.claude-code-oauth-token }}
@@ -72,6 +76,9 @@ runs:
           --permission-mode auto
           --permission-prompts none
         show_full_output: true
+        settings: >-
+          {"hooks": {"Stop": [{"hooks": [{"type": "command",
+          "command": "node \"$CLAUDE_PROJECT_DIR/tools/dist/lt.js\" issue-fix stop-guard --output review"}]}]}}
         prompt: Follow the instructions in .github/prompts/issue-fix-review.md.
 
     - name: check-review

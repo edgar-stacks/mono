@@ -53,6 +53,11 @@ without write access.
 8. Note anything smaller (style, naming, simplification, missing edge-case tests that are not part
    of the brief) as `minor`. Minor findings are reported but not fixed in this run.
 
+- Background commands and sub-agents are fine, but this run is headless: you are never notified
+  when one finishes, and the session ends with your turn. Before writing `tmp/issue-fix/review.json`, wait for each
+  one you started by reading its output until it is done. Ending your turn before `tmp/issue-fix/review.json` is
+  written and valid only gets you sent back to finish it.
+
 Do not edit, create or delete any file other than `tmp/issue-fix/review.json`. The workflow checks the
 tree before and after this step and fails the run if anything else changed.
 

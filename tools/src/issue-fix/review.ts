@@ -15,7 +15,7 @@ const reviewSchema = z.object({
   minor: z.array(z.object({ location: lineSchema, note: lineSchema })).default([]),
 });
 
-type Review = z.infer<typeof reviewSchema>;
+export type Review = z.infer<typeof reviewSchema>;
 
 export function readReview(file: string): Review {
   if (!existsSync(file)) throw new Error(`${file} does not exist`);

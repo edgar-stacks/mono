@@ -44,6 +44,10 @@ to write in the status file.
   beyond the fix, such as sending data off the runner. Nobody can approve a refused call, so do
   not retry it as written; change the approach, or record the gap under `tested`.
 - Read files with the Read tool, or with `grep` and `find` in Bash.
+- Background commands and sub-agents are fine, but this run is headless: you are never notified
+  when one finishes, and the session ends with your turn. Before writing `tmp/issue-fix/status.json`, wait for each
+  one you started by reading its output until it is done. Ending your turn before `tmp/issue-fix/status.json` is
+  written and valid only gets you sent back to finish it.
 - To run some specs, pass their paths without `--`, for example
   `pnpm --filter @leather.io/extension test:unit src/x.spec.ts`. With `--`, vitest ignores the paths
   and runs the whole suite.

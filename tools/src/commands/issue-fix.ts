@@ -16,6 +16,7 @@ import {
   verifyRound,
 } from '../issue-fix/rounds.js';
 import { captureScreenshots, previewScreenshots } from '../issue-fix/screenshots.js';
+import { decideStop, guardedOutputSchema } from '../issue-fix/stop-guard.js';
 import { stripForbiddenPaths } from '../issue-fix/strip.js';
 import { verifyFix } from '../issue-fix/verify.js';
 
@@ -139,8 +140,12 @@ export function registerIssueFixCommands(program: Command): void {
       guard('issue-fix-round', () => {
         parseRound(value);
         const blocking = checkReview(paths());
-        writeStepOutputs({ blocking });
-        console.log(`issue-fix-round: round ${value} review found ${blocking} blocking findings`);
+        writeStepOutputs({ blocking: blocking ?? '' });
+        console.log(
+          blocking === null
+            ? `issue-fix-round: round ${value} review left no valid review file; the round fails`
+            : `issue-fix-round: round ${value} review found ${blocking} blocking findings`
+        );
       })
     );
 
@@ -162,6 +167,17 @@ export function registerIssueFixCommands(program: Command): void {
       console.log(`issue-fix-round: finished with outcome ${outcome}`);
     })
   );
+
+  issueFix
+    .command('stop-guard')
+    .description(
+      'Claude Code Stop hook: keep the agent working until its output file is written and valid'
+    )
+    .requiredOption('--output <output>', 'The file the agent must write: status or review')
+    .action(({ output }: { readonly output: string }) => {
+      const block = decideStop(paths(), guardedOutputSchema.parse(output));
+      if (block) console.log(JSON.stringify(block));
+    });
 
   issueFix
     .command('strip-forbidden')

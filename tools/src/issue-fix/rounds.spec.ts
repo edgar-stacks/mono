@@ -154,20 +154,59 @@ describe('rounds', () => {
   });
 
   test.each([
-    ['a missing review file', null, /review\.json does not exist/],
+    ['a missing review file', null, 'the review ended without writing its review file'],
     [
       'an unknown finding kind',
       { blocking: [{ ...blockingReview.blocking[0], kind: 'nit' }] },
-      /blocking\.0\.kind/,
+      'the review wrote an invalid review file',
     ],
-    ['invalid JSON', '{ blocking', /is not valid JSON/],
-  ])('a review check fails on %s', (_name, review, message) => {
+    ['invalid JSON', '{ blocking', 'the review wrote an invalid review file'],
+  ])('a round with %s fails and continues instead of failing the run', (_name, review, reason) => {
     repo.makeFix();
     repo.writeStatus(doneStatus);
+    beginRound(repo.paths, 1);
+    expect(verifyRound(repo.paths, fakePnpm(repo).run)).toBe(true);
     snapshotForReview(repo.paths);
     if (typeof review === 'string') writeFileSync(repo.paths.reviewFile, review);
     else if (review !== null) writeReview(review);
-    expect(() => checkReview(repo.paths)).toThrow(message);
+    expect(checkReview(repo.paths)).toBeNull();
+    expect(endRound(repo.paths, 1)).toEqual({
+      outcome: 'failed',
+      clean: false,
+      continue: true,
+      summary: `Round 1: ${reason}`,
+    });
+  });
+
+  test('a run whose last review never wrote its file ends blocked with a question', () => {
+    repo.makeFix();
+    repo.writeStatus(doneStatus);
+    for (const round of [1, 2, 3]) {
+      beginRound(repo.paths, round);
+      verifyRound(repo.paths, fakePnpm(repo).run);
+      snapshotForReview(repo.paths);
+      checkReview(repo.paths);
+      endRound(repo.paths, round);
+    }
+    expect(finishRounds(repo.paths)).toBe('failed');
+    const status = readStatus(repo.paths.statusFile);
+    expect(status.ok && status.status.state).toBe('blocked');
+    expect(status.ok && status.status.questions).toEqual([
+      'The fix still fails after 3 rounds (the review ended without writing its review file). Options: dispatch again with guidance in the brief; take the branch over locally.',
+    ]);
+  });
+
+  test('a blocked fixer whose review never wrote its file still stops the rounds', () => {
+    repo.makeFix();
+    repo.writeStatus(blockedStatus);
+    beginRound(repo.paths, 1);
+    verifyRound(repo.paths, fakePnpm(repo).run);
+    snapshotForReview(repo.paths);
+    expect(endRound(repo.paths, 1)).toMatchObject({
+      outcome: 'blocked',
+      summary:
+        'Round 1: the fixer stopped as blocked; the review ended without writing its review file',
+    });
   });
 
   test('finishing a clean run records every round under tested', () => {

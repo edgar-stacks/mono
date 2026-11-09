@@ -5,8 +5,9 @@ import { z } from 'zod';
 import { type CommandRunner, runCommand } from './exec.js';
 import { treeSnapshot } from './git.js';
 import type { IssueFixPaths } from './paths.js';
-import { readReview } from './review.js';
+import { type Review, readReview } from './review.js';
 import { type FixState, readState, readStatus, writeStatus } from './status.js';
+import { resetStopGuards } from './stop-guard.js';
 import { verifyFix } from './verify.js';
 
 const outcomeSchema = z.enum(['clean', 'failed', 'blocked']);
@@ -45,6 +46,7 @@ function writeRunState(paths: IssueFixPaths, state: RunState): void {
 }
 
 export function beginRound(paths: IssueFixPaths, round: number): FixState | null {
+  resetStopGuards(paths);
   for (const file of [paths.verifyReport, paths.reviewFile, paths.reviewSnapshot]) {
     rmSync(file, { force: true });
   }
@@ -68,7 +70,7 @@ export function snapshotForReview(paths: IssueFixPaths): void {
   writeFileSync(paths.reviewSnapshot, treeSnapshot(paths.root));
 }
 
-export function checkReview(paths: IssueFixPaths): number {
+export function checkReview(paths: IssueFixPaths): number | null {
   if (!existsSync(paths.reviewSnapshot)) {
     throw new Error(`${paths.reviewSnapshot} does not exist; run the snapshot step first`);
   }
@@ -76,7 +78,19 @@ export function checkReview(paths: IssueFixPaths): number {
     const changed = runCommand('git', ['status', '--short'], { cwd: paths.root }).stdout;
     throw new Error(`the review changed files; it may only write the review file\n${changed}`);
   }
-  return readReview(paths.reviewFile).blocking.length;
+  const review = tryReadReview(paths.reviewFile);
+  return 'problem' in review ? null : review.review.blocking.length;
+}
+
+type ReviewRead = { readonly review: Review } | { readonly problem: string };
+
+function tryReadReview(file: string): ReviewRead {
+  if (!existsSync(file)) return { problem: 'the review ended without writing its review file' };
+  try {
+    return { review: readReview(file) };
+  } catch {
+    return { problem: 'the review wrote an invalid review file' };
+  }
 }
 
 function checksSummary(paths: IssueFixPaths): string | null {
@@ -84,8 +98,10 @@ function checksSummary(paths: IssueFixPaths): string | null {
     const firstLine = readFileSync(paths.verifyReport, 'utf8').split('\n')[0] ?? '';
     return firstLine.replace(/^FAILED: /, '');
   }
-  if (!existsSync(paths.reviewFile)) return null;
-  const blocking = readReview(paths.reviewFile).blocking.length;
+  if (!existsSync(paths.reviewSnapshot)) return null;
+  const read = tryReadReview(paths.reviewFile);
+  if ('problem' in read) return read.problem;
+  const blocking = read.review.blocking.length;
   return blocking === 0
     ? 'checks passed and review found no critical, blocker or regression findings'
     : `review found ${blocking} critical, blocker or regression findings`;
@@ -103,15 +119,17 @@ function decideOutcome(
   if (checks === null) {
     throw new Error(`round ${round} has neither a verify report nor a review`);
   }
+  const read = tryReadReview(paths.reviewFile);
   const passed =
-    !existsSync(paths.verifyReport) && readReview(paths.reviewFile).blocking.length === 0;
+    !existsSync(paths.verifyReport) && 'review' in read && read.review.blocking.length === 0;
   return { outcome: passed ? 'clean' : 'failed', summary: `Round ${round}: ${checks}` };
 }
 
 function unfixedFindingsQuestion(paths: IssueFixPaths, round: number): string | null {
   const file = path.join(roundDir(paths, round), path.basename(paths.reviewFile));
-  if (!existsSync(file)) return null;
-  const { blocking } = readReview(file);
+  const read = tryReadReview(file);
+  if ('problem' in read) return null;
+  const { blocking } = read.review;
   if (blocking.length === 0) return null;
   const findings = blocking.map(
     finding => `${finding.kind} at ${finding.location}: ${finding.defect}`
@@ -120,6 +138,7 @@ function unfixedFindingsQuestion(paths: IssueFixPaths, round: number): string | 
 }
 
 export function endRound(paths: IssueFixPaths, round: number): RoundEnd {
+  resetStopGuards(paths);
   const { outcome, summary } = decideOutcome(paths, round);
   const dir = roundDir(paths, round);
   mkdirSync(dir, { recursive: true });
