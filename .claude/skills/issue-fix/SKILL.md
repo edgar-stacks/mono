@@ -250,10 +250,12 @@ and its API commits are signed. The pull request then needs two human reviews li
 
 **App setup, once per repository:** create a GitHub App (webhook off; repository permissions
 Contents, Pull requests and Issues read and write, Metadata read; no Workflows permission) and
-install it on the repository only. Create the environment `issue-fix`, limited to the `dev`
-branch, with the variable `ISSUE_FIX_APP_CLIENT_ID` (the App's client ID) and the secret
-`ISSUE_FIX_APP_PRIVATE_KEY` (a private key generated for the App). Without them the `app-token`
-step fails and no pull request opens; the patch stays in the run's artifact for three days.
+install it on the repository only. Set the repository variable `ISSUE_FIX_APP_CLIENT_ID` (the
+App's client ID, not a secret), and create the environment `issue-fix`, limited to the `dev`
+branch, with the secret `ISSUE_FIX_APP_PRIVATE_KEY` (a private key generated for the App). Without
+them the `app-token` step fails and no pull request opens; the patch stays in the run's artifact
+for three days. The fixer job reads the client ID too: `fetch-issue` keeps the App's own comments
+(its questions) next to the answers, and omits them when the variable is missing.
 
 ## 7. Track
 

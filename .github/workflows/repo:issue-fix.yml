@@ -49,7 +49,8 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           ISSUE: ${{ inputs.issue }}
-        run: pnpm lt issue-fix fetch-issue --issue "$ISSUE"
+          APP_CLIENT_ID: ${{ vars.ISSUE_FIX_APP_CLIENT_ID }}
+        run: pnpm lt issue-fix fetch-issue --issue "$ISSUE" --workflow-app-client-id "$APP_CLIENT_ID"
 
       - name: write-notes
         env:

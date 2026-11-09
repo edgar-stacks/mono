@@ -75,19 +75,25 @@ export function registerIssueFixCommands(program: Command): void {
     .command('fetch-issue')
     .description('Render the issue and its comments to tmp/issue-fix/issue.md')
     .requiredOption('--issue <number>', 'Issue number')
-    .action(({ issue }: IssueOptions) =>
-      guard('fetch-issue', async () => {
-        const target = paths();
-        const fetched = await fetchIssue({
-          client: github(),
-          repo: requireEnv('GITHUB_REPOSITORY'),
-          issue: parseIssue(issue),
-          outFile: target.issueFile,
-        });
-        console.log(
-          `fetch-issue: wrote ${target.issueFile} with ${fetched.comments} comments; omitted ${fetched.omittedComments} comments${fetched.issueOmitted ? ' and the issue text' : ''} from people without write access`
-        );
-      })
+    .option(
+      '--workflow-app-client-id <id>',
+      'Client ID of the issue-fix App, whose own comments on the issue are kept'
+    )
+    .action(
+      ({ issue, workflowAppClientId }: IssueOptions & { readonly workflowAppClientId?: string }) =>
+        guard('fetch-issue', async () => {
+          const target = paths();
+          const fetched = await fetchIssue({
+            client: github(),
+            repo: requireEnv('GITHUB_REPOSITORY'),
+            issue: parseIssue(issue),
+            outFile: target.issueFile,
+            workflowAppClientId,
+          });
+          console.log(
+            `fetch-issue: wrote ${target.issueFile} with ${fetched.comments} comments; omitted ${fetched.omittedComments} comments${fetched.issueOmitted ? ' and the issue text' : ''} from people without write access`
+          );
+        })
     );
 
   issueFix

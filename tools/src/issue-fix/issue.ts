@@ -4,7 +4,7 @@ import { z } from 'zod';
 
 import { type GitHubClient, GitHubError, paginate } from './github.js';
 
-const userSchema = z.object({ login: z.string() }).nullable();
+const userSchema = z.object({ login: z.string(), type: z.string().optional() }).nullable();
 
 const issueSchema = z.object({
   title: z.string(),
@@ -21,6 +21,10 @@ const commentSchema = z.object({
   body: z.string().nullable(),
   created_at: z.string(),
   user: userSchema,
+  performed_via_github_app: z
+    .object({ client_id: z.string().nullable().optional() })
+    .nullable()
+    .optional(),
 });
 
 const permissionSchema = z.object({ permission: z.string() });
@@ -35,6 +39,7 @@ interface FetchIssueOptions {
   readonly repo: string;
   readonly issue: number;
   readonly outFile: string;
+  readonly workflowAppClientId?: string;
 }
 
 interface FetchedIssue {
@@ -77,6 +82,16 @@ async function trustedAuthors(
 
 function isTrusted(trusted: ReadonlySet<string>, user: Issue['user']): boolean {
   return user !== null && trusted.has(user.login);
+}
+
+function isWorkflowAppComment(comment: Comment, clientId: string | undefined): boolean {
+  return (
+    clientId !== undefined &&
+    clientId !== '' &&
+    comment.user?.type === 'Bot' &&
+    comment.user.login.endsWith('[bot]') &&
+    comment.performed_via_github_app?.client_id === clientId
+  );
 }
 
 function renderIssue(
@@ -134,6 +149,7 @@ export async function fetchIssue({
   repo,
   issue,
   outFile,
+  workflowAppClientId,
 }: FetchIssueOptions): Promise<FetchedIssue> {
   let raw: unknown;
   try {
@@ -151,11 +167,18 @@ export async function fetchIssue({
   const comments = z
     .array(commentSchema)
     .parse(await paginate(client, `repos/${repo}/issues/${issue}/comments`));
+  const fromWorkflowApp = comments.filter(comment =>
+    isWorkflowAppComment(comment, workflowAppClientId)
+  );
   const trusted = await trustedAuthors(client, repo, [
     parsed.user?.login ?? null,
-    ...comments.map(comment => comment.user?.login ?? null),
+    ...comments
+      .filter(comment => !fromWorkflowApp.includes(comment))
+      .map(comment => comment.user?.login ?? null),
   ]);
-  const kept = comments.filter(comment => isTrusted(trusted, comment.user));
+  const kept = comments.filter(
+    comment => fromWorkflowApp.includes(comment) || isTrusted(trusted, comment.user)
+  );
   const issueTrusted = isTrusted(trusted, parsed.user);
   mkdirSync(path.dirname(outFile), { recursive: true });
   writeFileSync(outFile, renderIssue(parsed, kept, comments.length - kept.length, issueTrusted));
