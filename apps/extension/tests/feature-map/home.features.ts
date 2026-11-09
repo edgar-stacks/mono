@@ -203,7 +203,7 @@ export const homeFeatures = [
           'On home click "Receive" (HomePageSelectors.ReceiveCryptoAssetBtn); below the md breakpoint that test id sits on the "Transfer" button, whose sheet has the Receive row',
           'With Bitcoin keys and no policy the "Choose asset to receive" sheet opens with a Tokens tab (Bitcoin (BTC), Bitcoin Taproot, Stacks (STX), then one row per swappable SIP-10 asset sharing the Stacks address) and a Collectibles tab (Stacks NFT); the BTC, Taproot and STX rows have a copy button and a QR button that switches the sheet to that address with a QR code, the SIP-10 rows have a copy button only',
           'With a policy account the BTC or STX QR view opens directly; without Bitcoin keys the STX QR view opens directly (transfer-buttons.tsx onReceive)',
-          'Row verify buttons need a Ledger wallet with keys for that chain and no policy; they start the Ledger address-verification flow. The BTC QR sheet\'s "Verify" footer button (HomePageSelectors.ReceiveSheetVerifyAddressBtn) also appears for a Ledger Bitcoin multisig and verifies the multisig address (receive-btc.tsx); the STX QR sheet excludes policies (receive-stx.tsx)',
+          'Row verify buttons need a Ledger wallet with keys for that chain and no policy; they start the Ledger address-verification flow. The BTC QR sheet\'s "Verify" footer button (HomePageSelectors.ReceiveSheetVerifyAddressBtn) also appears for a Ledger Bitcoin multisig and verifies the multisig address (receive-btc.tsx); the STX QR sheet shows it for a Ledger Stacks multisig too and verifies the multisig address with the stxMultisig variant, which needs Stacks app 0.27.0 or later (receive-stx.tsx, receive-stx-multisig-ledger.spec.ts)',
         ],
       },
       {
@@ -237,6 +237,7 @@ export const homeFeatures = [
     ],
     specs: [
       'apps/extension/tests/specs/receive/receive.spec.ts',
+      'apps/extension/tests/specs/receive/receive-stx-multisig-ledger.spec.ts',
       homeTabsSpec,
       'apps/extension/tests/specs/ledger/ledger.spec.ts',
       'apps/extension/tests/specs/token-details/token-details.spec.ts',
