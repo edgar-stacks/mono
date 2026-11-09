@@ -5,13 +5,13 @@ import { z } from 'zod';
 import { runCommand, runOrThrow } from './exec.js';
 import { allowedPathsDescription, changedPaths, gitBlobSha, headSha, refusedPaths } from './git.js';
 import { type GitHubClient, paginate } from './github.js';
-import type { IssueFixPaths } from './paths.js';
+import type { FixIssuePaths } from './paths.js';
 import { isScreenshot } from './screenshots.js';
 import { type FixStatus, closesNumbers, readStatus } from './status.js';
 
 interface OpenPullRequestOptions {
   readonly client: GitHubClient;
-  readonly paths: IssueFixPaths;
+  readonly paths: FixIssuePaths;
   readonly repo: string;
   readonly issue: number;
   readonly branch: string;
@@ -123,7 +123,7 @@ function renderHandoff(handoff: FixStatus['handoff'][number]): string {
 
 function renderQuestionsComment(status: FixStatus, runUrl: string | null): string {
   const run = runUrl ? ` (${runUrl})` : '';
-  const parts = [`The \`repo:issue-fix\` run${run} stopped before changing anything.`];
+  const parts = [`The \`repo:fix-issue\` run${run} stopped before changing anything.`];
   if (status.questions.length > 0)
     parts.push(`It needs answers to:\n\n${bullets(status.questions)}`);
   if (status.handoff.length > 0) {
@@ -144,7 +144,7 @@ function patchPaths(root: string, patchFile: string): string[] {
     .map(record => record.split('\t').slice(2).join('\t'));
 }
 
-function prepareWorkspace(paths: IssueFixPaths, parentSha: string): string {
+function prepareWorkspace(paths: FixIssuePaths, parentSha: string): string {
   removeWorkspace(paths);
   runOrThrow('git', ['worktree', 'add', '--detach', '--quiet', paths.applyDir, parentSha], {
     cwd: paths.root,
@@ -161,7 +161,7 @@ function prepareWorkspace(paths: IssueFixPaths, parentSha: string): string {
   return paths.applyDir;
 }
 
-function removeWorkspace(paths: IssueFixPaths): void {
+function removeWorkspace(paths: FixIssuePaths): void {
   runCommand('git', ['worktree', 'remove', '--force', paths.applyDir], { cwd: paths.root });
   rmSync(paths.applyDir, { recursive: true, force: true });
   runCommand('git', ['worktree', 'prune'], { cwd: paths.root });
@@ -308,7 +308,7 @@ async function findOpenPullRequest(options: OpenPullRequestOptions) {
 }
 
 function isEarlierRunBranch(ref: string, issue: number, current: string): boolean {
-  const prefix = `bot/issue-fix-${issue}-`;
+  const prefix = `bot/fix-issue-${issue}-`;
   return ref !== current && ref.startsWith(prefix) && runIdPattern.test(ref.slice(prefix.length));
 }
 

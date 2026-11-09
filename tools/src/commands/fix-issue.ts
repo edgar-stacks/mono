@@ -1,11 +1,11 @@
 import type { Command } from 'commander';
 
-import { repoRoot } from '../issue-fix/git.js';
-import { createGitHubClient } from '../issue-fix/github.js';
-import { fetchIssue } from '../issue-fix/issue.js';
-import { writeStepOutputs } from '../issue-fix/outputs.js';
-import { issueFixPaths } from '../issue-fix/paths.js';
-import { openPullRequest } from '../issue-fix/pull-request.js';
+import { repoRoot } from '../fix-issue/git.js';
+import { createGitHubClient } from '../fix-issue/github.js';
+import { fetchIssue } from '../fix-issue/issue.js';
+import { writeStepOutputs } from '../fix-issue/outputs.js';
+import { fixIssuePaths } from '../fix-issue/paths.js';
+import { openPullRequest } from '../fix-issue/pull-request.js';
 import {
   beginRound,
   checkReview,
@@ -14,11 +14,11 @@ import {
   parseRound,
   snapshotForReview,
   verifyRound,
-} from '../issue-fix/rounds.js';
-import { captureScreenshots, previewScreenshots } from '../issue-fix/screenshots.js';
-import { decideStop, guardedOutputSchema } from '../issue-fix/stop-guard.js';
-import { stripForbiddenPaths } from '../issue-fix/strip.js';
-import { verifyFix } from '../issue-fix/verify.js';
+} from '../fix-issue/rounds.js';
+import { captureScreenshots, previewScreenshots } from '../fix-issue/screenshots.js';
+import { decideStop, guardedOutputSchema } from '../fix-issue/stop-guard.js';
+import { stripForbiddenPaths } from '../fix-issue/strip.js';
+import { verifyFix } from '../fix-issue/verify.js';
 
 interface RoundOptions {
   readonly round: string;
@@ -37,7 +37,7 @@ interface OpenPullRequestFlags {
 }
 
 function paths() {
-  return issueFixPaths(repoRoot(process.cwd()));
+  return fixIssuePaths(repoRoot(process.cwd()));
 }
 
 function requireEnv(name: string): string {
@@ -64,20 +64,20 @@ async function guard(step: string, action: () => Promise<void> | void): Promise<
   }
 }
 
-export function registerIssueFixCommands(program: Command): void {
-  const issueFix = program
-    .command('issue-fix')
+export function registerFixIssueCommands(program: Command): void {
+  const fixIssue = program
+    .command('fix-issue')
     .description(
-      'Steps of the repo:issue-fix workflow: fetch, rounds, verify, screenshots, pull request'
+      'Steps of the repo:fix-issue workflow: fetch, rounds, verify, screenshots, pull request'
     );
 
-  issueFix
+  fixIssue
     .command('fetch-issue')
-    .description('Render the issue and its comments to tmp/issue-fix/issue.md')
+    .description('Render the issue and its comments to tmp/fix-issue/issue.md')
     .requiredOption('--issue <number>', 'Issue number')
     .option(
       '--workflow-app-client-id <id>',
-      'Client ID of the issue-fix App, whose own comments on the issue are kept'
+      'Client ID of the fix-issue App, whose own comments on the issue are kept'
     )
     .action(
       ({ issue, workflowAppClientId }: IssueOptions & { readonly workflowAppClientId?: string }) =>
@@ -96,10 +96,10 @@ export function registerIssueFixCommands(program: Command): void {
         })
     );
 
-  issueFix
+  fixIssue
     .command('verify')
     .description('Run the verification gate on the fixer status and change')
-    .option('--report', 'Write a failure report to tmp/issue-fix/verify.md instead of only failing')
+    .option('--report', 'Write a failure report to tmp/fix-issue/verify.md instead of only failing')
     .action(({ report }: { readonly report?: boolean }) =>
       guard('verify-fix', () => {
         const target = paths();
@@ -112,16 +112,16 @@ export function registerIssueFixCommands(program: Command): void {
       })
     );
 
-  const round = issueFix.command('round').description('One fix → verify → review round');
+  const round = fixIssue.command('round').description('One fix → verify → review round');
 
   round
     .command('begin')
     .requiredOption('--round <n>', 'Round number')
     .action(({ round: value }: RoundOptions) =>
-      guard('issue-fix-round', () => {
+      guard('fix-issue-round', () => {
         const state = beginRound(paths(), parseRound(value));
         writeStepOutputs({ state: state ?? '' });
-        console.log(`issue-fix-round: round ${value} fixer state is '${state ?? 'missing'}'`);
+        console.log(`fix-issue-round: round ${value} fixer state is '${state ?? 'missing'}'`);
       })
     );
 
@@ -129,7 +129,7 @@ export function registerIssueFixCommands(program: Command): void {
     .command('verify')
     .requiredOption('--round <n>', 'Round number')
     .action(({ round: value }: RoundOptions) =>
-      guard('issue-fix-round', () => {
+      guard('fix-issue-round', () => {
         parseRound(value);
         writeStepOutputs({ verified: verifyRound(paths()) });
       })
@@ -137,20 +137,20 @@ export function registerIssueFixCommands(program: Command): void {
 
   round
     .command('snapshot')
-    .action(() => guard('issue-fix-round', () => snapshotForReview(paths())));
+    .action(() => guard('fix-issue-round', () => snapshotForReview(paths())));
 
   round
     .command('check-review')
     .requiredOption('--round <n>', 'Round number')
     .action(({ round: value }: RoundOptions) =>
-      guard('issue-fix-round', () => {
+      guard('fix-issue-round', () => {
         parseRound(value);
         const blocking = checkReview(paths());
         writeStepOutputs({ blocking: blocking ?? '' });
         console.log(
           blocking === null
-            ? `issue-fix-round: round ${value} review left no valid review file; the round fails`
-            : `issue-fix-round: round ${value} review found ${blocking} blocking findings`
+            ? `fix-issue-round: round ${value} review left no valid review file; the round fails`
+            : `fix-issue-round: round ${value} review found ${blocking} blocking findings`
         );
       })
     );
@@ -159,22 +159,22 @@ export function registerIssueFixCommands(program: Command): void {
     .command('end')
     .requiredOption('--round <n>', 'Round number')
     .action(({ round: value }: RoundOptions) =>
-      guard('issue-fix-round', () => {
+      guard('fix-issue-round', () => {
         const end = endRound(paths(), parseRound(value));
         writeStepOutputs({ outcome: end.outcome, clean: end.clean, continue: end.continue });
-        console.log(`issue-fix-round: ${end.summary}`);
+        console.log(`fix-issue-round: ${end.summary}`);
       })
     );
 
   round.command('finish').action(() =>
-    guard('issue-fix-round', () => {
+    guard('fix-issue-round', () => {
       const outcome = finishRounds(paths());
       writeStepOutputs({ outcome });
-      console.log(`issue-fix-round: finished with outcome ${outcome}`);
+      console.log(`fix-issue-round: finished with outcome ${outcome}`);
     })
   );
 
-  issueFix
+  fixIssue
     .command('stop-guard')
     .description(
       'Claude Code Stop hook: keep the agent working until its output file is written and valid'
@@ -185,7 +185,7 @@ export function registerIssueFixCommands(program: Command): void {
       if (block) console.log(JSON.stringify(block));
     });
 
-  issueFix
+  fixIssue
     .command('strip-forbidden')
     .description(
       'Remove changes outside the allowed paths and block the status with a question naming them'
@@ -202,19 +202,19 @@ export function registerIssueFixCommands(program: Command): void {
       })
     );
 
-  const screenshots = issueFix
+  const screenshots = fixIssue
     .command('screenshots')
     .description('Before and after screenshots of changed screens');
   screenshots
     .command('preview')
     .description('Run the screenshot specs against the current build')
-    .action(() => guard('issue-fix-screenshots', () => previewScreenshots({ paths: paths() })));
+    .action(() => guard('fix-issue-screenshots', () => previewScreenshots({ paths: paths() })));
   screenshots
     .command('capture')
     .description('Build and capture the fix, then dev, and restore the fix')
-    .action(() => guard('issue-fix-screenshots', () => captureScreenshots({ paths: paths() })));
+    .action(() => guard('fix-issue-screenshots', () => captureScreenshots({ paths: paths() })));
 
-  issueFix
+  fixIssue
     .command('open-pull-request')
     .description('Commit the patch to the branch and open or update its pull request')
     .requiredOption('--issue <number>', 'Issue number')

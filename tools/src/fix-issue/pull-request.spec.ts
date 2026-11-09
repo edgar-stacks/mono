@@ -64,7 +64,7 @@ function existingPull(draft: boolean, fullName = repoName) {
       draft,
       node_id: 'PR_node',
       html_url: 'https://github.com/leather-io/mono/pull/7',
-      head: { ref: 'bot/issue-fix-12-777', repo: { full_name: fullName } },
+      head: { ref: 'bot/fix-issue-12-777', repo: { full_name: fullName } },
     },
   ];
 }
@@ -163,7 +163,7 @@ describe('openPullRequest', () => {
       paths: repo.paths,
       repo: repoName,
       issue: 12,
-      branch: 'bot/issue-fix-12-777',
+      branch: 'bot/fix-issue-12-777',
       baseBranch: 'dev',
       parentSha: overrides.parentSha ?? repo.head,
       coAuthor: overrides.coAuthor,
@@ -208,12 +208,12 @@ describe('openPullRequest', () => {
       parents: [repo.head],
     });
     expect(callsTo(client, 'POST', '/git/refs')[0]?.body).toEqual({
-      ref: 'refs/heads/bot/issue-fix-12-777',
+      ref: 'refs/heads/bot/fix-issue-12-777',
       sha: 'new-commit-sha',
     });
     expect(callsTo(client, 'POST', '/pulls')[0]?.body).toEqual({
       title: doneStatus.commit,
-      head: 'bot/issue-fix-12-777',
+      head: 'bot/fix-issue-12-777',
       base: 'dev',
       body: doneBody,
       draft: false,
@@ -269,10 +269,10 @@ describe('openPullRequest', () => {
     }
 
     const others = [
-      openPull(50, 'bot/issue-fix-12-111'),
-      openPull(51, 'bot/issue-fix-123-5'),
-      openPull(52, 'bot/issue-fix-12-222', 'someone/mono'),
-      openPull(53, 'bot/issue-fix-12-by-hand'),
+      openPull(50, 'bot/fix-issue-12-111'),
+      openPull(51, 'bot/fix-issue-123-5'),
+      openPull(52, 'bot/fix-issue-12-222', 'someone/mono'),
+      openPull(53, 'bot/fix-issue-12-by-hand'),
     ];
 
     function withOpenPulls(fail = false): GitHubRoute {
@@ -294,7 +294,7 @@ describe('openPullRequest', () => {
         body: 'Superseded by #101.',
       });
       expect(callsTo(client, 'PATCH', '/pulls/50')[0]?.body).toEqual({ state: 'closed' });
-      expect(callsTo(client, 'DELETE', '/git/refs/heads/bot/issue-fix-12-111')).toHaveLength(1);
+      expect(callsTo(client, 'DELETE', '/git/refs/heads/bot/fix-issue-12-111')).toHaveLength(1);
       for (const number of [51, 52, 53]) {
         expect(
           client.calls.some(
@@ -310,7 +310,7 @@ describe('openPullRequest', () => {
       setup(doneStatus);
       const { client, result } = open(withOpenPulls(true));
       await expect(result).resolves.toBe('https://github.com/leather-io/mono/pull/101');
-      expect(callsTo(client, 'DELETE', '/git/refs/heads/bot/issue-fix-12-111')).toHaveLength(0);
+      expect(callsTo(client, 'DELETE', '/git/refs/heads/bot/fix-issue-12-111')).toHaveLength(0);
     });
   });
 
@@ -326,14 +326,14 @@ describe('openPullRequest', () => {
   test('force-updates the branch and readies the draft pull request', async () => {
     setup(doneStatus);
     const { client, result } = open((method, path) => {
-      if (path.includes('/git/matching-refs/heads/bot/issue-fix-12-777')) {
-        return [{ ref: 'refs/heads/bot/issue-fix-12-777', object: { sha: 'old-sha' } }];
+      if (path.includes('/git/matching-refs/heads/bot/fix-issue-12-777')) {
+        return [{ ref: 'refs/heads/bot/fix-issue-12-777', object: { sha: 'old-sha' } }];
       }
       if (method === 'GET' && path.includes('/pulls?')) return existingPull(true);
       return undefined;
     });
     await expect(result).resolves.toBe('https://github.com/leather-io/mono/pull/7');
-    expect(callsTo(client, 'PATCH', '/git/refs/heads/bot/issue-fix-12-777')[0]?.body).toEqual({
+    expect(callsTo(client, 'PATCH', '/git/refs/heads/bot/fix-issue-12-777')[0]?.body).toEqual({
       sha: 'new-commit-sha',
       force: true,
     });
@@ -382,7 +382,7 @@ describe('openPullRequest', () => {
       'https://github.com/leather-io/mono/issues/12#issuecomment-1'
     );
     expect(callsTo(client, 'POST', '/issues/12/comments')[0]?.body).toEqual({
-      body: `The \`repo:issue-fix\` run (https://github.com/leather-io/mono/actions/runs/777) stopped before changing anything.\n\nIt needs answers to:\n\n- ${blockedStatus.questions[0]}\n`,
+      body: `The \`repo:fix-issue\` run (https://github.com/leather-io/mono/actions/runs/777) stopped before changing anything.\n\nIt needs answers to:\n\n- ${blockedStatus.questions[0]}\n`,
     });
     expect(callsTo(client, 'POST', '/pulls')).toHaveLength(0);
   });
@@ -392,7 +392,7 @@ describe('openPullRequest', () => {
     const { client, result } = open();
     await result;
     expect(callsTo(client, 'POST', '/issues/12/comments')[0]?.body).toEqual({
-      body: `The \`repo:issue-fix\` run (https://github.com/leather-io/mono/actions/runs/777) stopped before changing anything.\n\nA maintainer needs to make these changes, outside the paths the run may change:\n\n- \`knip.json\`: add apps/web/tests/feature-map/*.features.ts to the web workspace entry list\n`,
+      body: `The \`repo:fix-issue\` run (https://github.com/leather-io/mono/actions/runs/777) stopped before changing anything.\n\nA maintainer needs to make these changes, outside the paths the run may change:\n\n- \`knip.json\`: add apps/web/tests/feature-map/*.features.ts to the web workspace entry list\n`,
     });
   });
 
@@ -443,7 +443,7 @@ describe('openPullRequest', () => {
     };
 
     function shoot(side: string, id: string, content: Buffer = png) {
-      repo.write(`tmp/issue-fix/screenshots/${side}/${id}.png`, content);
+      repo.write(`tmp/fix-issue/screenshots/${side}/${id}.png`, content);
     }
 
     test('publishes them to a new screenshots branch and tables them', async () => {
@@ -522,7 +522,7 @@ describe('openPullRequest', () => {
       await expect(result).resolves.toBe('https://github.com/leather-io/mono/pull/101');
       expect(callsTo(client, 'POST', '/pulls')[0]?.body).toMatchObject({ body: doneBody });
       expect(callsTo(client, 'POST', '/git/refs').map(call => call.body)).toContainEqual({
-        ref: 'refs/heads/bot/issue-fix-12-777',
+        ref: 'refs/heads/bot/fix-issue-12-777',
         sha: 'new-commit-sha',
       });
     });

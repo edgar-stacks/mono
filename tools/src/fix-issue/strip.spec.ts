@@ -73,7 +73,7 @@ describe('stripForbiddenPaths', () => {
 describe('strippedQuestion', () => {
   test('names each path and flags the run', () => {
     expect(strippedQuestion(['.github/workflows/a.yml', 'README.md'])).toBe(
-      'The fixer changed `.github/workflows/a.yml`, `README.md`, which issue-fix may never change. They were removed from this pull request. If the issue did not ask for them, treat this run as suspect; otherwise make those changes by hand.'
+      'The fixer changed `.github/workflows/a.yml`, `README.md`, which fix-issue may never change. They were removed from this pull request. If the issue did not ask for them, treat this run as suspect; otherwise make those changes by hand.'
     );
   });
 

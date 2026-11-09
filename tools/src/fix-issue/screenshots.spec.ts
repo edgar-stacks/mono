@@ -43,7 +43,7 @@ describe('captureScreenshots', () => {
   afterEach(() => repo.cleanup());
 
   function withSpec() {
-    repo.write('tmp/issue-fix/screenshot-specs/fee-row.spec.ts', 'test("fee row", () => {});\n');
+    repo.write('tmp/fix-issue/screenshot-specs/fee-row.spec.ts', 'test("fee row", () => {});\n');
   }
 
   function shot(side: string) {
@@ -56,7 +56,7 @@ describe('captureScreenshots', () => {
     const browser = fakeBrowser(repo);
     const sink = logSink();
     captureScreenshots({ paths: repo.paths, run: browser.run, log: line => sink.log(line) });
-    expect(sink.lines).toEqual(['issue-fix-screenshots: no screenshot specs; nothing to capture']);
+    expect(sink.lines).toEqual(['fix-issue-screenshots: no screenshot specs; nothing to capture']);
     expect(browser.capturedSources).toEqual([]);
   });
 
@@ -89,7 +89,7 @@ describe('captureScreenshots', () => {
       log: line => sink.log(line),
     });
     expect(sink.lines).toContain(
-      'issue-fix-screenshots: dev did not build; before screenshots show as missing'
+      'fix-issue-screenshots: dev did not build; before screenshots show as missing'
     );
     expect(existsSync(shot('after'))).toBe(true);
     expect(existsSync(shot('before'))).toBe(false);

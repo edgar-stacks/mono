@@ -1,14 +1,14 @@
 # Fix one GitHub issue
 
-You are fixing an issue in the Leather monorepo inside a `repo:issue-fix` workflow run. Nobody is
+You are fixing an issue in the Leather monorepo inside a `repo:fix-issue` workflow run. Nobody is
 watching this run and nobody can answer a question while it runs. The workflow verifies your work,
 commits it and opens the pull request; your job ends with the status file.
 
 ## Inputs
 
-- `tmp/issue-fix/issue.md`: the issue, its labels and its comments in order, holding only text
+- `tmp/fix-issue/issue.md`: the issue, its labels and its comments in order, holding only text
   written by people with write access to the repository; anything else is left out and noted.
-- `tmp/issue-fix/notes.md`: the brief written for this issue, or a sentence of guidance, or empty.
+- `tmp/fix-issue/notes.md`: the brief written for this issue, or a sentence of guidance, or empty.
 
 When the notes hold a brief, it is the decision record: its `Settled:` lines are binding, even where
 the issue or a comment says otherwise, and its Verify lines are the tests to add or run. When the
@@ -46,8 +46,8 @@ to write in the status file.
   not retry it as written; change the approach, or record the gap under `tested`.
 - Read files with the Read tool, or with `grep` and `find` in Bash.
 - Background commands and sub-agents are fine, but this run is headless: you are never notified
-  when one finishes, and the session ends with your turn. Before writing `tmp/issue-fix/status.json`, wait for each
-  one you started by reading its output until it is done. Ending your turn before `tmp/issue-fix/status.json` is
+  when one finishes, and the session ends with your turn. Before writing `tmp/fix-issue/status.json`, wait for each
+  one you started by reading its output until it is done. Ending your turn before `tmp/fix-issue/status.json` is
   written and valid only gets you sent back to finish it.
 - To run some specs, pass their paths without `--`, for example
   `pnpm --filter @leather.io/extension test:unit src/x.spec.ts`. With `--`, vitest ignores the paths
@@ -85,7 +85,7 @@ to write in the status file.
 When the change alters what an extension screen shows, give the reviewer before and after
 screenshots. Skip this for changes nobody can see.
 
-1. Write one or more Playwright specs in `tmp/issue-fix/screenshot-specs/<name>.spec.ts`. That
+1. Write one or more Playwright specs in `tmp/fix-issue/screenshot-specs/<name>.spec.ts`. That
    folder is never committed, linted or typechecked. Import `test` from `@tests/fixtures/fixtures`
    and anything else from `@tests/...`, `@shared/...` or `@playwright/test`, and reuse the existing
    mocks and page objects to open each changed screen in each state that matters.
@@ -97,15 +97,15 @@ screenshots. Skip this for changes nobody can see.
    selectors and text that exist on `dev` too to reach and wait for the screen; a test id that the
    fix adds would make the `dev` capture fail.
 4. Check them: build with `pnpm --filter @leather.io/extension build:test`, run
-   `pnpm lt issue-fix screenshots preview`, and look at the PNGs in
-   `tmp/issue-fix/screenshots/preview/` with the Read tool.
+   `pnpm lt fix-issue screenshots preview`, and look at the PNGs in
+   `tmp/fix-issue/screenshots/preview/` with the Read tool.
 5. List each state in the status file under `screenshots` as `{ "id": "<id>", "caption": "<caption>" }`.
    The caption is a short plain description of the state, and becomes the row label in the pull
    request.
 
 ## Status file
 
-Write `tmp/issue-fix/status.json` last, as JSON in exactly this shape, and stop:
+Write `tmp/fix-issue/status.json` last, as JSON in exactly this shape, and stop:
 
 ```json
 {
@@ -149,4 +149,4 @@ Write `tmp/issue-fix/status.json` last, as JSON in exactly this shape, and stop:
   `"apps/extension/src/app/features/ledger/flow.ts: the device-busy copy is duplicated in three steps"`.
   They appear under `## Follow-ups` in the pull request, next to the review's minor notes, so a
   maintainer can open issues for them. Leave `followUps` out when there are none.
-- `pnpm lt issue-fix verify` checks the file and the change the same way the workflow does.
+- `pnpm lt fix-issue verify` checks the file and the change the same way the workflow does.

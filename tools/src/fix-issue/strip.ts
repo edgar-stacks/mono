@@ -3,7 +3,7 @@ import path from 'node:path';
 
 import { runCommand, runOrThrow } from './exec.js';
 import { changedPaths, refusedPaths } from './git.js';
-import type { IssueFixPaths } from './paths.js';
+import type { FixIssuePaths } from './paths.js';
 import { readStatus, writeStatus } from './status.js';
 
 const maxListedPaths = 10;
@@ -15,14 +15,14 @@ function describePaths(files: readonly string[]): string {
 }
 
 export function strippedQuestion(files: readonly string[]): string {
-  return `The fixer changed ${describePaths(files)}, which issue-fix may never change. They were removed from this pull request. If the issue did not ask for them, treat this run as suspect; otherwise make those changes by hand.`;
+  return `The fixer changed ${describePaths(files)}, which fix-issue may never change. They were removed from this pull request. If the issue did not ask for them, treat this run as suspect; otherwise make those changes by hand.`;
 }
 
 function isTracked(root: string, file: string): boolean {
   return runCommand('git', ['cat-file', '-e', `HEAD:${file}`], { cwd: root }).status === 0;
 }
 
-export function stripForbiddenPaths(paths: IssueFixPaths): string[] {
+export function stripForbiddenPaths(paths: FixIssuePaths): string[] {
   const forbidden = refusedPaths(changedPaths(paths.root).map(change => change.path));
   if (forbidden.length === 0) return [];
   const status = readStatus(paths.statusFile);

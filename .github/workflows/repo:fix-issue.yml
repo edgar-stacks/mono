@@ -1,5 +1,5 @@
-name: repo:issue-fix
-run-name: 'issue-fix: #${{ inputs.issue }}'
+name: repo:fix-issue
+run-name: 'fix-issue: #${{ inputs.issue }}'
 
 on:
   workflow_dispatch:
@@ -9,7 +9,7 @@ on:
         type: number
         required: true
       notes:
-        description: The brief from the issue-fix skill, or a sentence of guidance
+        description: The brief from the fix-issue skill, or a sentence of guidance
         type: string
         required: false
         default: ''
@@ -18,12 +18,12 @@ on:
 permissions: {}
 
 concurrency:
-  group: issue-fix-${{ inputs.issue }}
+  group: fix-issue-${{ inputs.issue }}
   cancel-in-progress: true
 
 jobs:
-  issue-fix:
-    name: issue-fix
+  fix-issue:
+    name: fix-issue
     if: github.ref_name == 'dev'
     runs-on: ubuntu-24.04
     timeout-minutes: 180
@@ -49,13 +49,13 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           ISSUE: ${{ inputs.issue }}
-          APP_CLIENT_ID: ${{ vars.ISSUE_FIX_APP_CLIENT_ID }}
-        run: pnpm lt issue-fix fetch-issue --issue "$ISSUE" --workflow-app-client-id "$APP_CLIENT_ID"
+          APP_CLIENT_ID: ${{ vars.FIX_ISSUE_APP_CLIENT_ID }}
+        run: pnpm lt fix-issue fetch-issue --issue "$ISSUE" --workflow-app-client-id "$APP_CLIENT_ID"
 
       - name: write-notes
         env:
           NOTES: ${{ inputs.notes }}
-        run: printf '%s\n' "$NOTES" > tmp/issue-fix/notes.md
+        run: printf '%s\n' "$NOTES" > tmp/fix-issue/notes.md
 
       - name: write-extension-env
         env:
@@ -110,7 +110,7 @@ jobs:
 
       - name: round-1
         id: round-1
-        uses: $/.github/actions/issue-fix-round
+        uses: $/.github/actions/fix-issue-round
         with:
           round: '1'
           claude-code-oauth-token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
@@ -121,7 +121,7 @@ jobs:
       - name: round-2
         id: round-2
         if: steps.round-1.outputs.continue == 'true'
-        uses: $/.github/actions/issue-fix-round
+        uses: $/.github/actions/fix-issue-round
         with:
           round: '2'
           claude-code-oauth-token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
@@ -132,7 +132,7 @@ jobs:
       - name: round-3
         id: round-3
         if: steps.round-2.outputs.continue == 'true'
-        uses: $/.github/actions/issue-fix-round
+        uses: $/.github/actions/fix-issue-round
         with:
           round: '3'
           claude-code-oauth-token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
@@ -141,41 +141,41 @@ jobs:
           bun-executable: ${{ steps.install-bun.outputs.executable }}
 
       - name: finish-rounds
-        run: pnpm lt issue-fix round finish
+        run: pnpm lt fix-issue round finish
 
       - name: strip-forbidden
-        run: pnpm lt issue-fix strip-forbidden
+        run: pnpm lt fix-issue strip-forbidden
 
       - name: capture-screenshots
-        run: pnpm lt issue-fix screenshots capture
+        run: pnpm lt fix-issue screenshots capture
 
       - name: package-fix
         run: |
           git add -A
-          git diff --cached --binary --no-renames HEAD > tmp/issue-fix/fix.patch
+          git diff --cached --binary --no-renames HEAD > tmp/fix-issue/fix.patch
 
       - name: upload-fix
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: issue-fix
+          name: fix-issue
           path: |
-            tmp/issue-fix/status.json
-            tmp/issue-fix/fix.patch
-            tmp/issue-fix/rounds/
-            tmp/issue-fix/screenshots/before/
-            tmp/issue-fix/screenshots/after/
+            tmp/fix-issue/status.json
+            tmp/fix-issue/fix.patch
+            tmp/fix-issue/rounds/
+            tmp/fix-issue/screenshots/before/
+            tmp/fix-issue/screenshots/after/
           if-no-files-found: error
           retention-days: 3
 
   open-pull-request:
     name: open-pull-request
-    needs: issue-fix
+    needs: fix-issue
     if: github.ref_name == 'dev'
     runs-on: ubuntu-24.04
     timeout-minutes: 15
-    environment: issue-fix
+    environment: fix-issue
     permissions:
-      contents: read # checkout only; every GitHub write uses the issue-fix app token
+      contents: read # checkout only; every GitHub write uses the fix-issue app token
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -192,26 +192,26 @@ jobs:
         id: app-token
         uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
         with:
-          client-id: ${{ vars.ISSUE_FIX_APP_CLIENT_ID }}
-          private-key: ${{ secrets.ISSUE_FIX_APP_PRIVATE_KEY }}
+          client-id: ${{ vars.FIX_ISSUE_APP_CLIENT_ID }}
+          private-key: ${{ secrets.FIX_ISSUE_APP_PRIVATE_KEY }}
           repositories: ${{ github.event.repository.name }}
-          permission-contents: write # create the signed fix commit on bot/issue-fix-<issue>-<run id> and the screenshots on bot/screenshots-<issue>
+          permission-contents: write # create the signed fix commit on bot/fix-issue-<issue>-<run id> and the screenshots on bot/screenshots-<issue>
           permission-pull-requests: write # open or update the issue's pull request and flip its draft state
           permission-issues: write # comment the fixer's questions on the issue when it is blocked before changing anything
 
       - name: download-fix
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
-          name: issue-fix
-          path: tmp/issue-fix
+          name: fix-issue
+          path: tmp/fix-issue
 
       - name: open-pull-request
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
           ISSUE: ${{ inputs.issue }}
-          BRANCH: bot/issue-fix-${{ inputs.issue }}-${{ github.run_id }}
+          BRANCH: bot/fix-issue-${{ inputs.issue }}-${{ github.run_id }}
           PARENT_SHA: ${{ github.sha }}
           CO_AUTHOR: ${{ github.triggering_actor }}
         run: >-
-          pnpm lt issue-fix open-pull-request --issue "$ISSUE" --branch "$BRANCH" --base dev
+          pnpm lt fix-issue open-pull-request --issue "$ISSUE" --branch "$BRANCH" --base dev
           --parent-sha "$PARENT_SHA" --co-author "$CO_AUTHOR"

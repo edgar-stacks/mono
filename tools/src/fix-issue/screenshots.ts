@@ -11,24 +11,24 @@ import path from 'node:path';
 
 import { type CommandRunner, runAndEcho, runCommand } from './exec.js';
 import { treeSnapshot } from './git.js';
-import type { IssueFixPaths } from './paths.js';
+import type { FixIssuePaths } from './paths.js';
 
 type ScreenshotSide = 'before' | 'after' | 'preview';
 
 interface ScreenshotOptions {
-  readonly paths: IssueFixPaths;
+  readonly paths: FixIssuePaths;
   readonly run?: CommandRunner;
   log?(line: string): void;
 }
 
 const pngSignature = Buffer.from('89504e470d0a1a0a', 'hex');
 export const maxScreenshotBytes = 1024 * 1024;
-const stashMessage = 'issue-fix-screenshots';
+const stashMessage = 'fix-issue-screenshots';
 const stashIdentity = [
   '-c',
-  'user.name=issue-fix',
+  'user.name=fix-issue',
   '-c',
-  'user.email=issue-fix@users.noreply.github.com',
+  'user.email=fix-issue@users.noreply.github.com',
 ];
 
 export function isScreenshot(file: string): boolean {
@@ -38,22 +38,22 @@ export function isScreenshot(file: string): boolean {
   return readFileSync(file).subarray(0, pngSignature.length).equals(pngSignature);
 }
 
-function hasSpecs(paths: IssueFixPaths): boolean {
+function hasSpecs(paths: FixIssuePaths): boolean {
   return (
     existsSync(paths.screenshotSpecsDir) &&
     readdirSync(paths.screenshotSpecsDir).some(file => file.endsWith('.spec.ts'))
   );
 }
 
-function extensionDir(paths: IssueFixPaths): string {
+function extensionDir(paths: FixIssuePaths): string {
   return path.join(paths.root, 'apps/extension');
 }
 
-function configFile(paths: IssueFixPaths): string {
+function configFile(paths: FixIssuePaths): string {
   return path.join(paths.workDir, 'playwright.screenshots.config.ts');
 }
 
-function writeConfig(paths: IssueFixPaths): void {
+function writeConfig(paths: FixIssuePaths): void {
   const extension = extensionDir(paths);
   writeFileSync(
     configFile(paths),
@@ -77,7 +77,7 @@ function writeConfig(paths: IssueFixPaths): void {
   );
 }
 
-function buildExtension(paths: IssueFixPaths, run: CommandRunner): boolean {
+function buildExtension(paths: FixIssuePaths, run: CommandRunner): boolean {
   const packages = run('pnpm', ['turbo', 'run', 'build', '--filter=@leather.io/extension^...'], {
     cwd: paths.root,
   });
@@ -89,7 +89,7 @@ function buildExtension(paths: IssueFixPaths, run: CommandRunner): boolean {
 }
 
 function takeScreenshots(
-  paths: IssueFixPaths,
+  paths: FixIssuePaths,
   side: ScreenshotSide,
   run: CommandRunner,
   log: (line: string) => void
@@ -108,7 +108,7 @@ function takeScreenshots(
   );
   if (result.status !== 0) {
     log(
-      `issue-fix-screenshots: some ${side} screenshot specs failed; their states show as missing`
+      `fix-issue-screenshots: some ${side} screenshot specs failed; their states show as missing`
     );
   }
 }
@@ -125,7 +125,7 @@ export function previewScreenshots({
   if (!hasSpecs(paths)) throw new Error(`no specs in ${paths.screenshotSpecsDir}`);
   takeScreenshots(paths, 'preview', run, log);
   log(
-    `issue-fix-screenshots: ${countPngs(path.join(paths.screenshotsDir, 'preview'))} preview screenshots`
+    `fix-issue-screenshots: ${countPngs(path.join(paths.screenshotsDir, 'preview'))} preview screenshots`
   );
 }
 
@@ -145,12 +145,12 @@ export function captureScreenshots({
   log = console.log,
 }: ScreenshotOptions): void {
   if (!hasSpecs(paths)) {
-    log('issue-fix-screenshots: no screenshot specs; nothing to capture');
+    log('fix-issue-screenshots: no screenshot specs; nothing to capture');
     return;
   }
   const before = treeSnapshot(paths.root);
   if (!buildExtension(paths, run)) {
-    log('issue-fix-screenshots: the fixed tree did not build; skipping screenshots');
+    log('fix-issue-screenshots: the fixed tree did not build; skipping screenshots');
     return;
   }
   takeScreenshots(paths, 'after', run, log);
@@ -160,7 +160,7 @@ export function captureScreenshots({
   const stashed = stashCount(paths.root) > stashes;
   try {
     if (buildExtension(paths, run)) takeScreenshots(paths, 'before', run, log);
-    else log('issue-fix-screenshots: dev did not build; before screenshots show as missing');
+    else log('fix-issue-screenshots: dev did not build; before screenshots show as missing');
   } finally {
     if (stashed) {
       git(paths.root, ['checkout', '--quiet', '--', '.']);
@@ -172,6 +172,6 @@ export function captureScreenshots({
     throw new Error('the fix did not come back intact after the before capture');
   }
   log(
-    `issue-fix-screenshots: captured ${countPngs(path.join(paths.screenshotsDir, 'after'))} after and ${countPngs(path.join(paths.screenshotsDir, 'before'))} before screenshots`
+    `fix-issue-screenshots: captured ${countPngs(path.join(paths.screenshotsDir, 'after'))} after and ${countPngs(path.join(paths.screenshotsDir, 'before'))} before screenshots`
   );
 }

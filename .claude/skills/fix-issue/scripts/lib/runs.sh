@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 
 repo="leather-io/mono"
-workflow="repo:issue-fix.yml"
+workflow="repo:fix-issue.yml"
 
 run_title() {
-  printf 'issue-fix: #%s' "$1"
+  printf 'fix-issue: #%s' "$1"
 }
 
 find_run() {
@@ -23,7 +23,7 @@ record_run() {
   local run="$3"
   jq --arg issue "$issue" --argjson run "$run" \
     'map(if (.issue | tostring) == $issue then . + {run_id: $run.databaseId, run_url: $run.url,
-      branch: ("bot/issue-fix-" + $issue + "-" + ($run.databaseId | tostring))} else . end)' \
+      branch: ("bot/fix-issue-" + $issue + "-" + ($run.databaseId | tostring))} else . end)' \
     "$run_json" > "$run_json.tmp"
   mv "$run_json.tmp" "$run_json"
 }

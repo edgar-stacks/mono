@@ -2,7 +2,7 @@ import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node
 import path from 'node:path';
 import { z } from 'zod';
 
-import type { IssueFixPaths } from './paths.js';
+import type { FixIssuePaths } from './paths.js';
 import { readReview } from './review.js';
 import { readStatus } from './status.js';
 
@@ -16,15 +16,15 @@ interface StopBlock {
   readonly reason: string;
 }
 
-function outputFile(paths: IssueFixPaths, output: GuardedOutput): string {
+function outputFile(paths: FixIssuePaths, output: GuardedOutput): string {
   return output === 'status' ? paths.statusFile : paths.reviewFile;
 }
 
-function counterFile(paths: IssueFixPaths, output: GuardedOutput): string {
+function counterFile(paths: FixIssuePaths, output: GuardedOutput): string {
   return path.join(paths.workDir, `stop-guard-${output}.count`);
 }
 
-function outputProblem(paths: IssueFixPaths, output: GuardedOutput): string | null {
+function outputProblem(paths: FixIssuePaths, output: GuardedOutput): string | null {
   const file = outputFile(paths, output);
   if (!existsSync(file)) return 'does not exist yet';
   if (output === 'status') {
@@ -45,13 +45,13 @@ function readBlocks(file: string): number {
   return Number.isInteger(count) && count > 0 ? count : 0;
 }
 
-export function resetStopGuards(paths: IssueFixPaths): void {
+export function resetStopGuards(paths: FixIssuePaths): void {
   for (const output of guardedOutputSchema.options) {
     rmSync(counterFile(paths, output), { force: true });
   }
 }
 
-export function decideStop(paths: IssueFixPaths, output: GuardedOutput): StopBlock | null {
+export function decideStop(paths: FixIssuePaths, output: GuardedOutput): StopBlock | null {
   const problem = outputProblem(paths, output);
   if (problem === null) return null;
   const counter = counterFile(paths, output);

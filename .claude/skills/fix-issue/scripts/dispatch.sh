@@ -8,15 +8,15 @@ usage() {
   cat <<'EOF'
 Usage: dispatch.sh --run-dir <dir> --issue <n> [--brief <file>] [--dry-run]
 
-Dispatches the repo:issue-fix workflow on dev for one brief: the issue as `issue`, the brief
+Dispatches the repo:fix-issue workflow on dev for one brief: the issue as `issue`, the brief
 verbatim as `notes`, sent as JSON on standard input to `gh workflow run --json`, so the brief never
 lands on a command line. Then finds the run (from the URL gh prints, or by polling gh run list for
-the "issue-fix: #<n>" title created after the dispatch) and records run_id, run_url and
+the "fix-issue: #<n>" title created after the dispatch) and records run_id, run_url and
 dispatched_at in <run-dir>/run.json. Dispatching the same issue again replaces its run.
 
   --issue    the issue the workflow fixes; for a group, the first issue of the brief
-  --brief    default <run-dir>/briefs/bot/issue-fix-<issue>.md; the run names its branch
-             bot/issue-fix-<issue>-<run id>, recorded once the run is found
+  --brief    default <run-dir>/briefs/bot/fix-issue-<issue>.md; the run names its branch
+             bot/fix-issue-<issue>-<run id>, recorded once the run is found
   --dry-run  check the brief and print the commands; dispatch nothing
 
 Refuses a brief over 60000 bytes (GitHub caps the inputs payload at 65535 characters). Exits 3
@@ -52,7 +52,7 @@ die() {
 [ -n "$run_dir" ] || { usage >&2; exit 2; }
 [ -n "$issue" ] || { usage >&2; exit 2; }
 [[ "$issue" =~ ^[1-9][0-9]*$ ]] || die "--issue must be an issue number"
-brief="${brief:-$run_dir/briefs/bot/issue-fix-$issue.md}"
+brief="${brief:-$run_dir/briefs/bot/fix-issue-$issue.md}"
 command -v jq >/dev/null || die "jq is required"
 command -v gh >/dev/null || die "gh is required"
 run_json="$run_dir/run.json"

@@ -27,7 +27,7 @@ describe('decideStop', () => {
   test('keeps the fixer working while its status is missing, and says why', () => {
     const block = decideStop(repo.paths, 'status');
     expect(block?.decision).toBe('block');
-    expect(block?.reason).toMatch(/tmp\/issue-fix\/status\.json does not exist yet/);
+    expect(block?.reason).toMatch(/tmp\/fix-issue\/status\.json does not exist yet/);
     expect(block?.reason).toMatch(/never notified when a background command or sub-agent/);
   });
 

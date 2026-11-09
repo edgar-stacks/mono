@@ -4,7 +4,7 @@ import { z } from 'zod';
 
 import { type CommandRunner, runCommand } from './exec.js';
 import { treeSnapshot } from './git.js';
-import type { IssueFixPaths } from './paths.js';
+import type { FixIssuePaths } from './paths.js';
 import { type Review, readReview } from './review.js';
 import { type FixState, maxFollowUps, readState, readStatus, writeStatus } from './status.js';
 import { resetStopGuards } from './stop-guard.js';
@@ -32,20 +32,20 @@ export function parseRound(value: string): number {
   return Number(value);
 }
 
-function roundDir(paths: IssueFixPaths, round: number): string {
+function roundDir(paths: FixIssuePaths, round: number): string {
   return path.join(paths.roundsDir, String(round));
 }
 
-function readRunState(paths: IssueFixPaths): RunState {
+function readRunState(paths: FixIssuePaths): RunState {
   if (!existsSync(paths.runFile)) return { rounds: [] };
   return runStateSchema.parse(JSON.parse(readFileSync(paths.runFile, 'utf8')));
 }
 
-function writeRunState(paths: IssueFixPaths, state: RunState): void {
+function writeRunState(paths: FixIssuePaths, state: RunState): void {
   writeFileSync(paths.runFile, `${JSON.stringify(state, null, 2)}\n`);
 }
 
-export function beginRound(paths: IssueFixPaths, round: number): FixState | null {
+export function beginRound(paths: FixIssuePaths, round: number): FixState | null {
   resetStopGuards(paths);
   for (const file of [paths.verifyReport, paths.reviewFile, paths.reviewSnapshot]) {
     rmSync(file, { force: true });
@@ -54,7 +54,7 @@ export function beginRound(paths: IssueFixPaths, round: number): FixState | null
   return readState(paths.statusFile);
 }
 
-export function verifyRound(paths: IssueFixPaths, run?: CommandRunner): boolean {
+export function verifyRound(paths: FixIssuePaths, run?: CommandRunner): boolean {
   const result = verifyFix({
     root: paths.root,
     statusFile: paths.statusFile,
@@ -65,12 +65,12 @@ export function verifyRound(paths: IssueFixPaths, run?: CommandRunner): boolean 
   return result.passed && !result.skipped;
 }
 
-export function snapshotForReview(paths: IssueFixPaths): void {
+export function snapshotForReview(paths: FixIssuePaths): void {
   mkdirSync(paths.workDir, { recursive: true });
   writeFileSync(paths.reviewSnapshot, treeSnapshot(paths.root));
 }
 
-export function checkReview(paths: IssueFixPaths): number | null {
+export function checkReview(paths: FixIssuePaths): number | null {
   if (!existsSync(paths.reviewSnapshot)) {
     throw new Error(`${paths.reviewSnapshot} does not exist; run the snapshot step first`);
   }
@@ -93,7 +93,7 @@ function tryReadReview(file: string): ReviewRead {
   }
 }
 
-function checksSummary(paths: IssueFixPaths): string | null {
+function checksSummary(paths: FixIssuePaths): string | null {
   if (existsSync(paths.verifyReport)) {
     const firstLine = readFileSync(paths.verifyReport, 'utf8').split('\n')[0] ?? '';
     return firstLine.replace(/^FAILED: /, '');
@@ -108,7 +108,7 @@ function checksSummary(paths: IssueFixPaths): string | null {
 }
 
 function decideOutcome(
-  paths: IssueFixPaths,
+  paths: FixIssuePaths,
   round: number
 ): { outcome: RoundOutcome; summary: string } {
   const checks = checksSummary(paths);
@@ -125,7 +125,7 @@ function decideOutcome(
   return { outcome: passed ? 'clean' : 'failed', summary: `Round ${round}: ${checks}` };
 }
 
-function unfixedFindingsQuestion(paths: IssueFixPaths, round: number): string | null {
+function unfixedFindingsQuestion(paths: FixIssuePaths, round: number): string | null {
   const file = path.join(roundDir(paths, round), path.basename(paths.reviewFile));
   const read = tryReadReview(file);
   if ('problem' in read) return null;
@@ -137,7 +137,7 @@ function unfixedFindingsQuestion(paths: IssueFixPaths, round: number): string | 
   return `The review found ${blocking.length} critical, blocker or regression findings that no round fixed because the fixer stopped as blocked: ${findings.join('; ')}. Options: answer the questions and dispatch again; fix them on this branch by hand.`;
 }
 
-export function endRound(paths: IssueFixPaths, round: number): RoundEnd {
+export function endRound(paths: FixIssuePaths, round: number): RoundEnd {
   resetStopGuards(paths);
   const { outcome, summary } = decideOutcome(paths, round);
   const dir = roundDir(paths, round);
@@ -172,7 +172,7 @@ function parseOwnFollowUp(entry: string): FollowUp {
   };
 }
 
-function reviewFollowUps(paths: IssueFixPaths, round: number): FollowUp[] {
+function reviewFollowUps(paths: FixIssuePaths, round: number): FollowUp[] {
   const read = tryReadReview(path.join(roundDir(paths, round), path.basename(paths.reviewFile)));
   if ('problem' in read) return [];
   return read.review.minor.map(finding => ({
@@ -191,7 +191,7 @@ function mergeFollowUps(own: readonly string[], fromReview: readonly FollowUp[])
   );
 }
 
-export function finishRounds(paths: IssueFixPaths): RoundOutcome {
+export function finishRounds(paths: FixIssuePaths): RoundOutcome {
   const rounds = [...readRunState(paths).rounds].sort((a, b) => a.round - b.round);
   const last = rounds.at(-1);
   if (!last) throw new Error('no round ran');

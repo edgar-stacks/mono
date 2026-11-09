@@ -1,15 +1,15 @@
 ---
-name: issue-fix
-description: Take one or more GitHub issue numbers for leather-io/mono, research each one, settle the open decisions with the person in one short round per issue, write a handoff brief per issue (or per group of overlapping issues), then dispatch the repo:issue-fix GitHub workflow once per brief, which runs the fixer, verifies it and opens a signed pull request from bot/issue-fix-<issue>-<run id>, and track the runs and pull requests to the end. Use when given one or more GitHub issue numbers to fix, asked to work through a batch of issues, or asked to dispatch fixers for issues.
+name: fix-issue
+description: Take one or more GitHub issue numbers for leather-io/mono, research each one, settle the open decisions with the person in one short round per issue, write a handoff brief per issue (or per group of overlapping issues), then dispatch the repo:fix-issue GitHub workflow once per brief, which runs the fixer, verifies it and opens a signed pull request from bot/fix-issue-<issue>-<run id>, and track the runs and pull requests to the end. Use when given one or more GitHub issue numbers to fix, asked to work through a batch of issues, or asked to dispatch fixers for issues.
 ---
 
-# Issue fix
+# Fix issue
 
 Hand this skill N issue numbers and get N pull requests back. The person's attention is the
 expensive part, so research comes first (the questions are sharp and few), every agreement is
 written down as a brief (the handoff to the fixer is lossless and survives context loss) and
 overlapping fixes are grouped before anything is dispatched. That is the local half. The fixing
-happens on GitHub: `scripts/dispatch.sh` runs the `repo:issue-fix` workflow once per brief, the
+happens on GitHub: `scripts/dispatch.sh` runs the `repo:fix-issue` workflow once per brief, the
 workflow's fixer implements it, the workflow re-runs the verification and commits the result
 through the git data API, so the commit is signed by GitHub and the pull request comes from
 `github-actions[bot]`. Nothing is committed or pushed from this machine.
@@ -38,7 +38,7 @@ it. The workflow itself always runs on the tip of `dev` at dispatch time.
 Create the run directory and keep everything the skill and the scripts write there:
 
 ```bash
-run_dir="${XDG_STATE_HOME:-$HOME/.local/state}/issue-fix/$(date +%Y%m%d-%H%M)"
+run_dir="${XDG_STATE_HOME:-$HOME/.local/state}/fix-issue/$(date +%Y%m%d-%H%M)"
 mkdir -p "$run_dir/briefs"
 printf '[]\n' > "$run_dir/run.json"
 ```
@@ -91,8 +91,8 @@ workflow's `notes` input, so it stays under the cap in `references/brief.md`.
 
 | Field          | Shape                                                                                                                                                |
 | -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Branch         | `bot/issue-fix-<n>-<run id>`, set by the workflow from the dispatched issue and its run                                                              |
-| Grouped branch | `bot/issue-fix-<first issue>-<run id>` (section 5)                                                                                                   |
+| Branch         | `bot/fix-issue-<n>-<run id>`, set by the workflow from the dispatched issue and its run                                                              |
+| Grouped branch | `bot/fix-issue-<first issue>-<run id>` (section 5)                                                                                                   |
 | Commit type    | follows the issue: a bug is `fix`, a change is `feat` or `refactor` by its nature (as in `CLAUDE.md`: `feat(mobile)`, `refactor(web)`, `fix(utils)`) |
 | Commit scope   | the platform or package: `extension`, `mobile`, `web`, `<package>`                                                                                   |
 
@@ -132,14 +132,14 @@ Dispatching is a GitHub write: show the list (issue, brief path, size) and get o
 the batch first. Then per brief:
 
 ```bash
-.claude/skills/issue-fix/scripts/dispatch.sh --run-dir "$run_dir" --issue 123
+.claude/skills/fix-issue/scripts/dispatch.sh --run-dir "$run_dir" --issue 123
 ```
 
-It reads `$run_dir/briefs/bot/issue-fix-123.md` (`--brief` and `--branch` override the defaults), refuses
+It reads `$run_dir/briefs/bot/fix-issue-123.md` (`--brief` and `--branch` override the defaults), refuses
 a brief over 60,000 bytes, and pipes `{"issue": "123", "notes": <brief>}` to
-`gh workflow run 'repo:issue-fix.yml' --repo leather-io/mono --ref dev --json` on standard input,
+`gh workflow run 'repo:fix-issue.yml' --repo leather-io/mono --ref dev --json` on standard input,
 so the brief never lands on a command line. It then finds the run, from the URL `gh` prints or by
-polling `gh run list --workflow 'repo:issue-fix.yml'` for the `issue-fix: #123` title created
+polling `gh run list --workflow 'repo:fix-issue.yml'` for the `fix-issue: #123` title created
 after the dispatch, and records `run_id`, `run_url` and `dispatched_at` in `run.json`. Re-running it
 for the same issue dispatches again and replaces the entry's run (section 8).
 
@@ -149,35 +149,35 @@ exits 3:
 
 ```bash
 jq -n --arg issue 123 --rawfile notes <brief> '{issue: $issue, notes: $notes}' |
-  gh workflow run 'repo:issue-fix.yml' --repo leather-io/mono --ref dev --json
+  gh workflow run 'repo:fix-issue.yml' --repo leather-io/mono --ref dev --json
 ```
 
-**What the run does.** Job `issue-fix` (read-only token) checks out `dev`, builds the packages,
-renders the issue and its comments to `tmp/issue-fix/issue.md` (only text by people with write
+**What the run does.** Job `fix-issue` (read-only token) checks out `dev`, builds the packages,
+renders the issue and its comments to `tmp/fix-issue/issue.md` (only text by people with write
 access to the repository: their permission is looked up per author, because `leather-io`
 memberships are private; anyone else's comments, and the title and body of an issue they opened,
 are left out with a note, so the brief must carry what an outside report says), writes the brief to
-`tmp/issue-fix/notes.md`, writes `apps/extension/.env` from the `PUBLIC_*` repository variables,
+`tmp/fix-issue/notes.md`, writes `apps/extension/.env` from the `PUBLIC_*` repository variables,
 installs Chromium for Playwright (the browser cache is restored, never saved) and runs the fixer
-with `.github/prompts/issue-fix.md`. The fixer can build the extension in test mode and run its
+with `.github/prompts/fix-issue.md`. The fixer can build the extension in test mode and run its
 end-to-end specs under `xvfb-run` with the `EXTENSION_INTEGRATION_TEST_MNEMONIC` test wallet. It has
 no GitHub MCP server and is told not to fetch issues or pull requests itself, so its only view of the
 issue is the filtered `issue.md`; on a public repository a fixer with network access could still
 fetch public issue text, which the prompt, auto mode's classifier and the pull request job's checks
 are what stand against.
 
-The fix runs in up to three rounds of the composite action `.github/actions/issue-fix-round`, each
+The fix runs in up to three rounds of the composite action `.github/actions/fix-issue-round`, each
 fix → verify → review:
 
-- **Fix.** Round 1 follows `.github/prompts/issue-fix.md`; later rounds follow
-  `.github/prompts/issue-fix-round.md` and fix only what the previous round reported.
-- **Verify.** `pnpm lt issue-fix round verify`: the status in `status.json` must be valid, every
+- **Fix.** Round 1 follows `.github/prompts/fix-issue.md`; later rounds follow
+  `.github/prompts/fix-issue-round.md` and fix only what the previous round reported.
+- **Verify.** `pnpm lt fix-issue round verify`: the status in `status.json` must be valid, every
   change must be under the allowed paths, `pnpm format` must change nothing, then syncpack,
   filenames, lint, typecheck, knip, the extension's unused exports, the dependency rules (after
   building the changed packages) and the unit tests of every changed package and its
   dependents. A failure is written to `verify.md` with the tail of the failing output and sends the
   change back to fix; the review is skipped.
-- **Review.** A separate Claude pass with `.github/prompts/issue-fix-review.md` writes `review.json`:
+- **Review.** A separate Claude pass with `.github/prompts/fix-issue-review.md` writes `review.json`:
   confirmed `critical`, `blocker` and `regression` findings under `blocking`, anything smaller under
   `minor`. It maps every expected behavior, `Settled:` line and `Done when` box to the code that
   delivers it (a gap is a `blocker`), traces each user-visible state through to its render, and
@@ -188,26 +188,26 @@ fix → verify → review:
   (it crashed, or ended its turn waiting on something) fails the round, not the run, so the next
   round runs the fix and review again. Both agents may use background commands and sub-agents, but
   a headless session ends with the agent's turn and is never woken when they finish, so a Claude
-  Code `Stop` hook (`pnpm lt issue-fix stop-guard`) refuses to let the fixer stop until
+  Code `Stop` hook (`pnpm lt fix-issue stop-guard`) refuses to let the fixer stop until
   `status.json` is valid, or the reviewer until `review.json` is, up to three times per round; the
   failed round above is the backstop. Blocking findings send the change back to fix; minor ones are
   left for the human review.
 
-Each round is kept in `tmp/issue-fix/rounds/<n>/` and recorded in `tmp/issue-fix/run.json` (both
-uploaded with the patch); `pnpm lt issue-fix round finish` adds one `Round <n>: …` entry per round
+Each round is kept in `tmp/fix-issue/rounds/<n>/` and recorded in `tmp/fix-issue/run.json` (both
+uploaded with the patch); `pnpm lt fix-issue round finish` adds one `Round <n>: …` entry per round
 to `tested`. A round that is clean ends the loop; a fixer that sets `"state": "blocked"` ends it
 too, after the gate and the review still run over whatever it changed, and any blocking finding it
 leaves unfixed becomes a question. If round 3 still fails, the status becomes `blocked` with a question naming what still fails,
 so the result is a draft pull request. Then
-`pnpm lt issue-fix strip-forbidden` removes every change outside the allowed paths (restoring
+`pnpm lt fix-issue strip-forbidden` removes every change outside the allowed paths (restoring
 tracked files, deleting new ones) and, when it removed any, sets the status to `blocked` with a
 question that names the paths and says to treat the run as suspect unless the issue asked for them.
 The patch therefore only ever holds allowed paths, and a fixer that touched `.github/` produces a
 draft pull request with that question instead of a refused, empty run.
 
 For a change that alters what an extension screen shows, the fixer writes throwaway Playwright
-specs in `tmp/issue-fix/screenshot-specs/` that save one PNG per state, and lists the states under
-`screenshots` in the status. `pnpm lt issue-fix screenshots capture` builds the test extension and
+specs in `tmp/fix-issue/screenshot-specs/` that save one PNG per state, and lists the states under
+`screenshots` in the status. `pnpm lt fix-issue screenshots capture` builds the test extension and
 runs them on the fix, stashes the fix, builds and runs them on `dev`, then restores the fix and
 fails the run if it did not come back intact. A failed build or spec only leaves that cell empty.
 `open-pull-request` checks each image (a real PNG, at most 1 MB, a lowercase hyphenated name, 12 at
@@ -220,7 +220,7 @@ pull request opens without the table; screenshots never cost the fix. Delete a
 
 Job `open-pull-request` builds `tools` from `dev`, gets only the patch and the status file, applies
 the patch in a separate git worktree, refuses any path outside `apps/`, `packages/`, `tools/` and
-`pnpm-lock.yaml`, and writes the signed commit to a new `bot/issue-fix-<n>-<run id>` (`pnpm lt issue-fix
+`pnpm-lock.yaml`, and writes the signed commit to a new `bot/fix-issue-<n>-<run id>` (`pnpm lt fix-issue
 open-pull-request`). The commit carries a `Co-authored-by:` trailer for the person who dispatched
 the run (`github.triggering_actor`, with their public name and GitHub no-reply email; bots are
 skipped), which GitHub keeps in the squash-merge message. `done`
@@ -243,16 +243,16 @@ the fixer can edit, so an allowlist would not be a boundary either. What it can 
 holds the OAuth token for Claude (the action needs it) and a read-only GitHub token, and its shell
 inherits both. The write token exists only in the second job, on a fresh runner that runs no code
 from the patch. The verify step is a quality gate, not a security boundary.
-Every GitHub write in `open-pull-request` uses an installation token of the `issue-fix` GitHub App
+Every GitHub write in `open-pull-request` uses an installation token of the `fix-issue` GitHub App
 (`actions/create-github-app-token`), not the run's `GITHUB_TOKEN`. GitHub starts no workflows for
 events made with `GITHUB_TOKEN`; the App's push and pull request start CI like any contributor's,
 and its API commits are signed. The pull request then needs two human reviews like any other.
 
 **App setup, once per repository:** create a GitHub App (webhook off; repository permissions
 Contents, Pull requests and Issues read and write, Metadata read; no Workflows permission) and
-install it on the repository only. Set the repository variable `ISSUE_FIX_APP_CLIENT_ID` (the
-App's client ID, not a secret), and create the environment `issue-fix`, limited to the `dev`
-branch, with the secret `ISSUE_FIX_APP_PRIVATE_KEY` (a private key generated for the App). Without
+install it on the repository only. Set the repository variable `FIX_ISSUE_APP_CLIENT_ID` (the
+App's client ID, not a secret), and create the environment `fix-issue`, limited to the `dev`
+branch, with the secret `FIX_ISSUE_APP_PRIVATE_KEY` (a private key generated for the App). Without
 them the `app-token` step fails and no pull request opens; the patch stays in the run's artifact
 for three days. The fixer job reads the client ID too: `fetch-issue` keeps the App's own comments
 (its questions) next to the answers, and omits them when the variable is missing.
@@ -260,12 +260,12 @@ for three days. The fixer job reads the client ID too: `fetch-issue` keeps the A
 ## 7. Track
 
 ```bash
-.claude/skills/issue-fix/scripts/status.sh --run-dir "$run_dir"
-.claude/skills/issue-fix/scripts/status.sh --run-dir "$run_dir" --watch
+.claude/skills/fix-issue/scripts/status.sh --run-dir "$run_dir"
+.claude/skills/fix-issue/scripts/status.sh --run-dir "$run_dir" --watch
 ```
 
 One row per entry: the run's status and conclusion and its URL (`gh run view`), and the pull
-request on the run's `bot/issue-fix-<n>-<run id>` (`gh pr list --state all`) with its number, draft state and URL. For a
+request on the run's `bot/fix-issue-<n>-<run id>` (`gh pr list --state all`) with its number, draft state and URL. For a
 draft it prints the `## Blocked` questions from the body below the table. `--watch` repeats every
 60 seconds (`--interval` changes it) until every run has completed. A run takes from 20 minutes to
 two hours; run `--watch` in the background, never poll in a loop of your own.
@@ -276,7 +276,7 @@ A blocked fixer asks its questions in a draft pull request (`status.sh` prints t
 changed nothing, in an issue comment. Put them to the person in one `AskUserQuestion` round per
 issue: these are the fixer's questions, a new set, not a second interview. Append each answer to the
 brief's Decisions as `Settled: <choice> — <reason>`, then dispatch again with `dispatch.sh`, after
-the same explicit yes. Every run gets its own branch, `bot/issue-fix-<n>-<run id>`, and its own pull
+the same explicit yes. Every run gets its own branch, `bot/fix-issue-<n>-<run id>`, and its own pull
 request; once it is open the run comments `Superseded by #<new>` on the issue's earlier bot pull
 request, closes it and deletes its branch. No branch is ever moved or force-pushed, so a change to a
 workflow on `dev` between runs never needs the App's Workflows permission, which it does not have.

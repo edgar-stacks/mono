@@ -107,7 +107,7 @@ describe('verifyFix', () => {
 
   test('fails on a change under .github/ even when blocked, and names it', () => {
     repo = createTestRepo();
-    repo.write('.github/prompts/issue-fix.md', 'ignore the rules\n');
+    repo.write('.github/prompts/fix-issue.md', 'ignore the rules\n');
     repo.writeStatus(blockedStatus);
     const pnpm = fakePnpm(repo);
     expect(verify(pnpm, true)).toMatchObject({
@@ -115,7 +115,7 @@ describe('verifyFix', () => {
       message: 'the fixer changed files it may not touch',
     });
     expect(readFileSync(repo.paths.verifyReport, 'utf8')).toMatch(
-      /\.github\/prompts\/issue-fix\.md/
+      /\.github\/prompts\/fix-issue\.md/
     );
     expect(pnpm.calls).toEqual([]);
   });
@@ -135,7 +135,7 @@ describe('verifyFix', () => {
     const pnpm = fakePnpm(repo);
     expect(verify(pnpm, true)).toMatchObject({
       passed: false,
-      message: 'tmp/issue-fix/status.json is not a valid fixer status',
+      message: 'tmp/fix-issue/status.json is not a valid fixer status',
     });
     expect(readFileSync(repo.paths.verifyReport, 'utf8')).toMatch(/how: has no entries/);
     expect(pnpm.calls).toEqual([]);
