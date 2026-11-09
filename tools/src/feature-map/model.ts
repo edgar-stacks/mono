@@ -25,15 +25,19 @@ import {
   loadFeatureFiles,
   loadFeatureFlags,
   loadMockFunctions,
+  loadNetworkIds,
   loadPageObjectActions,
+  loadPersistWhitelist,
   loadRouteUrls,
   loadRouterFiles,
+  loadRpcCatalog,
   loadRpcHandlers,
   loadRpcMethods,
   loadSelectorObjects,
   loadSelectorTable,
   loadSetupMocks,
   loadSpecs,
+  loadVerifyMocks,
 } from './test-assets.js';
 import { type SourceLocation, type StringTable, mergeStringTables } from './ts-ast.js';
 
@@ -52,6 +56,10 @@ export interface FeatureMapModel {
   readonly rpcMethods: ReadonlySet<string>;
   readonly selectorObjects: ReadonlyMap<string, SelectorObject>;
   readonly rpcHandlers: ReadonlyMap<string, RpcHandler>;
+  readonly verifyMocks: ReadonlySet<string>;
+  readonly persistWhitelist: readonly string[];
+  readonly networkIds: readonly string[];
+  readonly rpcCatalog: ReadonlyMap<string, string>;
 }
 
 function parseAllFeatures(files: readonly string[], table: StringTable): FeaturesParseResult {
@@ -97,6 +105,10 @@ export function buildFeatureMapModel(config: FeatureMapAppConfig): FeatureMapMod
     rpcMethods: loadRpcMethods(config),
     selectorObjects: loadSelectorObjects(config),
     rpcHandlers: loadRpcHandlers(config),
+    verifyMocks: loadVerifyMocks(config),
+    persistWhitelist: loadPersistWhitelist(config),
+    networkIds: loadNetworkIds(config),
+    rpcCatalog: loadRpcCatalog(config),
   };
 }
 

@@ -8,6 +8,9 @@ import {
   collectFunctionCallees,
   collectHandlerEndpointNames,
   collectInterfaceProperties,
+  collectObjectKeys,
+  collectObjectStringPairs,
+  collectStringArrayConst,
   collectStringConstObjects,
   evaluateStringExpression,
   parseSourceFile,
@@ -197,5 +200,63 @@ describe(collectFunctionCallees.name, () => {
       callees: ['mockFees', 'mockFees'],
     });
     expect(collectFunctionCallees(sourceFile, 'other')).toBeUndefined();
+  });
+});
+
+describe(collectObjectKeys.name, () => {
+  test('lists property, method and shorthand keys of a named object', () => {
+    const sourceFile = parseSourceFile(
+      'mock-registry.ts',
+      `export const verifyMockRegistry: Record<string, ApplyMock> = {
+         async setupMockApis({ context }) { await setupMockApis(context); },
+         mockStacksRawTx: ({ context }) => mockStacksRawTx(context),
+         'mock-quoted': apply,
+         mockShorthand,
+       };
+       const other = { ignored: 1 };`
+    );
+    expect(collectObjectKeys(sourceFile, 'verifyMockRegistry')).toEqual([
+      'setupMockApis',
+      'mockStacksRawTx',
+      'mock-quoted',
+      'mockShorthand',
+    ]);
+    expect(collectObjectKeys(sourceFile, 'missing')).toEqual([]);
+  });
+});
+
+describe(collectStringArrayConst.name, () => {
+  test('reads the string literals of a named const array', () => {
+    const sourceFile = parseSourceFile(
+      'persist-whitelist.ts',
+      `export const persistWhitelist = ['accounts', 'active', \`networks\`] as const;
+       export const notAnArray = { a: 'b' };`
+    );
+    expect(collectStringArrayConst(sourceFile, 'persistWhitelist')).toEqual([
+      'accounts',
+      'active',
+      'networks',
+    ]);
+    expect(collectStringArrayConst(sourceFile, 'notAnArray')).toEqual([]);
+  });
+});
+
+describe(collectObjectStringPairs.name, () => {
+  test('pairs two string properties of every object literal, first one wins', () => {
+    const sourceFile = parseSourceFile(
+      'general.ts',
+      `export const generalMethods = [
+         { id: 'getAddresses', method: 'getAddresses', label: 'getAddresses' },
+         { id: 'open-popup', method: 'open', params: { mode: 'popup' } },
+         { id: 'open-popup', method: 'duplicate' },
+         { id: 'no-method' },
+       ];`
+    );
+    expect(collectObjectStringPairs(sourceFile, 'id', 'method')).toEqual(
+      new Map([
+        ['getAddresses', 'getAddresses'],
+        ['open-popup', 'open'],
+      ])
+    );
   });
 });

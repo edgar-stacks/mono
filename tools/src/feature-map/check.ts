@@ -1,6 +1,7 @@
 import { existsSync } from 'node:fs';
 
 import { compareStrings } from '../utils/compare.js';
+import { verifyAccountTypes } from '../verify/verify-contract.js';
 import { toRepoRelative } from './app-config.js';
 import { type ParsedFeature, type ResolvedString } from './features-parser.js';
 import {
@@ -194,6 +195,67 @@ function actionError(
   return `${featureLabel(feature)}: ${field} '${action}' is not a public page-object method. ${hint} Fix: use an existing method or add one to the page object.`;
 }
 
+function openActionError(
+  model: FeatureMapModel,
+  feature: ParsedFeature,
+  action: string
+): string | undefined {
+  const found = model.pageObjectActions.get(action);
+  if (!found) return actionError(model, feature, 'open action', action);
+  const { verifyPageObjects } = model.config;
+  const problems: string[] = [];
+  if (!verifyPageObjects.includes(found.className)) {
+    problems.push(
+      `${found.className} is not a page object the fixtures expose (${verifyPageObjects.join(', ')})`
+    );
+  }
+  if (found.isStatic) problems.push('it is static');
+  if (found.requiredParameters > 0) {
+    problems.push(
+      `it takes ${found.requiredParameters} required argument${found.requiredParameters === 1 ? '' : 's'}`
+    );
+  }
+  if (problems.length === 0) return undefined;
+  return `${featureLabel(feature)}: open action '${action}' cannot run under verify: ${problems.join('; ')}. Fix: use a zero-argument instance method of one of those page objects (${toRepoRelative(found.file)}:${found.line}).`;
+}
+
+function checkVerifyMocks(model: FeatureMapModel, feature: ParsedFeature): string[] {
+  const errors: string[] = [];
+  const label = featureLabel(feature);
+  const registry = toRepoRelative(model.config.verifyMockRegistryFile);
+  const { mocks } = feature.preconditions;
+  for (const mock of mocks) {
+    if (!model.mocks.has(mock) || model.verifyMocks.has(mock)) continue;
+    errors.push(
+      `${label}: mock '${mock}' is not registered in ${registry}. Fix: add it to ${model.config.verifyMockRegistryObjectName} so verify can apply it.`
+    );
+  }
+  for (const [first, second] of model.config.exclusiveMocks) {
+    if (!mocks.includes(first) || !mocks.includes(second)) continue;
+    errors.push(
+      `${label}: mocks '${first}' and '${second}' route the same requests, so only one of them can apply. Fix: keep one.`
+    );
+  }
+  return errors;
+}
+
+function checkVerifyPreconditions(model: FeatureMapModel, feature: ParsedFeature): string[] {
+  const errors: string[] = [];
+  const label = featureLabel(feature);
+  const { network, accountType } = feature.preconditions;
+  if (network !== undefined && model.networkIds.length > 0 && !model.networkIds.includes(network)) {
+    errors.push(
+      `${label}: network '${network}' is not a ${model.config.networkIdsObjectName} value in ${toRepoRelative(model.config.networkIdsFile)}. Fix: use one of ${model.networkIds.join(', ')}.`
+    );
+  }
+  if (accountType !== undefined && !verifyAccountTypes.some(type => type === accountType)) {
+    errors.push(
+      `${label}: accountType '${accountType}' is not one verify can seed. Fix: use one of ${verifyAccountTypes.join(', ')}.`
+    );
+  }
+  return errors;
+}
+
 function checkRedundantMocks(model: FeatureMapModel, feature: ParsedFeature): string[] {
   const setup = model.setupMocks;
   if (!setup || !feature.preconditions.mocks.includes(setup.name)) return [];
@@ -235,7 +297,7 @@ function checkFeatureReferences(model: FeatureMapModel, feature: ParsedFeature):
     if (error) errors.push(error);
   }
   for (const action of feature.open) {
-    const error = actionError(model, feature, 'open action', action);
+    const error = openActionError(model, feature, action);
     if (error) errors.push(error);
   }
 
@@ -246,6 +308,8 @@ function checkFeatureReferences(model: FeatureMapModel, feature: ParsedFeature):
     );
   }
   errors.push(...checkRedundantMocks(model, feature));
+  errors.push(...checkVerifyMocks(model, feature));
+  errors.push(...checkVerifyPreconditions(model, feature));
 
   feature.entry.forEach((point, index) => {
     if (point.method === undefined || model.rpcMethods.has(point.method)) return;

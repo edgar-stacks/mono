@@ -556,6 +556,12 @@ export class OnboardingPage {
     );
   }
 
+  async seedLockedWallet(id: string, walletState: object) {
+    await this.seedWalletState(walletState);
+    await this.page.evaluate(async () => chrome.storage.session.remove('encryptionKey'));
+    await this.page.goto(`chrome-extension://${id}/index.html`);
+  }
+
   private async seedWalletStateAndWaitFor(
     id: string,
     walletState: object,

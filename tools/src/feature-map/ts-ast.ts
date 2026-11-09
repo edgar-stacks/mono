@@ -379,3 +379,61 @@ export function collectObjectPropertyStrings(
   visit(sourceFile);
   return texts;
 }
+
+function findVariableInitializer(
+  sourceFile: ts.SourceFile,
+  name: string
+): ts.Expression | undefined {
+  for (const statement of sourceFile.statements) {
+    if (!ts.isVariableStatement(statement)) continue;
+    for (const declaration of statement.declarationList.declarations) {
+      if (!ts.isIdentifier(declaration.name) || declaration.name.text !== name) continue;
+      if (!declaration.initializer) return undefined;
+      return unwrapExpression(declaration.initializer);
+    }
+  }
+  return undefined;
+}
+
+export function collectObjectKeys(sourceFile: ts.SourceFile, objectName: string): string[] {
+  const initializer = findVariableInitializer(sourceFile, objectName);
+  if (!initializer || !ts.isObjectLiteralExpression(initializer)) return [];
+  const keys: string[] = [];
+  for (const property of initializer.properties) {
+    if (ts.isShorthandPropertyAssignment(property)) {
+      keys.push(property.name.text);
+      continue;
+    }
+    if (!ts.isPropertyAssignment(property) && !ts.isMethodDeclaration(property)) continue;
+    const name = getPropertyName(property.name);
+    if (name !== undefined) keys.push(name);
+  }
+  return keys;
+}
+
+export function collectStringArrayConst(sourceFile: ts.SourceFile, arrayName: string): string[] {
+  const initializer = findVariableInitializer(sourceFile, arrayName);
+  if (!initializer || !ts.isArrayLiteralExpression(initializer)) return [];
+  return initializer.elements
+    .map(element => getStringLiteralText(element))
+    .filter(text => text !== undefined);
+}
+
+export function collectObjectStringPairs(
+  sourceFile: ts.SourceFile,
+  keyProperty: string,
+  valueProperty: string
+): Map<string, string> {
+  const pairs = new Map<string, string>();
+  function visit(node: ts.Node) {
+    if (ts.isObjectLiteralExpression(node)) {
+      const values = readStringObjectLiteral(node);
+      const key = values.get(keyProperty);
+      const value = values.get(valueProperty);
+      if (key !== undefined && value !== undefined && !pairs.has(key)) pairs.set(key, value);
+    }
+    ts.forEachChild(node, visit);
+  }
+  visit(sourceFile);
+  return pairs;
+}

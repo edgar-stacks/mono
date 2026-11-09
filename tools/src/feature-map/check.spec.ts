@@ -193,6 +193,10 @@ function model(overrides: Partial<FeatureMapModel>): FeatureMapModel {
     rpcMethods: new Set(['open']),
     selectorObjects: new Map(),
     rpcHandlers: new Map(),
+    verifyMocks: new Set(['setupMockApis', 'mockStacksFeeRequests']),
+    persistWhitelist: ['active', 'networks', 'wallets', 'softwareKeys'],
+    networkIds: ['mainnet', 'testnet4'],
+    rpcCatalog: new Map([['open-popup', 'open']]),
     ...overrides,
   };
 }
@@ -508,6 +512,113 @@ describe('router flags and orphan sheets', () => {
     );
     expect(result.errors).toEqual([
       "entry 'orphan' (apps/extension/tests/feature-map/home.features.ts:1): route 'edit-tx-nonce' is not mounted under any of this entry's routes; it only nests under other screens. Fix: move it to the entry whose route mounts it.",
+    ]);
+  });
+});
+
+describe('verify preconditions', () => {
+  const homePageFile = path.join(config.pageObjectsDir, 'home.page.ts');
+  const receivePageFile = path.join(config.pageObjectsDir, 'receive.page.ts');
+  const pageObjectActions = new Map([
+    [
+      'HomePage.lock',
+      {
+        file: homePageFile,
+        line: 1,
+        className: 'HomePage',
+        requiredParameters: 0,
+        isStatic: false,
+      },
+    ],
+    [
+      'HomePage.goTo',
+      {
+        file: homePageFile,
+        line: 2,
+        className: 'HomePage',
+        requiredParameters: 1,
+        isStatic: false,
+      },
+    ],
+    [
+      'HomePage.create',
+      {
+        file: homePageFile,
+        line: 3,
+        className: 'HomePage',
+        requiredParameters: 0,
+        isStatic: true,
+      },
+    ],
+    [
+      'ReceivePage.open',
+      {
+        file: receivePageFile,
+        line: 4,
+        className: 'ReceivePage',
+        requiredParameters: 0,
+        isStatic: false,
+      },
+    ],
+  ]);
+  const label = "entry 'home-tokens' (apps/extension/tests/feature-map/home.features.ts:1)";
+
+  function check(overrides: Partial<ParsedFeature>, modelOverrides: Partial<FeatureMapModel> = {}) {
+    const entry = feature(overrides);
+    return checkFeatureMap(
+      model({
+        pageObjectActions,
+        features: [...claimersExcept('home-tokens'), entry],
+        ...modelOverrides,
+      })
+    ).errors;
+  }
+
+  test('accepts zero-argument instance methods of the fixture page objects', () => {
+    expect(check({ open: ['HomePage.lock'] })).toEqual([]);
+  });
+
+  test('rejects open actions verify cannot call', () => {
+    expect(check({ open: ['HomePage.goTo', 'HomePage.create', 'ReceivePage.open'] })).toEqual([
+      `${label}: open action 'HomePage.goTo' cannot run under verify: it takes 1 required argument. Fix: use a zero-argument instance method of one of those page objects (apps/extension/tests/page-object-models/home.page.ts:2).`,
+      `${label}: open action 'HomePage.create' cannot run under verify: it is static. Fix: use a zero-argument instance method of one of those page objects (apps/extension/tests/page-object-models/home.page.ts:3).`,
+      `${label}: open action 'ReceivePage.open' cannot run under verify: ReceivePage is not a page object the fixtures expose (GlobalPage, HomePage, OnboardingPage, SendPage, SwapRevampPage, NetworkPage, SettingsPage, SwitchAccountPage). Fix: use a zero-argument instance method of one of those page objects (apps/extension/tests/page-object-models/receive.page.ts:4).`,
+    ]);
+  });
+
+  test('requires mocks to be registered and rejects exclusive pairs', () => {
+    const mocks = new Map([
+      ['setupMockApis', { file: mockApis, line: 1 }],
+      ['mockStacksRawTx', { file: 'mock-stacks-txs.ts', line: 1 }],
+      ['mockMixedUtxosForSend', { file: 'mock-mixed-utxos.ts', line: 1 }],
+      ['mockNativeSegwitOnlyUtxosForSend', { file: 'mock-mixed-utxos.ts', line: 2 }],
+    ]);
+    const errors = check(
+      {
+        preconditions: {
+          session: 'signed-in',
+          mocks: ['mockStacksRawTx', 'mockMixedUtxosForSend', 'mockNativeSegwitOnlyUtxosForSend'],
+        },
+      },
+      {
+        mocks,
+        verifyMocks: new Set(['mockMixedUtxosForSend', 'mockNativeSegwitOnlyUtxosForSend']),
+      }
+    );
+    expect(errors).toEqual([
+      `${label}: mock 'mockStacksRawTx' is not registered in apps/extension/tests/verify/mock-registry.ts. Fix: add it to verifyMockRegistry so verify can apply it.`,
+      `${label}: mocks 'mockMixedUtxosForSend' and 'mockNativeSegwitOnlyUtxosForSend' route the same requests, so only one of them can apply. Fix: keep one.`,
+    ]);
+  });
+
+  test('requires a known network and account type', () => {
+    expect(
+      check({
+        preconditions: { session: 'signed-in', network: 'moon', accountType: 'paper', mocks: [] },
+      })
+    ).toEqual([
+      `${label}: network 'moon' is not a WalletDefaultNetworkConfigurationIds value in packages/models/src/network/network.model.ts. Fix: use one of mainnet, testnet4.`,
+      `${label}: accountType 'paper' is not one verify can seed. Fix: use one of software, ledger, mixed, policy.`,
     ]);
   });
 });

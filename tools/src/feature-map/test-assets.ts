@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 
 import { getMonorepoRoot } from '../utils/paths.js';
@@ -12,8 +12,11 @@ import {
   collectFunctionCallees,
   collectHandlerEndpointNames,
   collectInterfaceProperties,
+  collectObjectKeys,
   collectObjectPropertyStrings,
+  collectObjectStringPairs,
   collectPropertyAccessReferences,
+  collectStringArrayConst,
   collectStringConstObjects,
   listFiles,
   mergeStringTables,
@@ -217,4 +220,41 @@ export function loadFeatureFiles(config: FeatureMapAppConfig): string[] {
 
 export function specPathFor(spec: string): string {
   return path.join(getMonorepoRoot(), spec);
+}
+
+export function loadVerifyMocks(config: FeatureMapAppConfig): Set<string> {
+  if (!existsSync(config.verifyMockRegistryFile)) return new Set();
+  return new Set(
+    collectObjectKeys(
+      parseSourceFile(config.verifyMockRegistryFile),
+      config.verifyMockRegistryObjectName
+    )
+  );
+}
+
+export function loadPersistWhitelist(config: FeatureMapAppConfig): string[] {
+  return collectStringArrayConst(
+    parseSourceFile(config.persistWhitelistFile),
+    config.persistWhitelistName
+  );
+}
+
+export function loadNetworkIds(config: FeatureMapAppConfig): string[] {
+  const table = collectStringConstObjects(parseSourceFile(config.networkIdsFile));
+  return [...(table.get(config.networkIdsObjectName)?.values() ?? [])];
+}
+
+const catalogIdProperty = 'id';
+
+export function loadRpcCatalog(config: FeatureMapAppConfig): Map<string, string> {
+  const catalog = new Map<string, string>();
+  for (const file of listFiles(config.rpcCatalogDir, file => file.endsWith('.ts'))) {
+    const pairs = collectObjectStringPairs(
+      parseSourceFile(file),
+      catalogIdProperty,
+      rpcMethodProperty
+    );
+    for (const [id, method] of pairs) if (!catalog.has(id)) catalog.set(id, method);
+  }
+  return catalog;
 }

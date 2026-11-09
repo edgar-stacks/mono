@@ -1,4 +1,5 @@
 import { compareStrings } from '../utils/compare.js';
+import { verifyBlocker } from '../verify/resolve.js';
 import { toRepoRelative } from './app-config.js';
 import { type ParsedFeature, type ResolvedString } from './features-parser.js';
 import {
@@ -103,6 +104,14 @@ function openedByLines(model: FeatureMapModel, feature: ParsedFeature): string[]
   return lines;
 }
 
+function verifyLines(model: FeatureMapModel, feature: ParsedFeature): string[] {
+  const blocker = verifyBlocker(feature);
+  const line = blocker
+    ? `Not verifiable: ${blocker}.`
+    : code(`pnpm lt verify ${model.config.app} --feature ${feature.id}`);
+  return ['**Verify**', '', line, ''];
+}
+
 function renderFeature(model: FeatureMapModel, feature: ParsedFeature): string[] {
   const lines: string[] = [];
   lines.push(`### ${feature.id}`, '', feature.description, '');
@@ -166,6 +175,8 @@ function renderFeature(model: FeatureMapModel, feature: ParsedFeature): string[]
     );
   }
   lines.push('');
+
+  lines.push(...verifyLines(model, feature));
 
   if (feature.selectors.ready || feature.selectors.others.length > 0) {
     lines.push('**Selectors**', '');

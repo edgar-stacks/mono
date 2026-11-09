@@ -14,7 +14,11 @@
     "watch": "tsc --watch -p tsconfig.build.json"
   },
   "exports": {
-    "./feature-entry": "./src/feature-map/feature-entry.ts"
+    "./console-verdict": "./src/verify/console-verdict.ts",
+    "./feature-entry": "./src/feature-map/feature-entry.ts",
+    "./network-classification": "./src/verify/network-classification.ts",
+    "./state-evidence": "./src/verify/state-evidence.ts",
+    "./verify-contract": "./src/verify/verify-contract.ts"
   },
   "bin": {
     "lt": "./bin/lt.js"

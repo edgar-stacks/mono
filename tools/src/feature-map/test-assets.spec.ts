@@ -6,10 +6,14 @@ import { describe, expect, test } from 'vitest';
 import { getFeatureMapAppConfig } from './app-config.js';
 import {
   loadMockFunctions,
+  loadNetworkIds,
+  loadPersistWhitelist,
   loadRouterFiles,
+  loadRpcCatalog,
   loadRpcHandlers,
   loadSelectorObjects,
   loadSetupMocks,
+  loadVerifyMocks,
 } from './test-assets.js';
 
 const config = getFeatureMapAppConfig('extension');
@@ -87,5 +91,47 @@ describe(loadRouterFiles.name, () => {
     expect(names).toContain('home.tsx');
     expect(names).toContain('rpc-stx-call-contract.routes.tsx');
     expect(names).not.toContain('modal-background-wrapper.tsx');
+  });
+});
+
+describe(loadVerifyMocks.name, () => {
+  test('lists the mocks the verify registry can apply', () => {
+    const mocks = loadVerifyMocks(config);
+    expect(mocks.has('setupMockApis')).toBe(true);
+    expect(mocks.has('mockUnhandledRequests')).toBe(true);
+    expect(mocks.has('mockMixedUtxosForSend')).toBe(true);
+  });
+
+  test('is empty when the registry file is missing', () => {
+    const mocks = loadVerifyMocks({
+      ...config,
+      verifyMockRegistryFile: path.join(tempDir, 'missing-registry.ts'),
+    });
+    expect(mocks.size).toBe(0);
+  });
+});
+
+describe(loadPersistWhitelist.name, () => {
+  test('reads the persisted slice keys', () => {
+    const whitelist = loadPersistWhitelist(config);
+    expect(whitelist).toContain('active');
+    expect(whitelist).toContain('softwareKeys');
+    expect(whitelist).not.toContain('_persist');
+  });
+});
+
+describe(loadNetworkIds.name, () => {
+  test('reads the default wallet network ids', () => {
+    const ids = loadNetworkIds(config);
+    expect(ids).toContain('mainnet');
+    expect(ids).toContain('testnet4');
+  });
+});
+
+describe(loadRpcCatalog.name, () => {
+  test('maps test-app catalog ids to their methods', () => {
+    const catalog = loadRpcCatalog(config);
+    expect(catalog.get('getAddresses')).toBe('getAddresses');
+    expect(catalog.get('open-popup')).toBe('open');
   });
 });
