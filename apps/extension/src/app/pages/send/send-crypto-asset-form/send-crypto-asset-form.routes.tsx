@@ -20,6 +20,7 @@ import { SendBitcoinAssetContainer } from './family/bitcoin/components/send-bitc
 import { BtcChooseFee } from './form/btc/btc-choose-fee';
 import { BtcSendForm } from './form/btc/btc-send-form';
 import { BtcSendFormConfirmation } from './form/btc/btc-send-form-confirmation';
+import { Sip10SendFormConfirmation } from './form/sip10/sip10-send-form-confirmation';
 import { Sip10TokenSendForm } from './form/sip10/sip10-token-send-form';
 import { StacksSendFormConfirmation } from './form/stacks/stacks-send-form-confirmation';
 import { StxSendForm } from './form/stx/stx-send-form';
@@ -93,7 +94,7 @@ export const sendCryptoAssetFormRoutes = (
       {editNonceSheetRoute}
       {recipientAccountsSheetRoute}
     </Route>
-    <Route path="/send/:symbol/:contractId/confirm" element={<StacksSendFormConfirmation />} />
+    <Route path="/send/:symbol/:contractId/confirm" element={<Sip10SendFormConfirmation />} />
     <Route path={RouteUrls.SentProposalSummary} element={<ProposalSentSummary />} />
     <Route path={RouteUrls.SentStxTxSummary} element={<StacksChainTxSummaryRoute />} />
   </Route>

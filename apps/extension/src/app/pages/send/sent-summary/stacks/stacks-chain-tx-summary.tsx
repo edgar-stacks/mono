@@ -1,5 +1,7 @@
 import { type StacksTransactionWire, isTokenTransferPayload } from '@stacks/transactions';
 
+import { BTC_DECIMALS } from '@leather.io/constants';
+import type { SbtcSponsoredTransferDetails } from '@leather.io/stacks';
 import { baseCurrencyAmountInQuote, createMoney, isNumber, sumMoney } from '@leather.io/utils';
 
 import { formatCurrency } from '@app/common/currency-formatter';
@@ -15,6 +17,7 @@ import {
   getTokenTransferMemoDisplayText,
   safeAddressToString,
 } from '@app/common/transactions/stacks/transaction.utils';
+import { sbtcFeeSymbol } from '@app/features/sbtc-sponsorship/sbtc-sponsorship.utils';
 import { TxStatusBadge } from '@app/features/tx-status-badge/tx-status-badge';
 import { useCryptoCurrencyMarketData } from '@app/query/common/market-data/market-data.hooks';
 import { useGetFungibleTokenMetadataQuery } from '@app/query/stacks/token-metadata/fungible-tokens/fungible-token-metadata.query';
@@ -90,6 +93,31 @@ export function Sip10SentSummary({ txid, symbol, tx }: StacksChainSummaryProps) 
         ['Status', <TxStatusBadge key={txid} txid={txid} />],
         ['Fee', formatCurrency(fee)],
         ['Memo', memo],
+        ['Nonce', getNonceFromStacksTransaction(tx)],
+      ]}
+    />
+  );
+}
+
+interface SbtcSponsoredSentSummaryProps extends StacksChainSummaryProps {
+  details: SbtcSponsoredTransferDetails;
+}
+export function SbtcSponsoredSentSummary({ txid, tx, details }: SbtcSponsoredSentSummaryProps) {
+  const amount = createMoney(details.amount, sbtcFeeSymbol, BTC_DECIMALS);
+  const fee = createMoney(details.fee, sbtcFeeSymbol, BTC_DECIMALS);
+
+  return (
+    <StacksChainTxSummaryLayout
+      token={sbtcFeeSymbol}
+      txid={txid}
+      value={amount}
+      recipient={details.recipient}
+      metadata={[
+        ['Status', <TxStatusBadge key={txid} txid={txid} />],
+        ['Total spend', formatCurrency(sumMoney([amount, fee]))],
+        ['Sending', formatCurrency(amount)],
+        ['Fee', formatCurrency(fee)],
+        ['Memo', details.memo || '—'],
         ['Nonce', getNonceFromStacksTransaction(tx)],
       ]}
     />

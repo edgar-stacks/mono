@@ -39,3 +39,4 @@ export * from './src/stacks/stacks-address-mempool-transactions.query-config';
 export * from './src/stacks/stacks-address-transactions.query-config';
 export * from './src/bitcoin/bitcoin-address-transactions.query-config';
 export * from './src/alex/alex-sdk.query-config';
+export * from './src/sponsorship/sbtc-sponsorship.query-config';

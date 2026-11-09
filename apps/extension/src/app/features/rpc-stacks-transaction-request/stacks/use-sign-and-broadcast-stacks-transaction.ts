@@ -76,6 +76,7 @@ export function useSignAndBroadcastStacksTransaction(method: RpcMethodNames) {
         );
         await delay(500);
         closeWindow();
+        return;
       }
 
       function onError(error: Error | string) {
