@@ -1,3 +1,5 @@
+import { formatDistanceStrict } from 'date-fns';
+
 // WARNING: When using `setTimeout` method, there is an upper maximum
 // https://developer.mozilla.org/en-US/docs/Web/API/Window/setTimeout#maximum_delay_value
 export const oneMinInMs = 60 * 1000;
@@ -43,4 +45,8 @@ export function hoursInSec(hours: number) {
 
 export function minutesInSec(minutes: number) {
   return minutes * 60;
+}
+
+export function formatRelativeTime(date: Date, now: Date): string {
+  return formatDistanceStrict(date, now, { addSuffix: true });
 }
