@@ -21,10 +21,27 @@ export async function getWalletSessionKey() {
   return z.string().safeParse(key.encryptionKey);
 }
 
+function hasStoreRehydrated() {
+  return store.getState()._persist.rehydrated;
+}
+
+function waitForStoreRehydration() {
+  return new Promise<void>(resolve => {
+    if (hasStoreRehydrated()) return resolve();
+    const unsubscribe = store.subscribe(() => {
+      if (!hasStoreRehydrated()) return;
+      unsubscribe();
+      resolve();
+    });
+  });
+}
+
 export async function restoreWalletSession() {
   const keyResult = await getWalletSessionKey();
 
   if (!keyResult.success) return;
+
+  await waitForStoreRehydration();
 
   try {
     const encryptedKeys = selectSoftwareKeys(store.getState());
