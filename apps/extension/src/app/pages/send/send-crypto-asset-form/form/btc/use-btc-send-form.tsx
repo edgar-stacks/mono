@@ -26,6 +26,7 @@ import {
   currencyAmountValidator,
 } from '@app/common/validation/forms/currency-validators';
 import { useUpdatePersistedSendFormValues } from '@app/features/popup-send-form-restoration/use-update-persisted-send-form-values';
+import { useUserSettings } from '@app/hooks/use-user-settings';
 import { useCurrentBtcBalanceWithFallback } from '@app/query/bitcoin/balance/btc-balance.hooks';
 import { useCurrentUtxos } from '@app/query/bitcoin/utxos/utxos.hooks';
 import { useCurrentNetwork } from '@app/store/networks/networks.selectors';
@@ -47,6 +48,7 @@ export function useBtcSendForm() {
   const sendFormNavigate = useSendFormNavigate();
   const calcMaxSpend = useCalculateMaxBitcoinSpend();
   const { onFormStateChange } = useUpdatePersistedSendFormValues();
+  const settings = useUserSettings();
 
   // Forcing a refetch to ensure UTXOs are fresh
   useOnMount(() => {
@@ -80,7 +82,7 @@ export function useBtcSendForm() {
           nonEmptyStringValidator(),
           btcAddressValidator(),
           btcAddressNetworkValidator(currentNetwork.chain.bitcoin.mode),
-          complianceValidator(btcAddressValidator(), 'send_form_btc')
+          complianceValidator(btcAddressValidator(), 'send_form_btc', settings)
         ),
       })
     ),
