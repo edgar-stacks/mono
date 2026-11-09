@@ -17,6 +17,7 @@ import {
   makeAccountIdentifer,
   softwareAccountCountFromHighestIndex,
 } from '@leather.io/crypto';
+import type { StacksAppKeysResponseItem } from '@leather.io/ledger';
 import type { AccountId, NetworkModes } from '@leather.io/models';
 import {
   deriveStxPrivateKey,
@@ -29,7 +30,6 @@ import { DATA_DERIVATION_PATH, deriveStacksSalt } from '@shared/crypto/stacks/st
 import { logger } from '@shared/logger';
 import { assumedZeroFingerprint } from '@shared/utils';
 
-import type { StacksAppKeysResponseItem } from '@app/features/ledger/utils/stacks-ledger-utils';
 import { selectStacksChain } from '@app/store/chains/stx-chain.selectors';
 import { selectRootKeychainsAtVersion } from '@app/store/in-memory-key/in-memory-key.selectors';
 import {

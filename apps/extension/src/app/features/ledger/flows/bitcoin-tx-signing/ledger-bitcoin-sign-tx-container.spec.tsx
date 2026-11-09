@@ -3,17 +3,18 @@ import * as btc from '@scure/btc-signer';
 import { act, render } from '@testing-library/react';
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 
+import { HardwareWalletError, type OperationContext } from '@leather.io/ledger';
+import {
+  makeFakeHardwareBitcoinSigner,
+  makeFakeHardwareWallet,
+  makeFakeHardwareWalletConnector,
+  makeFakeHardwareWalletSession,
+} from '@leather.io/ledger/test-utils';
 import type * as LeatherUtils from '@leather.io/utils';
 
-import {
-  LedgerConnectionErrors,
-  toLedgerTransportError,
-} from '@app/features/ledger/dmk/ledger-dmk-errors';
-import { makeFakeDmk } from '@app/features/ledger/dmk/ledger-dmk.mocks';
 import type { LedgerSigningOutcome } from '@app/features/ledger/flow/ledger-flow.types';
 import type { LedgerTxSigningContext } from '@app/features/ledger/generic-flows/tx-signing/ledger-sign-tx.context';
 import type * as GenericLedgerUtils from '@app/features/ledger/utils/generic-ledger-utils';
-import { makeFakeLedgerBitcoinApp } from '@app/features/ledger/utils/ledger-app.mocks';
 
 import { LedgerSignBitcoinTxContainer } from './ledger-bitcoin-sign-tx-container';
 
@@ -27,17 +28,17 @@ const mocks = vi.hoisted(() => ({
   cancelLedgerAction: vi.fn(),
   settleLedgerAction: vi.fn(),
   transactionSignedOnLedgerRejected: vi.fn(),
-  connectApp: vi.fn(),
-  getBitcoinAppVersion: vi.fn(),
+  connect: vi.fn(),
   signLedger: vi.fn(),
   signLedgerDescriptor: vi.fn(),
   toastError: vi.fn(),
-  disconnect: vi.fn(),
   captureContext: vi.fn<(value: LedgerTxSigningContext) => void>(),
 }));
 
-vi.mock('@app/features/ledger/dmk/ledger-dmk.context', () => ({
-  useLedgerDmk: () => makeFakeDmk({ disconnect: mocks.disconnect }),
+vi.mock('@leather.io/bitcoin', () => ({}));
+
+vi.mock('@app/features/ledger/hardware-wallet/hardware-wallet.context', () => ({
+  useHardwareWalletConnector: () => makeFakeHardwareWalletConnector({ connect: mocks.connect }),
 }));
 
 vi.mock('@app/features/ledger/flow/ledger-flow.context', () => ({
@@ -94,12 +95,6 @@ vi.mock('@app/common/hooks/use-scroll-lock', () => ({
   useScrollLock: vi.fn(),
 }));
 
-vi.mock('@app/features/ledger/utils/bitcoin-ledger-utils', () => ({
-  connectLedgerBitcoinApp: () => mocks.connectApp,
-  getBitcoinAppVersion: () => mocks.getBitcoinAppVersion,
-  isBitcoinAppOpen: () => () => true,
-}));
-
 vi.mock('@app/features/ledger/utils/generic-ledger-utils', async importOriginal => {
   const actual = await importOriginal<typeof GenericLedgerUtils>();
   return { ...actual, useCancelLedgerAction: () => false };
@@ -114,19 +109,11 @@ vi.mock('@shared/logger', () => ({
   logger: { error: vi.fn(), warn: vi.fn(), info: vi.fn(), debug: vi.fn() },
 }));
 
-const bitcoinAppVersion = { name: 'Bitcoin', version: '2.1.0', chain: 'bitcoin' };
 const psbt = new btc.Transaction().toPSBT();
 const requestId = 1;
-const deniedError = Object.assign(new Error('Rejected by user'), {
-  name: LedgerConnectionErrors.OperationRejected,
-});
-const cancelledError = Object.assign(new Error('Ledger device action was cancelled'), {
-  name: 'LedgerActionCancelled',
-});
-const disconnectError = toLedgerTransportError({
-  _tag: 'DeviceDisconnectedWhileSendingError',
-  originalError: new Error('device disconnected'),
-});
+const deniedError = new HardwareWalletError('rejected', 'Rejected by user');
+const cancelledError = new HardwareWalletError('cancelled');
+const disconnectError = new HardwareWalletError('disconnected', 'device disconnected');
 
 interface RenderSignTxContextParams {
   settleOnRejection: boolean;
@@ -166,9 +153,10 @@ function setupSignTransaction({
   descriptor,
   error,
 }: SetupSignTransactionParams) {
-  mocks.connectApp.mockResolvedValue(makeFakeLedgerBitcoinApp());
-  mocks.getBitcoinAppVersion.mockResolvedValue(bitcoinAppVersion);
-  mocks.disconnect.mockResolvedValue(undefined);
+  const session = makeFakeHardwareWalletSession(
+    makeFakeHardwareWallet({ bitcoin: makeFakeHardwareBitcoinSigner() })
+  );
+  mocks.connect.mockResolvedValue(session);
   if (error) {
     mocks.signLedger.mockRejectedValue(error);
     mocks.signLedgerDescriptor.mockRejectedValue(error);
@@ -177,6 +165,7 @@ function setupSignTransaction({
     mocks.signLedgerDescriptor.mockResolvedValue(undefined);
   }
   return {
+    session,
     context: renderSignTxContext({ settleOnRejection: settleOnRejection ?? false, descriptor }),
   };
 }
@@ -189,6 +178,11 @@ function expectSettledOnceWith(outcome: LedgerSigningOutcome<btc.Transaction>) {
   );
 }
 
+function anyOperationContext(): unknown {
+  const anyAbortSignal: unknown = expect.any(AbortSignal);
+  return expect.objectContaining({ signal: anyAbortSignal });
+}
+
 describe('LedgerSignBitcoinTxContainer', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -196,7 +190,7 @@ describe('LedgerSignBitcoinTxContainer', () => {
 
   test('settles the flow with the signed transaction', async () => {
     const signedPsbt = new btc.Transaction();
-    const { context } = setupSignTransaction({});
+    const { context, session } = setupSignTransaction({});
     mocks.signLedger.mockResolvedValue(signedPsbt);
 
     await act(async () => {
@@ -205,11 +199,14 @@ describe('LedgerSignBitcoinTxContainer', () => {
 
     expectSettledOnceWith({ status: 'signed', value: signedPsbt });
     expect(mocks.toOperationRejectedStep).not.toHaveBeenCalled();
-    expect(mocks.disconnect).toHaveBeenCalledOnce();
+    expect(session.close).toHaveBeenCalledOnce();
   });
 
   test('settles a device denial as a cancellation when the swap opted in', async () => {
-    const { context } = setupSignTransaction({ settleOnRejection: true, error: deniedError });
+    const { context, session } = setupSignTransaction({
+      settleOnRejection: true,
+      error: deniedError,
+    });
 
     await act(async () => {
       await context.signTransaction();
@@ -218,7 +215,7 @@ describe('LedgerSignBitcoinTxContainer', () => {
     expectSettledOnceWith({ status: 'cancelled' });
     expect(mocks.toOperationRejectedStep).not.toHaveBeenCalled();
     expect(mocks.transactionSignedOnLedgerRejected).toHaveBeenCalledOnce();
-    expect(mocks.disconnect).toHaveBeenCalledOnce();
+    expect(session.close).toHaveBeenCalledOnce();
   });
 
   test('forwards other device errors to the swap when it opted in', async () => {
@@ -289,8 +286,48 @@ describe('LedgerSignBitcoinTxContainer', () => {
     expect(mocks.settleLedgerAction).not.toHaveBeenCalled();
   });
 
+  test('connects to the Bitcoin app for the current network and signs with the session signer', async () => {
+    const { context, session } = setupSignTransaction({});
+
+    await act(async () => {
+      await context.signTransaction();
+    });
+
+    expect(mocks.connect).toHaveBeenCalledWith(
+      { chain: 'bitcoin', network: 'mainnet' },
+      anyOperationContext()
+    );
+    expect(mocks.signLedger).toHaveBeenCalledWith(
+      session.wallet.bitcoin,
+      psbt,
+      [],
+      anyOperationContext()
+    );
+  });
+
+  test('shows the policy approval prompt while signing a descriptor', async () => {
+    const { context } = setupSignTransaction({ descriptor: 'wpkh(@0/**)' });
+    mocks.signLedgerDescriptor.mockImplementation(
+      (_signer, _psbt, _descriptor, _inputs, ctx: OperationContext) => {
+        ctx.onInteraction?.({ type: 'approve-policy' });
+        return Promise.resolve(new btc.Transaction());
+      }
+    );
+
+    await act(async () => {
+      await context.signTransaction();
+    });
+
+    expect(mocks.toDeviceBusyStep).toHaveBeenCalledWith(
+      'Approve the Leather wallet policy on your Ledger…'
+    );
+  });
+
   test('stays silent when the user cancelled the device action from the sheet', async () => {
-    const { context } = setupSignTransaction({ settleOnRejection: true, error: cancelledError });
+    const { context, session } = setupSignTransaction({
+      settleOnRejection: true,
+      error: cancelledError,
+    });
 
     await act(async () => {
       await context.signTransaction();
@@ -299,6 +336,6 @@ describe('LedgerSignBitcoinTxContainer', () => {
     expect(mocks.settleLedgerAction).not.toHaveBeenCalled();
     expect(mocks.toOperationRejectedStep).not.toHaveBeenCalled();
     expect(mocks.toErrorStep).not.toHaveBeenCalled();
-    expect(mocks.disconnect).toHaveBeenCalledOnce();
+    expect(session.close).toHaveBeenCalledOnce();
   });
 });

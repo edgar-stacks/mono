@@ -1,28 +1,15 @@
-import { UserInteractionRequired } from '@ledgerhq/device-management-kit';
-import { WalletPolicy } from '@ledgerhq/device-signer-kit-bitcoin';
-
 import {
-  buildLedgerWalletPolicy,
   compileWshDescriptor,
   findAccountDescriptorKey,
-  toLedgerSignableDescriptor,
+  toWalletPolicyDescriptor,
 } from '@leather.io/bitcoin';
+import {
+  type HardwareBitcoinSigner,
+  type OperationContext,
+  descriptorHasNonAccountRawKey,
+} from '@leather.io/ledger';
 
 import { useCurrentNativeSegwitAccount } from '@app/store/accounts/blockchain/bitcoin/native-segwit-account.hooks';
-
-import { useLedgerSteps } from '../flow/ledger-flow.context';
-import {
-  getMasterFingerprintHex,
-  getWalletAddressOnDevice,
-  registerLedgerWalletPolicyPrompt,
-  registerWalletPolicy,
-} from '../utils/bitcoin-signer-kit-utils';
-import type { LedgerBitcoinApp } from '../utils/ledger-app';
-import { descriptorHasNonAccountRawKey } from '../utils/ledger-descriptor-address';
-
-interface DisplayLedgerDescriptorAddressOptions {
-  onWalletRegistered?(): void;
-}
 
 // Displays the `wsh(...)` multisig address on the Ledger screen so the user can
 // confirm it against the extension. Ledger can only show a non-standard
@@ -34,12 +21,11 @@ interface DisplayLedgerDescriptorAddressOptions {
 // assert against the locally derived one.
 export function useDisplayLedgerDescriptorAddress() {
   const nativeSegwitAccount = useCurrentNativeSegwitAccount();
-  const ledgerNavigate = useLedgerSteps();
 
   return async (
-    app: LedgerBitcoinApp,
+    signer: HardwareBitcoinSigner,
     descriptor: string,
-    { onWalletRegistered }: DisplayLedgerDescriptorAddressOptions = {}
+    ctx: OperationContext
   ): Promise<string> => {
     if (!nativeSegwitAccount) throw new Error('No native segwit account available');
 
@@ -56,27 +42,21 @@ export function useDisplayLedgerDescriptorAddress() {
         'Ledger cannot display this address: another signer is a raw public key. Ledger requires every key to be an extended public key (xpub).'
       );
 
-    const ledgerDescriptor = toLedgerSignableDescriptor(
+    const policyDescriptor = toWalletPolicyDescriptor(
       descriptor,
       accountDescriptorKey.key,
       nativeSegwitAccount.xpub,
       nativeSegwitAccount.keyOrigin
     );
 
-    const fingerprint = await getMasterFingerprintHex(app);
-    const policy = buildLedgerWalletPolicy(ledgerDescriptor, fingerprint);
-    const registeredWallet = await registerWalletPolicy(
-      app,
-      new WalletPolicy(policy.name, policy.descriptorTemplate, policy.keys),
+    return signer.showAddress(
       {
-        onRequiredUserInteraction(interaction) {
-          if (interaction !== UserInteractionRequired.RegisterWallet) return;
-          ledgerNavigate.toDeviceBusyStep(registerLedgerWalletPolicyPrompt);
-        },
-      }
+        kind: 'policy',
+        policyDescriptor,
+        changeIndex: compiled.keyPathIndexes.changeIndex,
+        addressIndex: compiled.keyPathIndexes.addressIndex,
+      },
+      ctx
     );
-    onWalletRegistered?.();
-
-    return getWalletAddressOnDevice(app, registeredWallet, compiled.keyPathIndexes);
   };
 }

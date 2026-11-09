@@ -2,15 +2,17 @@
 import { act, createElement } from 'react';
 import { createRoot } from 'react-dom/client';
 
-import { LedgerError } from '@zondax/ledger-stacks';
-
+import { HardwareWalletError } from '@leather.io/ledger';
+import {
+  makeFakeHardwareStacksSigner,
+  makeFakeHardwareWallet,
+  makeFakeHardwareWalletConnector,
+  makeFakeHardwareWalletSession,
+} from '@leather.io/ledger/test-utils';
 import type * as LeatherUtils from '@leather.io/utils';
 
 import type * as GenericLedgerUtils from '@app/features/ledger/utils/generic-ledger-utils';
-import type * as StacksLedgerUtils from '@app/features/ledger/utils/stacks-ledger-utils';
 
-import { makeFakeDmk } from '../../dmk/ledger-dmk.mocks';
-import { fakeLedgerSessionId, makeFakeLedgerStacksApp } from '../../utils/ledger-app.mocks';
 import { LedgerSignMsgContainer } from './ledger-stacks-sign-msg-container';
 import { type LedgerMessageSigningContext } from './ledger-stacks-sign-msg.context';
 import type * as LedgerStacksSignMsgContext from './ledger-stacks-sign-msg.context';
@@ -26,16 +28,14 @@ const mocks = vi.hoisted(() => ({
   toDeviceDisconnectStep: vi.fn(),
   toStacksAppOutdatedWarning: vi.fn(),
   toErrorStep: vi.fn(),
+  toConnectStep: vi.fn(),
   settleLedgerAction: vi.fn(),
   trackDeviceVersionInfo: vi.fn(),
   messageSignedOnLedgerSuccessfully: vi.fn(),
   messageSignedOnLedgerRejected: vi.fn(),
-  prepareConnection: vi.fn(),
-  getStacksAppVersion: vi.fn(),
-  signUtf8Message: vi.fn(),
-  versionGate: vi.fn(),
+  connect: vi.fn(),
+  signMessage: vi.fn(),
   migrateFingerprint: vi.fn(),
-  disconnect: vi.fn(),
   closeWithError: vi.fn(),
   captureContext: vi.fn<(value: LedgerMessageSigningContext) => void>(),
   account: vi.fn<() => StacksAccountMock | undefined>(),
@@ -63,6 +63,8 @@ vi.mock('../../flow/ledger-flow.context', () => ({
     toDeviceDisconnectStep: mocks.toDeviceDisconnectStep,
     toStacksAppOutdatedWarning: mocks.toStacksAppOutdatedWarning,
     toErrorStep: mocks.toErrorStep,
+    toConnectStep: mocks.toConnectStep,
+    toPairDeviceStep: vi.fn(),
     settleLedgerAction: mocks.settleLedgerAction,
   }),
 }));
@@ -103,22 +105,10 @@ vi.mock('./steps/sign-stacks-ledger-message', () => ({
   SignLedgerMessage: () => null,
 }));
 
-vi.mock('@app/features/ledger/utils/stacks-ledger-utils', async importOriginal => {
-  const actual = await importOriginal<typeof StacksLedgerUtils>();
-  return {
-    ...actual,
-    prepareLedgerDeviceStacksAppConnection: () => mocks.prepareConnection,
-    getStacksAppVersion: mocks.getStacksAppVersion,
-    signLedgerStacksUtf8Message: mocks.signUtf8Message,
-  };
-});
+vi.mock('@leather.io/bitcoin', () => ({}));
 
-vi.mock('@app/features/ledger/utils/stacks-version-gate', () => ({
-  stacksVersionGate: () => mocks.versionGate,
-}));
-
-vi.mock('@app/features/ledger/dmk/ledger-dmk.context', () => ({
-  useLedgerDmk: () => makeFakeDmk({ disconnect: mocks.disconnect }),
+vi.mock('@app/features/ledger/hardware-wallet/hardware-wallet.context', () => ({
+  useHardwareWalletConnector: () => makeFakeHardwareWalletConnector({ connect: mocks.connect }),
 }));
 
 vi.mock('@app/features/ledger/utils/generic-ledger-utils', async importOriginal => {
@@ -142,18 +132,8 @@ vi.mock('./ledger-stacks-sign-msg.context', async importOriginal => {
   };
 });
 
-const stacksAppVersion = {
-  name: 'Stacks',
-  chain: 'stacks',
-  returnCode: LedgerError.NoErrors,
-  errorMessage: 'No errors',
-  testMode: false,
-  deviceLocked: false,
-  targetId: '',
-  major: 0,
-  minor: 26,
-  patch: 19,
-};
+const stacksApp = { name: 'Stacks', version: '0.26.19' };
+const signature = { signature: 'rsv-signature', publicKey: stacksAccount.stxPublicKey };
 
 function renderSignMsgContainer() {
   const root = createRoot(document.createElement('div'));
@@ -179,15 +159,21 @@ function renderSignMsgContext(): LedgerMessageSigningContext {
 }
 
 function setupSignMessage() {
-  mocks.prepareConnection.mockResolvedValue(makeFakeLedgerStacksApp());
-  mocks.disconnect.mockResolvedValue(undefined);
-  mocks.getStacksAppVersion.mockResolvedValue(stacksAppVersion);
-  mocks.versionGate.mockResolvedValue(true);
-  mocks.migrateFingerprint.mockResolvedValue(undefined);
-  mocks.signUtf8Message.mockReturnValue(() =>
-    Promise.resolve({ returnCode: LedgerError.NoErrors, signatureVRS: Buffer.alloc(65, 1) })
+  const session = makeFakeHardwareWalletSession(
+    makeFakeHardwareWallet({
+      app: stacksApp,
+      stacks: makeFakeHardwareStacksSigner({ signMessage: mocks.signMessage }),
+    })
   );
-  return { context: renderSignMsgContext() };
+  mocks.connect.mockResolvedValue(session);
+  mocks.migrateFingerprint.mockResolvedValue(undefined);
+  mocks.signMessage.mockResolvedValue(signature);
+  return { session, context: renderSignMsgContext() };
+}
+
+function anyOperationContext(): unknown {
+  const anyAbortSignal: unknown = expect.any(AbortSignal);
+  return expect.objectContaining({ signal: anyAbortSignal });
 }
 
 describe(LedgerSignMsgContainer.name, () => {
@@ -215,54 +201,64 @@ describe(LedgerSignMsgContainer.name, () => {
     expect(mocks.closeWithError).not.toHaveBeenCalled();
   });
 
-  test('signs the message, settles the flow with the signature and closes the transport once', async () => {
-    const { context } = setupSignMessage();
+  test('signs the message with the account key, settles the flow and closes the session once', async () => {
+    const { context, session } = setupSignMessage();
 
     await act(async () => {
       await context.signMessage();
     });
 
+    expect(mocks.connect).toHaveBeenCalledWith({ chain: 'stacks' }, expect.anything());
+    expect(mocks.trackDeviceVersionInfo).toHaveBeenCalledWith(stacksApp);
+    expect(mocks.signMessage).toHaveBeenCalledWith(
+      {
+        message: 'hello leather',
+        derivationPath: stacksAccount.derivationPath,
+        publicKey: stacksAccount.stxPublicKey,
+      },
+      anyOperationContext()
+    );
     expect(mocks.messageSignedOnLedgerSuccessfully).toHaveBeenCalledOnce();
     expect(mocks.settleLedgerAction).toHaveBeenCalledOnce();
-    expect(mocks.settleLedgerAction.mock.calls[0][1]).toMatchObject({ status: 'signed' });
+    expect(mocks.settleLedgerAction.mock.calls[0][1]).toEqual({
+      status: 'signed',
+      value: signature,
+    });
     expect(mocks.toDeviceDisconnectStep).not.toHaveBeenCalled();
-    expect(mocks.disconnect).toHaveBeenCalledOnce();
-    expect(mocks.disconnect).toHaveBeenCalledWith({ sessionId: fakeLedgerSessionId });
+    expect(session.close).toHaveBeenCalledOnce();
   });
 
-  test('stops before signing and closes the transport once when the version gate fails', async () => {
+  test('shows the outdated app warning with the versions when the Stacks app is too old', async () => {
     const { context } = setupSignMessage();
-    mocks.versionGate.mockResolvedValue(false);
-
-    await act(async () => {
-      await context.signMessage();
-    });
-
-    expect(mocks.signUtf8Message).not.toHaveBeenCalled();
-    expect(mocks.settleLedgerAction).not.toHaveBeenCalled();
-    expect(mocks.disconnect).toHaveBeenCalledOnce();
-    expect(mocks.disconnect).toHaveBeenCalledWith({ sessionId: fakeLedgerSessionId });
-  });
-
-  test('stops before signing and closes the transport once when the device is locked', async () => {
-    const { context } = setupSignMessage();
-    mocks.getStacksAppVersion.mockResolvedValue({ ...stacksAppVersion, deviceLocked: true });
-
-    await act(async () => {
-      await context.signMessage();
-    });
-
-    expect(mocks.versionGate).not.toHaveBeenCalled();
-    expect(mocks.signUtf8Message).not.toHaveBeenCalled();
-    expect(mocks.disconnect).toHaveBeenCalledOnce();
-    expect(mocks.disconnect).toHaveBeenCalledWith({ sessionId: fakeLedgerSessionId });
-  });
-
-  test('settles the flow as cancelled and closes the transport once when signing is rejected', async () => {
-    const { context } = setupSignMessage();
-    mocks.signUtf8Message.mockReturnValue(() =>
-      Promise.resolve({ returnCode: LedgerError.TransactionRejected })
+    const details = { currentVersion: '0.24.0', requiredVersion: '0.26.19' };
+    mocks.connect.mockRejectedValue(
+      new HardwareWalletError('outdated-app', 'Outdated', { details })
     );
+
+    await act(async () => {
+      await context.signMessage();
+    });
+
+    expect(mocks.toStacksAppOutdatedWarning).toHaveBeenCalledWith(details);
+    expect(mocks.signMessage).not.toHaveBeenCalled();
+    expect(mocks.settleLedgerAction).not.toHaveBeenCalled();
+  });
+
+  test('returns to the connect step when the device is locked', async () => {
+    const { context } = setupSignMessage();
+    mocks.connect.mockRejectedValue(new HardwareWalletError('locked'));
+
+    await act(async () => {
+      await context.signMessage();
+    });
+
+    expect(mocks.toConnectStep).toHaveBeenCalledOnce();
+    expect(mocks.signMessage).not.toHaveBeenCalled();
+  });
+
+  test('settles the flow as cancelled and closes the session once when signing is rejected', async () => {
+    const { context, session } = setupSignMessage();
+    mocks.signMessage.mockRejectedValue(new HardwareWalletError('rejected'));
 
     await act(async () => {
       await context.signMessage();
@@ -272,13 +268,12 @@ describe(LedgerSignMsgContainer.name, () => {
     expect(mocks.messageSignedOnLedgerRejected).toHaveBeenCalledOnce();
     expect(mocks.settleLedgerAction).toHaveBeenCalledOnce();
     expect(mocks.settleLedgerAction.mock.calls[0][1]).toEqual({ status: 'cancelled' });
-    expect(mocks.disconnect).toHaveBeenCalledOnce();
-    expect(mocks.disconnect).toHaveBeenCalledWith({ sessionId: fakeLedgerSessionId });
+    expect(session.close).toHaveBeenCalledOnce();
   });
 
   test('resolves without signing or navigating when the connection is cancelled', async () => {
     const { context } = setupSignMessage();
-    mocks.prepareConnection.mockRejectedValue(new Error('Unable to initiate Ledger app'));
+    mocks.connect.mockRejectedValue(new HardwareWalletError('cancelled'));
 
     await act(async () => {
       await expect(context.signMessage()).resolves.toBeUndefined();
@@ -286,20 +281,13 @@ describe(LedgerSignMsgContainer.name, () => {
 
     expect(mocks.toCheckingAppVersion).not.toHaveBeenCalled();
     expect(mocks.toErrorStep).not.toHaveBeenCalled();
-    expect(mocks.signUtf8Message).not.toHaveBeenCalled();
+    expect(mocks.signMessage).not.toHaveBeenCalled();
     expect(mocks.settleLedgerAction).not.toHaveBeenCalled();
-    expect(mocks.disconnect).not.toHaveBeenCalled();
   });
 
   test('shows the disconnect step and closes the session once when the device drops', async () => {
-    const { context } = setupSignMessage();
-    mocks.signUtf8Message.mockReturnValue(() =>
-      Promise.reject(
-        Object.assign(new Error('Device disconnected'), {
-          _tag: 'DeviceDisconnectedWhileSendingError',
-        })
-      )
-    );
+    const { context, session } = setupSignMessage();
+    mocks.signMessage.mockRejectedValue(new HardwareWalletError('disconnected'));
 
     await act(async () => {
       await context.signMessage();
@@ -307,12 +295,12 @@ describe(LedgerSignMsgContainer.name, () => {
 
     expect(mocks.toDeviceDisconnectStep).toHaveBeenCalledOnce();
     expect(mocks.toErrorStep).not.toHaveBeenCalled();
-    expect(mocks.disconnect).toHaveBeenCalledOnce();
+    expect(session.close).toHaveBeenCalledOnce();
   });
 
   test('shows the error step and closes the session once when signing throws', async () => {
-    const { context } = setupSignMessage();
-    mocks.signUtf8Message.mockReturnValue(() => Promise.reject(new Error('device unplugged')));
+    const { context, session } = setupSignMessage();
+    mocks.signMessage.mockRejectedValue(new Error('device unplugged'));
 
     await act(async () => {
       await context.signMessage();
@@ -320,7 +308,6 @@ describe(LedgerSignMsgContainer.name, () => {
 
     expect(mocks.toErrorStep).toHaveBeenCalledWith('stacks');
     expect(mocks.toDeviceDisconnectStep).not.toHaveBeenCalled();
-    expect(mocks.disconnect).toHaveBeenCalledOnce();
-    expect(mocks.disconnect).toHaveBeenCalledWith({ sessionId: fakeLedgerSessionId });
+    expect(session.close).toHaveBeenCalledOnce();
   });
 });

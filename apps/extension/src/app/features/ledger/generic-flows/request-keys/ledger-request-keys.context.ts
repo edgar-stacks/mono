@@ -5,6 +5,8 @@ import type { StacksDerivationPathType } from '@leather.io/stacks';
 
 import { type BaseLedgerOperationContext } from '../../utils/generic-ledger-utils';
 
+export const defaultNumberOfKeysToPullFromLedgerDevice = 10;
+
 export interface LedgerRequestKeysContext extends BaseLedgerOperationContext {
   chain: SupportedBlockchains;
   pullPublicKeysFromDevice(): Promise<void>;

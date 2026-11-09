@@ -1,0 +1,127 @@
+import {
+  type DeviceActionIntermediateValue,
+  DeviceActionStatus,
+  type ExecuteDeviceActionReturnType,
+} from '@ledgerhq/device-management-kit';
+
+import {
+  isLedgerUserRefusedDeviceActionError,
+  ledgerActionCancelledErrorName,
+  makeLedgerOperationRejectedError,
+  toLedgerTransportError,
+} from './ledger-dmk-errors';
+
+export interface LedgerDeviceActionOptions<Intermediate extends DeviceActionIntermediateValue> {
+  signal?: AbortSignal;
+  onRequiredUserInteraction?(interaction: Intermediate['requiredUserInteraction']): void;
+}
+
+interface LedgerDeviceActionHandle<Output> {
+  result: Promise<Output>;
+  cancel(): void;
+}
+
+export type RunLedgerDeviceAction = <
+  Output,
+  Error,
+  Intermediate extends DeviceActionIntermediateValue,
+>(
+  action: ExecuteDeviceActionReturnType<Output, Error, Intermediate>,
+  options?: LedgerDeviceActionOptions<Intermediate>
+) => Promise<Output>;
+
+function toLedgerDeviceActionError(error: unknown): Error {
+  if (isLedgerUserRefusedDeviceActionError(error)) return makeLedgerOperationRejectedError(error);
+  return toLedgerTransportError(error);
+}
+
+function makeActionCancelledError(): Error {
+  const error = new Error('Ledger device action was cancelled');
+  error.name = ledgerActionCancelledErrorName;
+  return error;
+}
+
+export function runLedgerDeviceAction<
+  Output,
+  Error,
+  Intermediate extends DeviceActionIntermediateValue,
+>(
+  action: ExecuteDeviceActionReturnType<Output, Error, Intermediate>,
+  { signal, onRequiredUserInteraction }: LedgerDeviceActionOptions<Intermediate> = {}
+): LedgerDeviceActionHandle<Output> {
+  const result = new Promise<Output>((resolve, reject) => {
+    let lastInteraction: Intermediate['requiredUserInteraction'] | null = null;
+    let settled = false;
+
+    function settle() {
+      settled = true;
+      signal?.removeEventListener('abort', onAbort);
+    }
+
+    function onAbort() {
+      action.cancel();
+      if (settled) return;
+      settle();
+      reject(makeActionCancelledError());
+    }
+
+    if (signal?.aborted) {
+      onAbort();
+      return;
+    }
+    signal?.addEventListener('abort', onAbort, { once: true });
+
+    action.observable.subscribe({
+      next(state) {
+        if (settled) return;
+        if (state.status === DeviceActionStatus.Pending) {
+          const interaction = state.intermediateValue.requiredUserInteraction;
+          if (interaction === lastInteraction) return;
+          lastInteraction = interaction;
+          onRequiredUserInteraction?.(interaction);
+          return;
+        }
+        if (state.status === DeviceActionStatus.Completed) {
+          settle();
+          resolve(state.output);
+          return;
+        }
+        if (state.status === DeviceActionStatus.Error) {
+          settle();
+          reject(toLedgerDeviceActionError(state.error));
+          return;
+        }
+        if (state.status === DeviceActionStatus.Stopped) {
+          settle();
+          reject(makeActionCancelledError());
+        }
+      },
+      error(error: unknown) {
+        if (settled) return;
+        settle();
+        reject(toLedgerDeviceActionError(error));
+      },
+      complete() {
+        if (!settled) reject(new Error('Ledger device action ended without a result'));
+      },
+    });
+  });
+
+  return {
+    result,
+    cancel() {
+      action.cancel();
+    },
+  };
+}
+
+export function runLedgerDeviceActionToCompletion<
+  Output,
+  Error,
+  Intermediate extends DeviceActionIntermediateValue,
+>(
+  action: ExecuteDeviceActionReturnType<Output, Error, Intermediate>,
+  options?: LedgerDeviceActionOptions<Intermediate>
+): Promise<Output> {
+  return runLedgerDeviceAction(action, options).result;
+}

@@ -86,7 +86,7 @@ describe('selectLedgerAccounts', () => {
 
   test('excludes a keychain whose fingerprint/accountIndex collides with an earlier keychain', () => {
     const fingerprint = 'deadbeef';
-    const ledgerLivePath = makeStxDerivationPathForType('ledgerLive', 1);
+    const ledgerLivePath = makeStxDerivationPathForType('bip44', 1);
     const standardPath = makeStxDerivationPathForType('stacks', 1);
     const keychains = [
       makeStacksLedgerKeychainForPath(fingerprint, ledgerLivePath),
@@ -127,8 +127,8 @@ describe('selectLedgerStacksAccountLookup', () => {
   test('keys ledgerLive descriptors by their hardened account-level index', () => {
     const fingerprint = 'deadbeef';
     const lookup = getLedgerAccountLookup([
-      makeStacksLedgerKeychainForPath(fingerprint, makeStxDerivationPathForType('ledgerLive', 0)),
-      makeStacksLedgerKeychainForPath(fingerprint, makeStxDerivationPathForType('ledgerLive', 1)),
+      makeStacksLedgerKeychainForPath(fingerprint, makeStxDerivationPathForType('bip44', 0)),
+      makeStacksLedgerKeychainForPath(fingerprint, makeStxDerivationPathForType('bip44', 1)),
     ]);
 
     const account = lookup({ fingerprint, accountIndex: 1 }, 'mainnet');
@@ -140,7 +140,7 @@ describe('selectLedgerStacksAccountLookup', () => {
 
   test('resolved ledgerLive account yields its stored path for device signing', () => {
     const fingerprint = 'deadbeef';
-    const ledgerLivePath = makeStxDerivationPathForType('ledgerLive', 2);
+    const ledgerLivePath = makeStxDerivationPathForType('bip44', 2);
     const lookup = getLedgerAccountLookup([
       makeStacksLedgerKeychainForPath(fingerprint, ledgerLivePath),
     ]);

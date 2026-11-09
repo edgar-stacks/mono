@@ -306,7 +306,7 @@ export function stripDescriptorChecksum(descriptor: string): string {
 // branches. The compiled scriptPubKey/witness script are unchanged. No-op if the
 // matched key already carries an origin. Note: bitcoinerlab/Ledger still reject
 // the same key used with different sub-paths (e.g. `/0/*` and `/1/*`).
-export function toLedgerSignableDescriptor(
+export function toWalletPolicyDescriptor(
   descriptor: string,
   accountKey: KeyInfo,
   accountXpub: string,
