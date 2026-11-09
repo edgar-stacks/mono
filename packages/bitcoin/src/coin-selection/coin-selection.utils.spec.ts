@@ -1,6 +1,7 @@
+import { BTC_P2TR_DUST_AMOUNT, BTC_P2WPKH_DUST_AMOUNT } from '@leather.io/constants';
 import { createMoney } from '@leather.io/utils';
 
-import { recipientAddress } from '../mocks/mocks';
+import { invalidAddress, recipientAddress, taprootAddress } from '../mocks/mocks';
 import {
   generateMockTaprootTransactions,
   generateMockTransactions,
@@ -10,9 +11,24 @@ import {
 import {
   countInputsByScriptType,
   filterUneconomicalUtxos,
+  getDustThresholdByAddress,
   getSizeInfo,
   getSpendableAmount,
 } from './coin-selection.utils';
+
+describe(getDustThresholdByAddress.name, () => {
+  test('that it returns the taproot dust limit for a taproot address', () => {
+    expect(getDustThresholdByAddress(taprootAddress)).toEqual(BTC_P2TR_DUST_AMOUNT);
+  });
+
+  test('that it returns the native segwit dust limit for a native segwit address', () => {
+    expect(getDustThresholdByAddress(recipientAddress)).toEqual(BTC_P2WPKH_DUST_AMOUNT);
+  });
+
+  test('that it falls back to the native segwit dust limit for an invalid address', () => {
+    expect(getDustThresholdByAddress(invalidAddress)).toEqual(BTC_P2WPKH_DUST_AMOUNT);
+  });
+});
 
 describe(filterUneconomicalUtxos.name, () => {
   const recipients = [
@@ -21,6 +37,34 @@ describe(filterUneconomicalUtxos.name, () => {
       amount: createMoney(0, 'BTC'),
     },
   ];
+
+  test('that taproot utxos below the taproot dust limit are filtered out', () => {
+    const [taprootUtxo] = generateMockTaprootTransactions([300]);
+    const [nativeSegwitUtxo] = generateMockTransactions([300]);
+    const filteredUtxos = filterUneconomicalUtxos({
+      utxos: [taprootUtxo, nativeSegwitUtxo],
+      feeRate: 0,
+      recipients,
+    });
+
+    expect(filteredUtxos).toEqual([nativeSegwitUtxo]);
+  });
+
+  test('that sibling outputs of one transaction are judged separately', () => {
+    const [largeUtxo, smallUtxo] = generateMockTransactions([50_000, 500]);
+    const sharedTxid = largeUtxo.txid;
+    const utxos = [
+      { ...largeUtxo, txid: sharedTxid, vout: 0 },
+      { ...smallUtxo, txid: sharedTxid, vout: 1 },
+    ];
+    const filteredUtxos = filterUneconomicalUtxos({
+      utxos,
+      feeRate: 10,
+      recipients,
+    });
+
+    expect(filteredUtxos).toEqual([utxos[0]]);
+  });
 
   test('with 1 sat/vb fee', () => {
     const fee = 1;

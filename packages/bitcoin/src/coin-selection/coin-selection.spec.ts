@@ -357,4 +357,29 @@ describe('mixed input types', () => {
       expect(input.value >= nextInput.value).toEqual(true);
     });
   });
+
+  test('that the fee equals inputs minus outputs when change is dropped as dust', () => {
+    const utxos = generateMockTransactions([10_000]);
+    const recipientAmount = 9_700;
+
+    const result = determineUtxosForSpend({
+      utxos,
+      recipients: [{ address: recipientAddress, amount: createMoney(recipientAmount, 'BTC') }],
+      feeRate: 1,
+    });
+
+    const noChangeSize = getSizeInfo({
+      utxos: result.inputs,
+      recipients: [{ address: recipientAddress, amount: createMoney(recipientAmount, 'BTC') }],
+      isSendMax: true,
+    });
+    const inputsTotal = sumNumbers(result.inputs.map(input => input.value)).toNumber();
+    const outputsTotal = result.outputs.reduce((acc, output) => acc + Number(output.value), 0);
+
+    expect(result.outputs).toHaveLength(1);
+    expect(result.fee.amount.toNumber()).toEqual(inputsTotal - outputsTotal);
+    expect(result.fee.amount.toNumber()).toEqual(10_000 - recipientAmount);
+    expect(result.size).toEqual(noChangeSize.txVBytes);
+    expect(result.txVBytes).toEqual(noChangeSize.txVBytes);
+  });
 });
