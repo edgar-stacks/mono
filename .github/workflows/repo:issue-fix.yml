@@ -88,6 +88,25 @@ jobs:
         working-directory: apps/extension
         run: pnpm playwright install chromium --no-shell --with-deps
 
+      - name: install-bun
+        id: install-bun
+        env:
+          BUN_PACKAGE: '@oven/bun-linux-x64@1.3.14'
+          BUN_INTEGRITY: sha512-7OVTAKvwfPmSbIV1HpdOoVVx5VRc427GuPPne93N6vk4eQBPId9nXmZDh9/zGaKPdbVjVtQSZafWQoUjx38Utw==
+        run: |
+          dir="$RUNNER_TEMP/bun"
+          mkdir -p "$dir"
+          npm pack "$BUN_PACKAGE" --json --pack-destination "$dir" \
+            --fetch-retries 6 --fetch-retry-mintimeout 5000 --fetch-retry-maxtimeout 60000 > "$dir/pack.json"
+          integrity="$(jq -r '.[0].integrity' "$dir/pack.json")"
+          if [ "$integrity" != "$BUN_INTEGRITY" ]; then
+            echo "::error::$BUN_PACKAGE has integrity $integrity, expected $BUN_INTEGRITY"
+            exit 1
+          fi
+          tar -xzf "$dir/$(jq -r '.[0].filename' "$dir/pack.json")" -C "$dir"
+          "$dir/package/bin/bun" --version
+          echo "executable=$dir/package/bin/bun" >> "$GITHUB_OUTPUT"
+
       - name: round-1
         id: round-1
         uses: $/.github/actions/issue-fix-round
@@ -96,6 +115,7 @@ jobs:
           claude-code-oauth-token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           github-token: ${{ github.token }}
           test-mnemonic: ${{ vars.EXTENSION_INTEGRATION_TEST_MNEMONIC }}
+          bun-executable: ${{ steps.install-bun.outputs.executable }}
 
       - name: round-2
         id: round-2
@@ -106,6 +126,7 @@ jobs:
           claude-code-oauth-token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           github-token: ${{ github.token }}
           test-mnemonic: ${{ vars.EXTENSION_INTEGRATION_TEST_MNEMONIC }}
+          bun-executable: ${{ steps.install-bun.outputs.executable }}
 
       - name: round-3
         id: round-3
@@ -116,6 +137,7 @@ jobs:
           claude-code-oauth-token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           github-token: ${{ github.token }}
           test-mnemonic: ${{ vars.EXTENSION_INTEGRATION_TEST_MNEMONIC }}
+          bun-executable: ${{ steps.install-bun.outputs.executable }}
 
       - name: finish-rounds
         run: pnpm lt issue-fix round finish

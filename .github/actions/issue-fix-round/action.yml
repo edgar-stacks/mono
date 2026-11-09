@@ -14,6 +14,9 @@ inputs:
     description: 'Test-only wallet mnemonic for the extension end-to-end specs'
     required: false
     default: ''
+  bun-executable:
+    description: 'Path to a Bun binary for claude-code-action, so each Claude step skips its own download from GitHub releases'
+    required: true
 outputs:
   outcome:
     description: 'clean, failed or blocked'
@@ -40,6 +43,7 @@ runs:
           --permission-mode auto
           --permission-prompts none
         show_full_output: true
+        path_to_bun_executable: ${{ inputs.bun-executable }}
         settings: >-
           {"hooks": {"Stop": [{"hooks": [{"type": "command",
           "command": "node \"$CLAUDE_PROJECT_DIR/tools/dist/lt.js\" issue-fix stop-guard --output status"}]}]}}
@@ -76,6 +80,7 @@ runs:
           --permission-mode auto
           --permission-prompts none
         show_full_output: true
+        path_to_bun_executable: ${{ inputs.bun-executable }}
         settings: >-
           {"hooks": {"Stop": [{"hooks": [{"type": "command",
           "command": "node \"$CLAUDE_PROJECT_DIR/tools/dist/lt.js\" issue-fix stop-guard --output review"}]}]}}
