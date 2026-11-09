@@ -3,7 +3,7 @@ import bigListOfNaughtyStrings from 'blns';
 
 import { isString } from '@leather.io/utils';
 
-import { getHostnameFromUrl, isValidUrl } from './urls';
+import { getOriginFromUrl, isValidUrl } from './urls';
 
 describe('isValidUrl', () => {
   test('accepts normal URLs', () => {
@@ -39,46 +39,45 @@ describe('isValidUrl', () => {
   });
 });
 
-describe('getHostnameFromUrl', () => {
-  test('returns hostname for valid URLs', () => {
-    const urls = [
-      'http://example.com',
-      'https://leather.io',
-      'https://blockstack.com',
-      'https://blockstack.org/asdf#anchor',
-      'https://subdomain.leather.io',
-    ];
-
-    const expected = [
-      'example.com',
-      'leather.io',
-      'blockstack.com',
-      'blockstack.org',
-      'subdomain.leather.io',
-    ];
-
-    urls.forEach((url, index) => expect(getHostnameFromUrl(url)).toEqual(expected[index]));
+describe('getOriginFromUrl', () => {
+  test('returns the canonical origin for web URLs', () => {
+    expect(getOriginFromUrl('http://example.com')).toEqual('http://example.com');
+    expect(getOriginFromUrl('https://leather.io/')).toEqual('https://leather.io');
+    expect(getOriginFromUrl('https://blockstack.org/asdf?hey=true#anchor')).toEqual(
+      'https://blockstack.org'
+    );
+    expect(getOriginFromUrl('https://SubDomain.Leather.io/path')).toEqual(
+      'https://subdomain.leather.io'
+    );
   });
 
-  test('returns hostname with port for localhost URLs', () => {
-    const localhostUrls = [
-      'http://localhost:3000',
-      'https://localhost:8080',
-      'http://localhost:1234',
-    ];
-
-    const expected = ['localhost:3000', 'localhost:8080', 'localhost:1234'];
-
-    localhostUrls.forEach((url, index) => {
-      expect(getHostnameFromUrl(url)).toEqual(expected[index]);
-    });
+  test('drops the default port and keeps any other port', () => {
+    expect(getOriginFromUrl('https://example.com:443/path')).toEqual('https://example.com');
+    expect(getOriginFromUrl('http://example.com:80')).toEqual('http://example.com');
+    expect(getOriginFromUrl('https://example.com:8443/path')).toEqual('https://example.com:8443');
+    expect(getOriginFromUrl('http://localhost:3000')).toEqual('http://localhost:3000');
   });
 
-  test('throws error for invalid URLs', () => {
-    const invalidUrls = ['not-a-url', 'file:////path/name', 'http://', 'localhost:3000'];
+  test('keeps the scheme so http and https origins of one hostname differ', () => {
+    expect(getOriginFromUrl('http://app.example.com')).not.toEqual(
+      getOriginFromUrl('https://app.example.com')
+    );
+  });
+
+  test('throws for URLs that are not http or https', () => {
+    const invalidUrls = [
+      'not-a-url',
+      'localhost:3000',
+      'http://',
+      'file:////path/name',
+      'about:blank',
+      'javascript:void(0)',
+      'data:text/html,<p>hello</p>',
+      'chrome-extension://abcdefghijklmnop/index.html',
+    ];
 
     invalidUrls.forEach(url => {
-      expect(() => getHostnameFromUrl(url)).toThrowError();
+      expect(() => getOriginFromUrl(url)).toThrowError();
     });
   });
 });
