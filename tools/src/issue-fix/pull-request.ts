@@ -106,6 +106,7 @@ export function renderBody(
   const closes = numbers.map(number => `${keyword} #${number}\n`).join('');
   const body = sections([
     ['Blocked', blocked ? status.questions : []],
+    ['Questions', blocked ? [] : status.questions],
     ['Why', status.why],
     ['How', status.how],
     ['Tested', status.tested],

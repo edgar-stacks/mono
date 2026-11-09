@@ -110,4 +110,6 @@ Write `tmp/issue-fix/status.json` last, as JSON in exactly this shape, and stop:
   `how` and `tested` entries apply, and add a `questions` list. Each question is one entry that
   names the decision and the options you see, for example
   `"Should the fee label truncate or wrap? Options: truncate with a tooltip; wrap onto two lines."`
+- A `done` fix may also carry `questions`, for follow-ups or a change a maintainer must make by hand;
+  they appear under `## Questions` in the pull request.
 - `pnpm lt issue-fix verify` checks the file and the change the same way the workflow does.

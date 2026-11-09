@@ -202,7 +202,7 @@ the patch in a separate git worktree, refuses any path outside `apps/`, `package
 open-pull-request`). The commit carries a `Co-authored-by:` trailer for the person who dispatched
 the run (`github.triggering_actor`, with their public name and GitHub no-reply email; bots are
 skipped), which GitHub keeps in the squash-merge message. `done`
-opens a pull request; `blocked` with changes opens a draft whose body lists the questions;
+opens a pull request, with a `## Questions` section when the fixer left any; `blocked` with changes opens a draft whose body lists the questions;
 `blocked` with no changes comments the questions on the issue.
 
 **Trust.** The fixer runs with `--permission-mode auto --permission-prompts none`: Claude Code's

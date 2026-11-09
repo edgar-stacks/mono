@@ -87,6 +87,13 @@ describe('renderBody', () => {
     );
   });
 
+  test('closes the issues and still lists the questions of a done fix', () => {
+    const question = 'Maintainer action: change the staging workflow key.';
+    expect(renderBody({ ...doneStatus, questions: [question] }, [12], '')).toBe(
+      doneBody.replace('Closes #12\n', `Closes #12\n\n## Questions\n\n- ${question}\n`)
+    );
+  });
+
   test('ends with the screenshot table', () => {
     expect(renderBody(doneStatus, [12], '| table |')).toBe(
       `${doneBody}\n## Screenshots\n\n| table |\n`
