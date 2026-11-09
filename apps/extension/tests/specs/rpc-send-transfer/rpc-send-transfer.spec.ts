@@ -21,7 +21,9 @@ import {
   getConnectedTestAppPermissionsState,
   testFingerprint,
 } from '@tests/page-object-models/onboarding.page';
+import { AccountSelectors } from '@tests/selectors/account.selectors';
 import { SendCryptoAssetSelectors } from '@tests/selectors/send.selectors';
+import { SettingsSelectors } from '@tests/selectors/settings.selectors';
 
 import { BITCOIN_API_BASE_URL_TESTNET4 } from '@leather.io/models';
 import { type RpcParams, type sendTransfer } from '@leather.io/rpc';
@@ -506,6 +508,95 @@ test.describe('RPC: sendTransfer with a software wallet alongside a Ledger walle
 
     // Close the popup so the pending request resolves before teardown
     await sendPopup.close();
+    await test.expect(resultPromise).resolves.toBeDefined();
+  });
+});
+
+const insufficientFundsCopy =
+  "This account doesn't have enough funds for this transfer. Switch account or cancel the request.";
+
+const insufficientFundsParams = {
+  recipients: [{ address: TEST_TESTNET_ACCOUNT_2_BTC_ADDRESS, amount: '100000000' }],
+  network: 'testnet4',
+};
+
+const fundedUtxo = {
+  txid: 'a8e2a50d68479d233ce3cd31cdca04160f003ca6ac49149070b6ade627553e80',
+  vout: 1,
+  value: '200000000',
+  height: 98330,
+  address: TEST_TESTNET_ACCOUNT_2_BTC_ADDRESS,
+  path: "m/84'/1'/1'/0/0",
+};
+
+test.describe('RPC: sendTransfer with insufficient funds', () => {
+  const funding = { isFunded: false };
+
+  test.beforeEach(async ({ extensionId, globalPage, onboardingPage, page, context }) => {
+    funding.isFunded = false;
+    await globalPage.setupAndUseApiCalls(extensionId);
+    await mockLeatherApiRequests(context);
+    await context.route('**/v1/utxos/**', route => {
+      const url = route.request().url();
+      if (!funding.isFunded || url.includes('/v1/utxos/addresses/'))
+        return route.fulfill({ json: [] });
+      if (url.includes(encodeURIComponent('tr('))) return route.fulfill({ json: [] });
+      return route.fulfill({ json: [fundedUtxo] });
+    });
+    await onboardingPage.signInWithTestAccount(extensionId, getConnectedTestAppPermissionsState());
+    await page.goto('localhost:3000');
+  });
+
+  test('that the popup explains the shortfall and only offers Cancel', async ({
+    page,
+    context,
+  }) => {
+    const resultPromise = openSendTransfer(page)(insufficientFundsParams);
+    const popup = await context.waitForEvent('page');
+
+    await test.expect(popup.getByText(insufficientFundsCopy)).toBeVisible({ timeout: 15_000 });
+    await test.expect(popup.getByText('Requested amount')).toBeVisible();
+    await test.expect(popup.getByText('Available to send')).toBeVisible();
+    await test.expect(popup.getByText('Something went wrong')).toHaveCount(0);
+    await test.expect(popup.getByRole('button', { name: 'Approve' })).toHaveCount(0);
+
+    await popup.getByRole('button', { name: 'Cancel' }).click();
+    const result = await resultPromise;
+
+    assertExistence(result, 'Expected result');
+    delete result.id;
+
+    test.expect(result).toEqual({
+      jsonrpc: '2.0',
+      error: {
+        code: 4001,
+        message: 'User rejected request',
+      },
+    });
+  });
+
+  test('that switching to a funded account makes Approve available', async ({ page, context }) => {
+    test.slow();
+
+    const resultPromise = openSendTransfer(page)(insufficientFundsParams);
+    const popup = await context.waitForEvent('page');
+
+    await test.expect(popup.getByText(insufficientFundsCopy)).toBeVisible({ timeout: 15_000 });
+    funding.isFunded = true;
+
+    await popup.getByTestId(AccountSelectors.SigningAccountCard).click();
+    const fundedAccount = popup.getByTestId(
+      SettingsSelectors.SwitchAccountItemIndex.replace('[index]', '1')
+    );
+    await test.expect(fundedAccount).toBeVisible({ timeout: 10_000 });
+    await fundedAccount.click();
+
+    await test
+      .expect(popup.getByRole('button', { name: 'Approve' }))
+      .toBeVisible({ timeout: 15_000 });
+    await test.expect(popup.getByText(insufficientFundsCopy)).toHaveCount(0);
+
+    await popup.close();
     await test.expect(resultPromise).resolves.toBeDefined();
   });
 });

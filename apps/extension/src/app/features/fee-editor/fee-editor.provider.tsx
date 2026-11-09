@@ -12,12 +12,14 @@ import {
   feeEditorContext as FeeEditorContext,
   type FeeType,
   type Fees,
+  type FeesErrorReason,
 } from './fee-editor.context';
 
 interface FeeEditorProviderProps extends HasChildren {
   availableBalance: Money;
   fees: Fees;
   feeType: FeeType;
+  feesError?: FeesErrorReason;
   getCustomFee(rate: number): Fee;
   isLoadingFees: boolean;
   isSponsored: boolean;
@@ -29,6 +31,7 @@ export function FeeEditorProvider({
   children,
   fees,
   feeType,
+  feesError,
   getCustomFee,
   isLoadingFees,
   isSponsored,
@@ -52,6 +55,7 @@ export function FeeEditorProvider({
         marketData,
         fees,
         feeType,
+        feesError,
         loadedFee,
         customFee,
         selectedFee,

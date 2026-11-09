@@ -6,7 +6,11 @@ import type { AccountId } from '@leather.io/models';
 import type { WalletType } from '@app/store/common/wallet-type.selectors';
 import type { PolicyStore } from '@app/store/policy/policy-store.utils';
 
-import { buildWalletRows, canHideAccount } from './switch-account-sheet.utils';
+import {
+  buildWalletRows,
+  canHideAccount,
+  filterWalletTreeToBitcoinAccounts,
+} from './switch-account-sheet.utils';
 
 const fingerprint = 'a1b2c3d4';
 function account(accountIndex: number): AccountId {
@@ -99,5 +103,41 @@ describe(canHideAccount.name, () => {
         hiddenAccountIds: [],
       })
     ).toBe(true);
+  });
+});
+
+describe(filterWalletTreeToBitcoinAccounts.name, () => {
+  const ledgerFingerprint = 'e5f6a7b8';
+  function ledgerWallet(accountCount: number): { type: WalletType; accounts: AccountId[] } {
+    return {
+      type: 'ledger',
+      accounts: Array.from({ length: accountCount }, (_, accountIndex) => ({
+        fingerprint: ledgerFingerprint,
+        accountIndex,
+      })),
+    };
+  }
+
+  test('keeps every account of a software wallet', () => {
+    const tree = filterWalletTreeToBitcoinAccounts([walletGroup('software', 3)], []);
+    expect(tree).toEqual([walletGroup('software', 3)]);
+  });
+
+  test('keeps only the hardware wallet accounts that have a Bitcoin keychain', () => {
+    const tree = filterWalletTreeToBitcoinAccounts(
+      [ledgerWallet(3)],
+      [makeAccountIdentifer(ledgerFingerprint, 1)]
+    );
+    expect(tree).toEqual([
+      { type: 'ledger', accounts: [{ fingerprint: ledgerFingerprint, accountIndex: 1 }] },
+    ]);
+  });
+
+  test('drops hardware wallets left without Bitcoin accounts', () => {
+    const tree = filterWalletTreeToBitcoinAccounts(
+      [walletGroup('software', 1), ledgerWallet(2)],
+      [idOf(account(0))]
+    );
+    expect(tree).toEqual([walletGroup('software', 1)]);
   });
 });

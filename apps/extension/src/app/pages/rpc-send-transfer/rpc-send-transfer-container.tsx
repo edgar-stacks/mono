@@ -1,4 +1,6 @@
-import { Outlet, useNavigate } from 'react-router';
+import { Outlet, useNavigate, useOutletContext } from 'react-router';
+
+import { LoadingSpinner } from '@leather.io/ui';
 
 import { RouteUrls } from '@shared/route-urls';
 
@@ -16,6 +18,7 @@ export function RpcSendTransferContainer() {
   const btcMarketData = useCryptoCurrencyMarketData('BTC');
   const { isLoading: isLoadingBalance, btc: btcBalance } = useCurrentBtcBalanceWithFallback();
   const account = useAccountRequest();
+  const outletContext = useOutletContext();
 
   const navigate = useNavigate();
 
@@ -28,6 +31,7 @@ export function RpcSendTransferContainer() {
           account={account}
           availableBalance={btcBalance.availableBalance}
           isSendingMax={false}
+          loadingFallback={<LoadingSpinner />}
           marketData={btcMarketData}
           onGoBack={() => void navigate(RouteUrls.RpcSendTransfer)}
           recipients={recipients}
@@ -40,7 +44,7 @@ export function RpcSendTransferContainer() {
               utxos,
             }}
           >
-            <Outlet />
+            <Outlet context={outletContext} />
           </RpcSendTransferProvider>
         </BitcoinFeeEditorProvider>
       )}
