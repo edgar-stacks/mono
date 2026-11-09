@@ -49,6 +49,7 @@ export { Slider } from './components/slider/slider.web';
 export { Tabs } from './components/tabs/tabs.web';
 export { sanitizeContent } from './utils/sanitize-content/index.web';
 export { shimmerStyles } from './components/skeleton-loader/shimmer.styles.web';
+export { StatusIndicatorLine } from './components/status-indicator-line/status-indicator-line.web';
 export { useClipboard } from './utils/use-clipboard.web';
 export { useCountdown } from './utils/use-countdown.shared';
 export { useInterval, type UseIntervalState } from './utils/use-interval.shared';

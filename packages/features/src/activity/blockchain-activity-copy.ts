@@ -199,3 +199,43 @@ export function buildBlockchainActivityDeployTitle(
 ): string {
   return t(deployTitles[status]);
 }
+
+const transferHeadlines: Record<'sent' | 'received', StatusTemplates> = {
+  sent: {
+    pending: 'Sending',
+    success: 'Sent',
+    failed: 'Failed to send',
+  },
+  received: {
+    pending: 'Receiving',
+    success: 'Received',
+    failed: 'Failed to receive',
+  },
+};
+
+interface StatusHeadlineParams {
+  action: StacksProtocolAction;
+  status: OnChainActivityStatus;
+  fallbackTitle?: string;
+}
+
+export function buildBlockchainActivityStatusHeadline(
+  params: StatusHeadlineParams,
+  t: BlockchainActivityTranslate
+): string {
+  const { action, status, fallbackTitle } = params;
+
+  switch (action) {
+    case 'send':
+      return t(transferHeadlines.sent[status]);
+    case 'receive':
+      return t(transferHeadlines.received[status]);
+    case 'contract-deploy':
+      return buildBlockchainActivityDeployTitle(status, t);
+    default: {
+      const entry = protocolActionSubtitles[action];
+      if (!entry) return fallbackTitle ?? '';
+      return t(entry[status].replace(viaProtocolSuffix, ''));
+    }
+  }
+}

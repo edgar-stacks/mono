@@ -30,6 +30,7 @@ export type { ActivityGroup, GroupActivityByDateOptions } from './activity/activ
 export { formatActivityDateLabel, groupActivityByDate } from './activity/activity-grouping';
 export { createActivityView } from './activity/activity-view';
 export { createBlockchainActivityView } from './activity/blockchain-activity-view';
+export { buildBlockchainActivityStatusHeadline } from './activity/blockchain-activity-copy';
 export type {
   BlockchainActivityItem,
   BlockchainActivityViewDeps,
