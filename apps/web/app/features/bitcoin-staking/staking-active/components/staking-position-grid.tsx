@@ -16,6 +16,7 @@ import { toHumanReadableMicroStx } from '~/utils/unit-convert';
 import { PoolTvlValue } from '../../components/pool-tvl-value';
 import { type Pox5StakerInfo } from '../../queries/create-get-pox5-staker-info-query-options';
 import {
+  type PoolPayoutMode,
   getPoolPayoutMode,
   getRewardsTokenSymbol,
   isBtcPayoutRequired,
@@ -30,6 +31,21 @@ interface StakingPositionGridProps {
   details: ActiveStakingDetails;
 }
 
+function getRewardsTokenValue(payoutMode: PoolPayoutMode, details: ActiveStakingDetails) {
+  if (details.payoutPreferenceStatus !== 'success') return EM_DASH;
+  return details.payoutPreference ? 'BTC' : getRewardsTokenSymbol(payoutMode);
+}
+
+function getRewardsPayoutValue(payoutMode: PoolPayoutMode, details: ActiveStakingDetails) {
+  if (details.payoutPreferenceStatus !== 'success') return EM_DASH;
+  if (details.payoutPreference) {
+    return (
+      <CopyAddress addr={details.payoutPreference.btcRewardAddress} emphasis underlined wide />
+    );
+  }
+  return isBtcPayoutRequired(payoutMode) ? EM_DASH : 'sBTC on Stacks';
+}
+
 export function StakingPositionGrid({ poolSlug, pool, info, details }: StakingPositionGridProps) {
   // Unlisted (byosm) pools have no registry contracts, so the TVL falls back
   // to the signer-manager the position is actually staked through.
@@ -41,7 +57,6 @@ export function StakingPositionGrid({ poolSlug, pool, info, details }: StakingPo
     ? poolSignerManagerContractIds
     : [info.signerManagerContractId];
   const payoutMode = getPoolPayoutMode(pool);
-  const defaultPayoutLabel = isBtcPayoutRequired(payoutMode) ? EM_DASH : 'sBTC on Stacks';
 
   return (
     <StackingInfoGridLayout
@@ -126,7 +141,7 @@ export function StakingPositionGrid({ poolSlug, pool, info, details }: StakingPo
           <ValueDisplayer
             gap="space.04"
             name="Rewards token"
-            value={getRewardsTokenSymbol(payoutMode)}
+            value={getRewardsTokenValue(payoutMode, details)}
           />
         ),
         poolAddress: (
@@ -140,18 +155,7 @@ export function StakingPositionGrid({ poolSlug, pool, info, details }: StakingPo
           <ValueDisplayer
             gap="space.04"
             name="Rewards payout"
-            value={
-              details.payoutPreference ? (
-                <CopyAddress
-                  addr={details.payoutPreference.btcRewardAddress}
-                  emphasis
-                  underlined
-                  wide
-                />
-              ) : (
-                defaultPayoutLabel
-              )
-            }
+            value={getRewardsPayoutValue(payoutMode, details)}
           />
         ),
         tvl: (
