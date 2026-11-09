@@ -45,6 +45,21 @@ describe('isConnectedToExistingWallet', () => {
     );
   });
 
+  test('returns false when a permission persisted before multiwallet has no accountIndex', () => {
+    const permission = createPermission();
+    Reflect.deleteProperty(permission, 'accountIndex');
+    expect(isConnectedToExistingWallet(permission, createWalletEntities([fingerprint]))).toBe(
+      false
+    );
+  });
+
+  test('returns false when the accountIndex is not an integer', () => {
+    const permission = createPermission({ accountIndex: 1.5 });
+    expect(isConnectedToExistingWallet(permission, createWalletEntities([fingerprint]))).toBe(
+      false
+    );
+  });
+
   test('returns true when the permission is granted and its wallet still exists', () => {
     const permission = createPermission({ fingerprint });
     expect(isConnectedToExistingWallet(permission, createWalletEntities([fingerprint]))).toBe(true);

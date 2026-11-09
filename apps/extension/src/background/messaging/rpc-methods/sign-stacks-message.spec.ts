@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { RpcErrorCode } from '@leather.io/rpc';
 
 import { createMockPort } from '../create-mock-port';
-import { stxSignMessageHandler } from './sign-stacks-message';
+import { stxSignMessageHandler, stxSignStructuredMessageHandler } from './sign-stacks-message';
 
 type StxSignMessageRequest = Parameters<(typeof stxSignMessageHandler)[1]>[0];
 
@@ -12,11 +12,13 @@ const mocks = vi.hoisted(() => ({
     vi.fn<
       (
         port: chrome.runtime.Port,
-        otherParams: [string, string][]
+        otherParams: [string, string][],
+        options?: { network?: string }
       ) => Promise<{ frameId: number; urlParams: URLSearchParams; tabId: number }>
     >(),
   triggerRequestPopupWindowOpen: vi.fn(),
   sendErrorResponseOnUserPopupClose: vi.fn(),
+  validateRequestNetwork: vi.fn(),
   trackRpcRequestError: vi.fn(),
   trackRpcRequestSuccess: vi.fn(),
   sendMessage: vi.fn(),
@@ -37,6 +39,7 @@ vi.mock('../rpc-request-utils', () => ({
     mocks.createConnectingAppSearchParamsWithLastKnownAccount,
   triggerRequestPopupWindowOpen: mocks.triggerRequestPopupWindowOpen,
   sendErrorResponseOnUserPopupClose: mocks.sendErrorResponseOnUserPopupClose,
+  validateRequestNetwork: mocks.validateRequestNetwork,
 }));
 
 vi.mock('../rpc-helpers', () => ({
@@ -47,6 +50,8 @@ vi.mock('../rpc-helpers', () => ({
 const frameId = 42;
 const tabId = 7;
 const requestingOrigin = 'https://app.example.com';
+const structuredDomain = '0c00000000';
+const structuredMessage = '0d0000000568656c6c6f';
 
 function signInMessage(domain: string) {
   return `Sign in to Leather\nDomain: ${domain}\nApplication: multisig\nNetwork: mainnet\nIssued: 1780651887`;
@@ -83,6 +88,7 @@ describe('stxSignMessageHandler', () => {
       tabId,
     });
     mocks.triggerRequestPopupWindowOpen.mockResolvedValue({ id: 1 });
+    mocks.validateRequestNetwork.mockResolvedValue({ status: 'success' });
   });
 
   afterEach(() => {
@@ -113,5 +119,63 @@ describe('stxSignMessageHandler', () => {
     expect(mocks.sendMessage).not.toHaveBeenCalled();
     expect(mocks.triggerRequestPopupWindowOpen).toHaveBeenCalled();
     expect(mocks.sendErrorResponseOnUserPopupClose).toHaveBeenCalled();
+  });
+
+  test('passes the requested network to the shared prefill', async () => {
+    await invokeHandler(makeRequest({ message: 'hello', messageType: 'utf8', network: 'testnet' }));
+
+    expect(mocks.validateRequestNetwork).toHaveBeenCalledWith(
+      expect.objectContaining({ method: 'stx_signMessage', network: 'testnet' })
+    );
+    const [, otherParams, options] =
+      mocks.createConnectingAppSearchParamsWithLastKnownAccount.mock.calls[0];
+    expect(options).toEqual({ network: 'testnet' });
+    expect(otherParams.some(([key]) => key === 'network')).toBe(false);
+  });
+
+  test('does not open the popup when the network is rejected', async () => {
+    mocks.validateRequestNetwork.mockResolvedValue({ status: 'failure' });
+
+    await invokeHandler(makeRequest({ message: 'hello', messageType: 'utf8', network: 'unknown' }));
+
+    expect(mocks.triggerRequestPopupWindowOpen).not.toHaveBeenCalled();
+  });
+});
+
+describe('stxSignStructuredMessageHandler', () => {
+  beforeEach(() => {
+    vi.stubGlobal('chrome', { tabs: { sendMessage: mocks.sendMessage } });
+    mocks.createConnectingAppSearchParamsWithLastKnownAccount.mockResolvedValue({
+      frameId,
+      urlParams: new URLSearchParams(),
+      tabId,
+    });
+    mocks.triggerRequestPopupWindowOpen.mockResolvedValue({ id: 1 });
+    mocks.validateRequestNetwork.mockResolvedValue({ status: 'success' });
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.clearAllMocks();
+  });
+
+  test('accepts and forwards a network like stx_signMessage', async () => {
+    const [, handler] = stxSignStructuredMessageHandler;
+    await handler(
+      {
+        jsonrpc: '2.0',
+        id: 'req-2',
+        method: 'stx_signStructuredMessage',
+        params: { domain: structuredDomain, message: structuredMessage, network: 'testnet' },
+      },
+      buildPort()
+    );
+
+    expect(mocks.validateRequestNetwork).toHaveBeenCalledWith(
+      expect.objectContaining({ method: 'stx_signStructuredMessage', network: 'testnet' })
+    );
+    const [, , options] = mocks.createConnectingAppSearchParamsWithLastKnownAccount.mock.calls[0];
+    expect(options).toEqual({ network: 'testnet' });
+    expect(mocks.triggerRequestPopupWindowOpen).toHaveBeenCalled();
   });
 });

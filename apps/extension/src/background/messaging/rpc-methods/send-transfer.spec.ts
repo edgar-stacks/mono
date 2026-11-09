@@ -12,11 +12,13 @@ const mocks = vi.hoisted(() => ({
     vi.fn<
       (
         port: chrome.runtime.Port,
-        otherParams: [string, string][]
+        otherParams: [string, string][],
+        options?: { network?: string }
       ) => Promise<{ frameId: number; urlParams: URLSearchParams; tabId: number }>
     >(),
   triggerRequestPopupWindowOpen: vi.fn(),
   sendErrorResponseOnUserPopupClose: vi.fn(),
+  validateRequestNetwork: vi.fn(),
   trackRpcRequestError: vi.fn(),
   trackRpcRequestSuccess: vi.fn(),
   sendMessage: vi.fn(),
@@ -35,6 +37,7 @@ vi.mock('../rpc-request-utils', () => ({
     mocks.createConnectingAppSearchParamsWithLastKnownAccount,
   triggerRequestPopupWindowOpen: mocks.triggerRequestPopupWindowOpen,
   sendErrorResponseOnUserPopupClose: mocks.sendErrorResponseOnUserPopupClose,
+  validateRequestNetwork: mocks.validateRequestNetwork,
 }));
 
 vi.mock('../rpc-helpers', () => ({
@@ -65,9 +68,9 @@ function buildRequestWithoutParams(): SendTransferRequest {
   return requestWithoutParams;
 }
 
-function invokeHandler(port: chrome.runtime.Port) {
+function invokeHandler(port: chrome.runtime.Port, sendTransferRequest = request) {
   const [, handler] = sendTransferHandler;
-  return handler(request, port);
+  return handler(sendTransferRequest, port);
 }
 
 function objectContaining(expected: Record<string, unknown>): unknown {
@@ -83,6 +86,7 @@ describe('sendTransferHandler', () => {
       tabId,
     });
     mocks.triggerRequestPopupWindowOpen.mockResolvedValue({ id: 1 });
+    mocks.validateRequestNetwork.mockResolvedValue({ status: 'success' });
   });
 
   afterEach(() => {
@@ -110,5 +114,45 @@ describe('sendTransferHandler', () => {
       }),
       { frameId }
     );
+  });
+
+  test('passes the requested network to the shared prefill instead of appending it', async () => {
+    await invokeHandler(buildPort(), {
+      ...request,
+      params: {
+        recipients: [{ address: 'tb1qw508d6qejxtdg4y5r3zarvary0c5xw7kxpjzsx', amount: '10000' }],
+        network: 'testnet4',
+      },
+    });
+
+    expect(mocks.validateRequestNetwork).toHaveBeenCalledWith(
+      expect.objectContaining({ network: 'testnet4' })
+    );
+    const [, otherParams, options] =
+      mocks.createConnectingAppSearchParamsWithLastKnownAccount.mock.calls[0];
+    expect(options).toEqual({ network: 'testnet4' });
+    expect(otherParams.some(([key]) => key === 'network')).toBe(false);
+  });
+
+  test('honours an explicit account 0', async () => {
+    await invokeHandler(buildPort(), {
+      ...request,
+      params: { ...request.params, account: 0 },
+    });
+
+    const [, otherParams] = mocks.createConnectingAppSearchParamsWithLastKnownAccount.mock.calls[0];
+    expect(otherParams).toContainEqual(['accountIndex', '0']);
+  });
+
+  test('does not open the popup when the network is rejected', async () => {
+    mocks.validateRequestNetwork.mockResolvedValue({ status: 'failure' });
+
+    await invokeHandler(buildPort(), {
+      ...request,
+      params: { ...request.params, network: 'Testnet' },
+    });
+
+    expect(mocks.createConnectingAppSearchParamsWithLastKnownAccount).not.toHaveBeenCalled();
+    expect(mocks.triggerRequestPopupWindowOpen).not.toHaveBeenCalled();
   });
 });

@@ -7,7 +7,7 @@ import { replaceRouteParams } from '@shared/utils/replace-route-params';
 import { defineRpcRequestHandler } from '../define-rpc-request-handler';
 import { trackRpcRequestSuccess } from '../rpc-helpers';
 import {
-  createConnectingAppSearchParamsWithLastKnownAccount,
+  createConnectingAppSearchParamsWithoutNetwork,
   triggerSwapWindowOpen,
 } from '../rpc-request-utils';
 
@@ -18,10 +18,9 @@ function toSwapAssetSymbol(value?: string) {
 }
 
 export const openSwapHandler = defineRpcRequestHandler(openSwap.method, async (request, port) => {
-  const { frameId, urlParams, tabId } = await createConnectingAppSearchParamsWithLastKnownAccount(
-    port,
-    [['requestId', request.id]]
-  );
+  const { frameId, urlParams, tabId } = await createConnectingAppSearchParamsWithoutNetwork(port, [
+    ['requestId', request.id],
+  ]);
   const params = request?.params || {};
   const base = toSwapAssetSymbol(params.base) ?? 'STX';
   const quote = toSwapAssetSymbol(params.quote);

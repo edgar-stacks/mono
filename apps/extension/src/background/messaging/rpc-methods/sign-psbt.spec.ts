@@ -10,6 +10,7 @@ import { signPsbtHandler } from './sign-psbt';
 type SignPsbtRequest = Parameters<(typeof signPsbtHandler)[1]>[0];
 
 const mocks = vi.hoisted(() => ({
+  validateRequestNetwork: vi.fn(),
   createConnectingAppSearchParamsWithLastKnownAccount:
     vi.fn<
       (
@@ -37,6 +38,7 @@ vi.mock('../rpc-request-utils', () => ({
     mocks.createConnectingAppSearchParamsWithLastKnownAccount,
   triggerRequestPopupWindowOpen: mocks.triggerRequestPopupWindowOpen,
   sendErrorResponseOnUserPopupClose: mocks.sendErrorResponseOnUserPopupClose,
+  validateRequestNetwork: mocks.validateRequestNetwork,
 }));
 
 vi.mock('../rpc-helpers', () => ({
@@ -97,6 +99,7 @@ describe('signPsbtHandler', () => {
       tabId,
     });
     mocks.triggerRequestPopupWindowOpen.mockResolvedValue({ id: 1 });
+    mocks.validateRequestNetwork.mockResolvedValue({ status: 'success' });
   });
 
   afterEach(() => {

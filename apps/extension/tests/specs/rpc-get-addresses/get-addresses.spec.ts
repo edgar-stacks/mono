@@ -197,3 +197,27 @@ getAddressesMethods.forEach(method => {
     });
   });
 });
+
+const testnetWalletState = { networks: { ids: [], entities: {}, currentNetworkId: 'testnet' } };
+
+test.describe('Rpc: getAddresses network resolution', () => {
+  test.beforeEach(async ({ extensionId, globalPage, onboardingPage }) => {
+    await globalPage.setupAndUseApiCalls(extensionId);
+    await onboardingPage.signInWithTestAccount(extensionId, testnetWalletState);
+  });
+
+  test('it returns mainnet addresses without a network param while the wallet is on testnet', async ({
+    page,
+    context,
+  }) => {
+    await page.goto('localhost:3000');
+    const getAddressesPromise = initiateGetAddresses(page, 'getAddresses');
+    const popup = await interceptRequestPopup(context);
+    await clickConnectLeatherButton(popup);
+
+    const result = await getAddressesPromise;
+    test
+      .expect(getResponseAddresses(result)[0].address)
+      .toEqual('bc1q530dz4h80kwlzywlhx2qn0k6vdtftd93c499yq');
+  });
+});

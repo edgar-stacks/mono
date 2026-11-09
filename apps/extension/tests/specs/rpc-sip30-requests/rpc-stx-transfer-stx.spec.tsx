@@ -1,4 +1,5 @@
 import type { BrowserContext, Page } from '@playwright/test';
+import { TransactionVersion } from '@stacks/network';
 import {
   PayloadType,
   type StacksTransactionWire,
@@ -14,7 +15,7 @@ import { getConnectedTestAppPermissionsState } from '@tests/page-object-models/o
 import { SharedComponentsSelectors } from '@tests/selectors/shared-component.selectors';
 import { z } from 'zod';
 
-import type { RpcParams, stxTransferStx } from '@leather.io/rpc';
+import { RpcErrorCode, type RpcParams, type stxTransferStx } from '@leather.io/rpc';
 
 import { RpcErrorMessage } from '@shared/rpc/methods/validation.utils';
 
@@ -215,5 +216,57 @@ test.describe('RPC: stx_transferStx', () => {
         message: RpcErrorMessage.UserRejectedOperation,
       },
     });
+  });
+});
+
+test.describe('RPC: stx_transferStx network resolution', () => {
+  test.beforeEach(async ({ extensionId, globalPage, onboardingPage, page }) => {
+    await globalPage.setupAndUseApiCalls(extensionId);
+    await onboardingPage.signInWithTestAccount(extensionId, {
+      ...getConnectedTestAppPermissionsState(),
+      networks: { ids: [], entities: {}, currentNetworkId: 'testnet' },
+    });
+    await page.goto('localhost:3000');
+  });
+
+  async function approveAndCaptureBroadcastedTx(context: BrowserContext) {
+    const popup = await context.waitForEvent('page');
+    const broadcastRequestPromise = popup.waitForRequest('**/v2/transactions');
+    await popup.getByText('Approve', { exact: true }).click();
+    const requestBody = (await broadcastRequestPromise).postData();
+    if (!requestBody) throw new Error('Broadcast request has no body');
+    return deserializeTransaction(broadcastRequestBodySchema.parse(JSON.parse(requestBody)).tx);
+  }
+
+  test('opens on mainnet when the request has no network while the wallet is on testnet', async ({
+    page,
+    context,
+  }) => {
+    await mockStacksBroadcastTransaction(context);
+
+    const [, broadcastedTx] = await Promise.all([
+      page.evaluate(requestLeatherProvider, {
+        method: 'stx_transferStx',
+        params: { amount: 100, recipient: TEST_ACCOUNT_2_STX_ADDRESS },
+      }),
+      approveAndCaptureBroadcastedTx(context),
+    ]);
+
+    test.expect(broadcastedTx.transactionVersion).toEqual(TransactionVersion.Mainnet);
+  });
+
+  test('rejects an unknown network without opening a popup', async ({ page, context }) => {
+    const pageCount = context.pages().length;
+
+    const result = await page.evaluate(requestLeatherProvider, {
+      method: 'stx_transferStx',
+      params: { amount: 100, recipient: TEST_ACCOUNT_2_STX_ADDRESS, network: 'Testnet' },
+    });
+
+    test.expect(result.error).toMatchObject({
+      code: RpcErrorCode.INVALID_PARAMS,
+      message: test.expect.stringContaining("Unknown network: 'Testnet'"),
+    });
+    test.expect(context.pages()).toHaveLength(pageCount);
   });
 });

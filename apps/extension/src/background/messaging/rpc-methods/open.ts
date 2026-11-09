@@ -6,16 +6,15 @@ import { RouteUrls } from '@shared/route-urls';
 import { defineRpcRequestHandler } from '../define-rpc-request-handler';
 import { openNewTabWithWallet, trackRpcRequestSuccess } from '../rpc-helpers';
 import {
-  createConnectingAppSearchParamsWithLastKnownAccount,
+  createConnectingAppSearchParamsWithoutNetwork,
   triggerRequestPopupWindowOpen,
   validateConnectedWalletExists,
 } from '../rpc-request-utils';
 
 export const openHandler = defineRpcRequestHandler(open.method, async (request, port) => {
-  const { frameId, urlParams, tabId } = await createConnectingAppSearchParamsWithLastKnownAccount(
-    port,
-    [['requestId', request.id]]
-  );
+  const { frameId, urlParams, tabId } = await createConnectingAppSearchParamsWithoutNetwork(port, [
+    ['requestId', request.id],
+  ]);
 
   const { status } = await validateConnectedWalletExists(
     request,
