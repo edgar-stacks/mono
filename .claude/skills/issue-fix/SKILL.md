@@ -100,6 +100,17 @@ The subject carries no issue number: the PR adds `(#n)` on merge, and the workfl
 `Closes #n` into the PR body. The workflow refuses a subject without a scope or with an issue
 number.
 
+**Paths the run may not change.** The fixer may only change `apps/`, `packages/`, `tools/` and
+`pnpm-lock.yaml`. Check every Touches entry against that before writing the brief. Each one outside
+it (root config such as `knip.json`, `turbo.json`, `eslint.config.js`, `.gitignore`,
+`.dependency-cruiser.cjs`, root `docs/`, `.claude/`, `.github/`) goes under the brief's
+`## Maintainer changes` with the exact change, and is named to the person before dispatch: the run
+does everything else, lists those changes under `## Needs a maintainer` in a draft pull request,
+and a maintainer adds them to that branch before merge. When every Touches entry is outside the
+allowed paths, say so and do not dispatch: the change is for a normal session. Never phrase a brief
+so that the fixer has to find another home for an off-limits change; the fixer and the review both
+treat such a workaround as a defect.
+
 ## 5. Overlap check
 
 Intersect the Touches lists across briefs.
@@ -213,7 +224,10 @@ open-pull-request`). The commit carries a `Co-authored-by:` trailer for the pers
 the run (`github.triggering_actor`, with their public name and GitHub no-reply email; bots are
 skipped), which GitHub keeps in the squash-merge message. `done`
 opens a pull request, with a `## Questions` section when the fixer left any; `blocked` with changes opens a draft whose body lists the questions;
-`blocked` with no changes comments the questions on the issue.
+`blocked` with no changes comments the questions on the issue. Any `handoff` entry (a change
+outside the allowed paths that a maintainer must make) puts a `## Needs a maintainer` section at
+the top of the body and makes the pull request a draft; with no changes at all, the handoffs go
+into the issue comment instead.
 
 **Trust.** The fixer runs with `--permission-mode auto --permission-prompts none`: Claude Code's
 classifier reviews each tool call and refuses the ones that reach beyond the fix, and anything

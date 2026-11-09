@@ -56,6 +56,15 @@ to write in the status file.
 
 - Change files only under `apps/`, `packages/` and `tools/` (and `pnpm-lock.yaml` through `pnpm`).
   Never touch `.github/` or anything else; the workflow fails the run if you do.
+- When the issue or the brief needs a change outside those paths (root config such as `knip.json`,
+  `turbo.json`, `eslint.config.js`, `.gitignore`, `.ls-lint.yml` or `.dependency-cruiser.cjs`, root
+  `docs/`, `.claude/`, `.github/`), never work around it. No fake package exports to satisfy knip,
+  no constants or renames to get past a lint rule, no `eslint-disable`, no file moved into a package
+  because its real home is off limits, no copy of a root config inside a package. Do everything that
+  lives under the allowed paths, then add one `handoff` entry per file outside them that still needs
+  to change, saying exactly what a maintainer has to change there. Checks that fail only because a
+  handoff is not done yet go under `tested` as `Not verified: <check> — waits on the handoff to
+  <path>`.
 - Never commit, push, stage, or create branches. The workflow commits for you.
 - No Claude or Claude Code attribution anywhere: not in code, tests, the status file or anything
   that becomes the commit or the pull request.
@@ -102,7 +111,8 @@ Write `tmp/issue-fix/status.json` last, as JSON in exactly this shape, and stop:
     "<a command that ran green>",
     "Not verified: <a Verify line that could not run, and why>"
   ],
-  "screenshots": [{ "id": "<id>", "caption": "<caption>" }]
+  "screenshots": [{ "id": "<id>", "caption": "<caption>" }],
+  "handoff": [{ "path": "<repo-relative path outside the allowed ones>", "change": "<the exact change a maintainer must make there>" }]
 }
 ```
 
@@ -117,6 +127,12 @@ Write `tmp/issue-fix/status.json` last, as JSON in exactly this shape, and stop:
   `how` and `tested` entries apply, and add a `questions` list. Each question is one entry that
   names the decision and the options you see, for example
   `"Should the fee label truncate or wrap? Options: truncate with a tooltip; wrap onto two lines."`
-- A `done` fix may also carry `questions`, for follow-ups or a change a maintainer must make by hand;
-  they appear under `## Questions` in the pull request.
+- A `done` fix may also carry `questions`, for follow-ups; they appear under `## Questions` in the
+  pull request.
+- `handoff` lists the changes outside the allowed paths that the issue still needs, one entry per
+  file, for example
+  `{ "path": "knip.json", "change": "add apps/web/tests/feature-map/*.features.ts to the web workspace entry" }`.
+  They appear under `## Needs a maintainer` and make the pull request a draft until a maintainer
+  makes them. Leave `handoff` out when there are none. When the whole issue lives outside the
+  allowed paths, change nothing, write `"state": "blocked"` and list every change under `handoff`.
 - `pnpm lt issue-fix verify` checks the file and the change the same way the workflow does.

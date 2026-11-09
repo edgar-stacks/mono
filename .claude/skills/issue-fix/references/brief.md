@@ -32,6 +32,10 @@ fixer can read the files itself.
 
 - Settled: <choice> — <reason>
 
+## Maintainer changes
+
+- `<path outside apps/, packages/, tools/>`: <the exact change a maintainer makes there>
+
 ## Out of scope
 
 - <item>
@@ -80,6 +84,11 @@ and the `monorepo-navigation` skill) and the files to change or add, taken from 
 interview as `Settled: <choice> — <reason>`. `Open` lines never appear in a brief: a brief is
 written only once every decision is settled, and an issue with an unanswered decision is not
 dispatched.
+
+**Maintainer changes**: every Touches entry outside `apps/`, `packages/`, `tools/` and
+`pnpm-lock.yaml`, with the exact change. The fixer does not make these: it records each one as a
+`handoff` entry in its status, and the pull request opens as a draft listing them under
+`## Needs a maintainer`. Drop the section when every Touches entry is allowed.
 
 **Out of scope**: the issue's own Out of scope, plus anything the person excluded during the
 interview and the advisory overlaps from section 5 that another dispatch owns.

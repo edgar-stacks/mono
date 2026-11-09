@@ -1,11 +1,14 @@
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { z } from 'zod';
 
+import { refusedPaths } from './git.js';
+
 const subjectPattern =
   /^(build|chore|ci|docs|feat|fix|perf|refactor|revert|style|test)\([a-z0-9][a-z0-9-]*\)!?: \S/;
 const issueNumberPattern = /#\d/;
 const maxSubjectLength = 100;
 const maxScreenshots = 12;
+const maxHandoffs = 20;
 const screenshotIdPattern = /^[a-z0-9][a-z0-9-]{0,62}$/;
 
 const lineSchema = z
@@ -33,9 +36,21 @@ export function subjectProblem(subject: string): string | null {
   return null;
 }
 
-type ListKey = 'why' | 'how' | 'tested' | 'questions';
+const handoffSchema = z.object({
+  path: lineSchema
+    .refine(
+      value => !value.startsWith('/') && !value.split('/').includes('..'),
+      'must be a repo-relative path'
+    )
+    .refine(
+      value => refusedPaths([value]).length === 1,
+      'is a path this run may change; change it yourself instead of handing it off'
+    ),
+  change: lineSchema,
+});
+
+type ListKey = 'why' | 'how' | 'tested';
 const requiredWhenDone: readonly ListKey[] = ['why', 'how', 'tested'];
-const requiredWhenBlocked: readonly ListKey[] = ['questions'];
 
 const fixStatusSchema = z
   .object({
@@ -47,14 +62,18 @@ const fixStatusSchema = z
     tested: z.array(lineSchema).default([]),
     questions: z.array(lineSchema).default([]),
     screenshots: z.array(screenshotSchema).max(maxScreenshots).default([]),
+    handoff: z.array(handoffSchema).max(maxHandoffs).default([]),
   })
   .superRefine((status, context) => {
     const subject = subjectProblem(status.commit);
     if (subject) context.addIssue({ code: 'custom', message: subject });
-    const required = status.state === 'done' ? requiredWhenDone : requiredWhenBlocked;
-    for (const key of required) {
-      if (status[key].length === 0)
-        context.addIssue({ code: 'custom', message: `${key}: has no entries` });
+    if (status.state === 'done') {
+      for (const key of requiredWhenDone) {
+        if (status[key].length === 0)
+          context.addIssue({ code: 'custom', message: `${key}: has no entries` });
+      }
+    } else if (status.questions.length === 0 && status.handoff.length === 0) {
+      context.addIssue({ code: 'custom', message: 'questions: has no entries' });
     }
   });
 

@@ -29,11 +29,17 @@ without write access.
      decision or a `Done when` box, or breaks a rule in `CLAUDE.md` that lint does not catch.
    - `regression`: behavior that worked before the change no longer works, including callers of
      changed code outside the diff.
+   A workaround for a path the fixer may not change is a `blocker`: a fake package export to
+   satisfy knip, a constant or rename that slips past a lint rule, an `eslint-disable`, a file moved
+   into a package because its real home is off limits, or a copy of a root config inside a package.
+   The right change is a `handoff` entry in the status naming that path.
 3. Check the scope. List every behavior the issue and the brief expect: each `Expected` or
    `Agreed behavior` item, each `Settled:` line and each `Done when` box. For each one, find the
    code that delivers it. An item the change leaves out, or delivers only in part, is a `blocker`,
-   unless the brief or the issue puts it out of scope, or the fixer stopped as blocked with a
-   question about that item. A question in a `done` status does not excuse a gap.
+   unless the brief or the issue puts it out of scope, the fixer stopped as blocked with a question
+   about that item, or a `handoff` entry in the status names the file outside the allowed paths
+   where the item lives and the change it needs. A question in a `done` status does not excuse a
+   gap, and a handoff for a path the fixer could have changed itself is a gap.
 4. Check what the user sees. For every screen, message or error state the issue asks for, trace
    it from the trigger to the render, including state updates made in the same handler. A reason
    or a step that is set and then cleared, closed or replaced before it can render does not

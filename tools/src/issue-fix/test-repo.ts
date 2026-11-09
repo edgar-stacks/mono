@@ -40,6 +40,7 @@ export const doneStatus: FixStatus = {
   ],
   questions: [],
   screenshots: [],
+  handoff: [],
 };
 
 export const blockedStatus: FixStatus = {

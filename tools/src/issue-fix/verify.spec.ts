@@ -78,7 +78,7 @@ describe('verifyFix', () => {
     expect(verify(pnpm)).toEqual({
       passed: true,
       skipped: true,
-      message: 'the fixer is blocked with no changes; skipping the verification gate',
+      message: 'the fixer changed nothing it may change; skipping the verification gate',
     });
     expect(pnpm.calls).toEqual([]);
   });

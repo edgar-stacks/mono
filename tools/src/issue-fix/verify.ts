@@ -106,11 +106,14 @@ function evaluate(root: string, statusFile: string, run: CommandRunner): VerifyR
       details: `Only ${allowedPathsDescription} may change:\n${refused.join('\n')}`,
     };
   }
-  if (changes.length === 0 && status.status.state === 'blocked') {
+  if (
+    changes.length === 0 &&
+    (status.status.state === 'blocked' || status.status.handoff.length > 0)
+  ) {
     return {
       passed: true,
       skipped: true,
-      message: 'the fixer is blocked with no changes; skipping the verification gate',
+      message: 'the fixer changed nothing it may change; skipping the verification gate',
     };
   }
   if (changes.length === 0) {

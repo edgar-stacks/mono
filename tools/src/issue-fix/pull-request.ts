@@ -105,6 +105,7 @@ export function renderBody(
   const keyword = blocked ? 'Refs' : 'Closes';
   const closes = numbers.map(number => `${keyword} #${number}\n`).join('');
   const body = sections([
+    ['Needs a maintainer', status.handoff.map(renderHandoff)],
     ['Blocked', blocked ? status.questions : []],
     ['Questions', blocked ? [] : status.questions],
     ['Why', status.why],
@@ -115,9 +116,21 @@ export function renderBody(
   return [closes, ...body, ...screenshots].join('');
 }
 
+function renderHandoff(handoff: FixStatus['handoff'][number]): string {
+  return `\`${handoff.path}\`: ${handoff.change}`;
+}
+
 function renderQuestionsComment(status: FixStatus, runUrl: string | null): string {
   const run = runUrl ? ` (${runUrl})` : '';
-  return `The \`repo:issue-fix\` run${run} stopped before changing anything. It needs answers to:\n\n${bullets(status.questions)}\n`;
+  const parts = [`The \`repo:issue-fix\` run${run} stopped before changing anything.`];
+  if (status.questions.length > 0)
+    parts.push(`It needs answers to:\n\n${bullets(status.questions)}`);
+  if (status.handoff.length > 0) {
+    parts.push(
+      `A maintainer needs to make these changes, outside the paths the run may change:\n\n${bullets(status.handoff.map(renderHandoff))}`
+    );
+  }
+  return `${parts.join('\n\n')}\n`;
 }
 
 function patchPaths(root: string, patchFile: string): string[] {
@@ -349,7 +362,8 @@ export async function openPullRequest(options: OpenPullRequestOptions): Promise<
     const entries = await changeEntries(client, repo, workspace);
 
     if (entries.length === 0) {
-      if (status.status.state !== 'blocked') throw new Error('state is done but nothing changed');
+      if (status.status.state !== 'blocked' && status.status.handoff.length === 0)
+        throw new Error('state is done but nothing changed');
       const runUrl = options.runId
         ? `${options.serverUrl ?? 'https://github.com'}/${repo}/actions/runs/${options.runId}`
         : null;
@@ -391,7 +405,7 @@ export async function openPullRequest(options: OpenPullRequestOptions): Promise<
       });
     }
 
-    const blocked = status.status.state === 'blocked';
+    const draft = status.status.state === 'blocked' || status.status.handoff.length > 0;
     if (!existing) {
       const created = createdPullSchema.parse(
         await client.request('POST', `repos/${repo}/pulls`, {
@@ -399,15 +413,15 @@ export async function openPullRequest(options: OpenPullRequestOptions): Promise<
           head: branch,
           base: baseBranch,
           body,
-          draft: blocked,
+          draft,
         })
       );
       await supersedeEarlierPullRequests(options, created.number, log);
       return created.html_url;
     }
     await client.request('PATCH', `repos/${repo}/pulls/${existing.number}`, { title, body });
-    if (!blocked && existing.draft) await client.graphql(readyMutation, { id: existing.node_id });
-    if (blocked && !existing.draft) await client.graphql(draftMutation, { id: existing.node_id });
+    if (!draft && existing.draft) await client.graphql(readyMutation, { id: existing.node_id });
+    if (draft && !existing.draft) await client.graphql(draftMutation, { id: existing.node_id });
     await supersedeEarlierPullRequests(options, existing.number, log);
     return existing.html_url;
   } finally {

@@ -19,6 +19,11 @@ import {
 const repoName = 'leather-io/mono';
 const png = Buffer.concat([Buffer.from('89504e470d0a1a0a', 'hex'), Buffer.from('image')]);
 
+const handoff = {
+  path: 'knip.json',
+  change: 'add apps/web/tests/feature-map/*.features.ts to the web workspace entry list',
+};
+
 const doneBody = [
   'Closes #12',
   '',
@@ -370,9 +375,29 @@ describe('openPullRequest', () => {
       'https://github.com/leather-io/mono/issues/12#issuecomment-1'
     );
     expect(callsTo(client, 'POST', '/issues/12/comments')[0]?.body).toEqual({
-      body: `The \`repo:issue-fix\` run (https://github.com/leather-io/mono/actions/runs/777) stopped before changing anything. It needs answers to:\n\n- ${blockedStatus.questions[0]}\n`,
+      body: `The \`repo:issue-fix\` run (https://github.com/leather-io/mono/actions/runs/777) stopped before changing anything.\n\nIt needs answers to:\n\n- ${blockedStatus.questions[0]}\n`,
     });
     expect(callsTo(client, 'POST', '/pulls')).toHaveLength(0);
+  });
+
+  test('lists the maintainer changes on the issue when nothing it may change was needed', async () => {
+    setup({ ...doneStatus, handoff: [handoff] }, null);
+    const { client, result } = open();
+    await result;
+    expect(callsTo(client, 'POST', '/issues/12/comments')[0]?.body).toEqual({
+      body: `The \`repo:issue-fix\` run (https://github.com/leather-io/mono/actions/runs/777) stopped before changing anything.\n\nA maintainer needs to make these changes, outside the paths the run may change:\n\n- \`knip.json\`: add apps/web/tests/feature-map/*.features.ts to the web workspace entry list\n`,
+    });
+  });
+
+  test('opens a draft that lists the maintainer changes when a finished fix hands some off', async () => {
+    setup({ ...doneStatus, handoff: [handoff] });
+    const { client, result } = open();
+    await result;
+    const pull = callsTo(client, 'POST', '/pulls')[0]?.body;
+    expect(pull).toMatchObject({ draft: true });
+    expect(bodySchema.parse(pull).body).toMatch(
+      /^Closes #12\n\n## Needs a maintainer\n\n- `knip\.json`: add apps\/web/
+    );
   });
 
   test('fails when the fixer is done but nothing changed', async () => {

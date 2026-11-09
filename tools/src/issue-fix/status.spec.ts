@@ -28,6 +28,24 @@ describe('parseStatus', () => {
     expect(result).toEqual({ ok: false, problems: ['questions: has no entries'] });
   });
 
+  test('lets a blocked status hand changes off instead of asking questions', () => {
+    const result = parseStatus({
+      ...blockedStatus,
+      questions: [],
+      handoff: [{ path: 'knip.json', change: 'add the web feature-map sources as entries' }],
+    });
+    expect(result.ok).toBe(true);
+  });
+
+  test.each([
+    ['apps/web/app/routes.ts', 'is a path this run may change'],
+    ['/knip.json', 'must be a repo-relative path'],
+    ['apps/../knip.json', 'must be a repo-relative path'],
+  ])('refuses a handoff for %s', (path, message) => {
+    const result = parseStatus({ ...doneStatus, handoff: [{ path, change: 'edit it' }] });
+    expect(result.ok === false && result.problems.join(' ')).toMatch(message);
+  });
+
   test('refuses an unknown state', () => {
     const result = parseStatus({ ...doneStatus, state: 'staged' });
     expect(result.ok).toBe(false);
