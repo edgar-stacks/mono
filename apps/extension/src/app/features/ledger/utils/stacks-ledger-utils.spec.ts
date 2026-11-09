@@ -1,5 +1,6 @@
 import { ChainId } from '@stacks/network';
 import {
+  AddressHashMode,
   AddressVersion,
   deserializeTransaction,
   isSingleSig,
@@ -14,11 +15,15 @@ import {
 import { makeFakeLedgerStacksApp } from './ledger-app.mocks';
 import {
   MINIMUM_STACKS_APP_VERSION,
+  MINIMUM_STACKS_APP_VERSION_MULTISIG_ADDRESS,
   getStacksAppVersion,
   isStxAddressResponseRejected,
   isStxAddressResponseSuccess,
+  makeStxMultisigAddressOptions,
   showStxAddressOnDevice,
+  showStxMultisigAddressOnDevice,
   signStacksTransactionWithSignature,
+  stacksChainIdToMultiSigAddressVersion,
   stacksChainIdToSingleSigAddressVersion,
   validateStacksAppVersion,
 } from './stacks-ledger-utils';
@@ -152,6 +157,124 @@ describe(stacksChainIdToSingleSigAddressVersion.name, () => {
   });
 });
 
+describe(stacksChainIdToMultiSigAddressVersion.name, () => {
+  test('maps the mainnet chain id to the mainnet multisig version', () => {
+    expect(stacksChainIdToMultiSigAddressVersion(ChainId.Mainnet)).toBe(
+      AddressVersion.MainnetMultiSig
+    );
+  });
+
+  test('maps the testnet chain id to the testnet multisig version', () => {
+    expect(stacksChainIdToMultiSigAddressVersion(ChainId.Testnet)).toBe(
+      AddressVersion.TestnetMultiSig
+    );
+  });
+
+  test('falls back to the testnet multisig version for custom chain ids', () => {
+    expect(stacksChainIdToMultiSigAddressVersion(256)).toBe(AddressVersion.TestnetMultiSig);
+  });
+});
+
+describe(makeStxMultisigAddressOptions.name, () => {
+  const thirdPublicKey = '0329b076bc20f7b1592b2a1a5cb91dfefe8c966e50e256458e23dd2c5d63f8f1af';
+
+  test('finds the device key at the start and passes the other keys in order', () => {
+    expect(
+      makeStxMultisigAddressOptions({
+        publicKeys: [signerPublicKey, secondPublicKey, thirdPublicKey],
+        threshold: 2,
+        devicePublicKey: signerPublicKey,
+      })
+    ).toEqual({
+      status: 'ok',
+      options: {
+        numRequired: 2,
+        deviceKeyIndex: 0,
+        cosignerPublicKeys: [secondPublicKey, thirdPublicKey],
+        hashMode: AddressHashMode.P2SHNonSequential,
+      },
+    });
+  });
+
+  test('finds the device key in the middle of the key set', () => {
+    expect(
+      makeStxMultisigAddressOptions({
+        publicKeys: [secondPublicKey, signerPublicKey, thirdPublicKey],
+        threshold: 2,
+        devicePublicKey: signerPublicKey,
+      })
+    ).toEqual({
+      status: 'ok',
+      options: {
+        numRequired: 2,
+        deviceKeyIndex: 1,
+        cosignerPublicKeys: [secondPublicKey, thirdPublicKey],
+        hashMode: AddressHashMode.P2SHNonSequential,
+      },
+    });
+  });
+
+  test('finds the device key at the end of the key set', () => {
+    expect(
+      makeStxMultisigAddressOptions({
+        publicKeys: [secondPublicKey, thirdPublicKey, signerPublicKey],
+        threshold: 3,
+        devicePublicKey: signerPublicKey,
+      })
+    ).toEqual({
+      status: 'ok',
+      options: {
+        numRequired: 3,
+        deviceKeyIndex: 2,
+        cosignerPublicKeys: [secondPublicKey, thirdPublicKey],
+        hashMode: AddressHashMode.P2SHNonSequential,
+      },
+    });
+  });
+
+  test('matches the device key case-insensitively and lowercases the keys', () => {
+    expect(
+      makeStxMultisigAddressOptions({
+        publicKeys: [secondPublicKey.toUpperCase(), signerPublicKey],
+        threshold: 1,
+        devicePublicKey: signerPublicKey.toUpperCase(),
+      })
+    ).toEqual({
+      status: 'ok',
+      options: {
+        numRequired: 1,
+        deviceKeyIndex: 1,
+        cosignerPublicKeys: [secondPublicKey],
+        hashMode: AddressHashMode.P2SHNonSequential,
+      },
+    });
+  });
+
+  test('fails when the device key is not one of the signers', () => {
+    expect(
+      makeStxMultisigAddressOptions({
+        publicKeys: [secondPublicKey, thirdPublicKey],
+        threshold: 2,
+        devicePublicKey: signerPublicKey,
+      })
+    ).toEqual({
+      status: 'error',
+      message: 'The active account is not a signer of this multisig.',
+    });
+  });
+
+  test('fails for more keys than the Ledger can verify', () => {
+    const publicKeys = [signerPublicKey, ...Array.from({ length: 15 }, () => secondPublicKey)];
+
+    expect(
+      makeStxMultisigAddressOptions({ publicKeys, threshold: 2, devicePublicKey: signerPublicKey })
+    ).toEqual({
+      status: 'error',
+      message: 'Ledger can only verify multisig addresses with up to 15 keys.',
+    });
+  });
+});
+
 describe(isStxAddressResponseRejected.name, () => {
   test('detects an on-device rejection', () => {
     expect(isStxAddressResponseRejected(makeAddressResponse(LedgerError.TransactionRejected))).toBe(
@@ -206,6 +329,33 @@ describe(showStxAddressOnDevice.name, () => {
   });
 });
 
+describe(showStxMultisigAddressOnDevice.name, () => {
+  test('passes the derivation path, address version and multisig options through', async () => {
+    const showMultisigAddressAndPubKey = vi.fn(() =>
+      Promise.resolve(makeAddressResponse(LedgerError.NoErrors))
+    );
+    const app = makeFakeLedgerStacksApp({ showMultisigAddressAndPubKey });
+    const options = {
+      numRequired: 2,
+      deviceKeyIndex: 1,
+      cosignerPublicKeys: [secondPublicKey],
+      hashMode: AddressHashMode.P2SHNonSequential,
+    };
+
+    await showStxMultisigAddressOnDevice(app)(
+      "m/44'/5757'/0'/0/3",
+      AddressVersion.MainnetMultiSig,
+      options
+    );
+
+    expect(showMultisigAddressAndPubKey).toHaveBeenCalledWith(
+      "m/44'/5757'/0'/0/3",
+      AddressVersion.MainnetMultiSig,
+      options
+    );
+  });
+});
+
 describe(validateStacksAppVersion.name, () => {
   test('rejects versions below the minimum', () => {
     expect(validateStacksAppVersion({ major: 0, minor: 26, patch: 18 })).toEqual({
@@ -226,5 +376,20 @@ describe(validateStacksAppVersion.name, () => {
     expect(validateStacksAppVersion({ major: 0, minor: 26, patch: 20 }).meetsMinimum).toBe(true);
     expect(validateStacksAppVersion({ major: 0, minor: 27, patch: 0 }).meetsMinimum).toBe(true);
     expect(validateStacksAppVersion({ major: 1, minor: 0, patch: 0 }).meetsMinimum).toBe(true);
+  });
+
+  test('checks against a given minimum version', () => {
+    expect(
+      validateStacksAppVersion(
+        { major: 0, minor: 26, patch: 19 },
+        MINIMUM_STACKS_APP_VERSION_MULTISIG_ADDRESS
+      ).meetsMinimum
+    ).toBe(false);
+    expect(
+      validateStacksAppVersion(
+        { major: 0, minor: 27, patch: 0 },
+        MINIMUM_STACKS_APP_VERSION_MULTISIG_ADDRESS
+      ).meetsMinimum
+    ).toBe(true);
   });
 });

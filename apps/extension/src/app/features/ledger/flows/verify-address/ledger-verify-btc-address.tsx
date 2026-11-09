@@ -6,7 +6,10 @@ import { analytics } from '@shared/utils/analytics';
 import { isLedgerDeviceLockedError } from '@app/features/ledger/dmk/ledger-dmk-errors';
 import { useLedgerDmk } from '@app/features/ledger/dmk/ledger-dmk.context';
 import { useLedgerFlow, useLedgerSteps } from '@app/features/ledger/flow/ledger-flow.context';
-import type { VerifyAddressVariant } from '@app/features/ledger/flow/ledger-flow.types';
+import type {
+  VerifyAddressVariant,
+  VerifyStxAddressVariant,
+} from '@app/features/ledger/flow/ledger-flow.types';
 import { type LedgerRequestKeysContext } from '@app/features/ledger/generic-flows/request-keys/ledger-request-keys.context';
 import { RequestKeysFlow } from '@app/features/ledger/generic-flows/request-keys/request-keys-flow';
 import { useRequestLedgerKeys } from '@app/features/ledger/generic-flows/request-keys/use-request-ledger-keys';
@@ -33,7 +36,7 @@ import { useCurrentNetwork } from '@app/store/networks/networks.selectors';
 import { useCurrentPolicy } from '@app/store/policy/policy.selectors';
 
 interface LedgerVerifyBtcAddressProps {
-  variant: Exclude<VerifyAddressVariant, 'stx'>;
+  variant: Exclude<VerifyAddressVariant, VerifyStxAddressVariant>;
 }
 export function LedgerVerifyBtcAddress({ variant }: LedgerVerifyBtcAddressProps) {
   const navigate = useNavigate();

@@ -7,7 +7,14 @@ import type { SignatureData } from '@leather.io/stacks';
 import type { BitcoinInputSigningConfig } from '@shared/crypto/bitcoin/signer-config';
 import type { UnsignedMessage } from '@shared/signature/signature-types';
 
-export type VerifyAddressVariant = 'btcNativeSegwit' | 'btcTaproot' | 'btcMultisig' | 'stx';
+export type VerifyAddressVariant =
+  | 'btcNativeSegwit'
+  | 'btcTaproot'
+  | 'btcMultisig'
+  | 'stx'
+  | 'stxMultisig';
+
+export type VerifyStxAddressVariant = Extract<VerifyAddressVariant, 'stx' | 'stxMultisig'>;
 
 interface SignBitcoinTxLedgerFlowRequest {
   kind: 'sign-bitcoin-tx';
@@ -43,6 +50,15 @@ export interface ConfirmBtcPolicyAddressLedgerFlowRequest {
   kind: 'confirm-btc-policy-address';
   descriptor: string;
   address: string | null;
+  onConfirmed(): Promise<void>;
+}
+
+export interface ConfirmStxPolicyAddressLedgerFlowRequest {
+  kind: 'confirm-stx-policy-address';
+  address: string | null;
+  publicKeys: string[];
+  threshold: number;
+  chainId: number;
   onConfirmed(): Promise<void>;
 }
 
@@ -104,6 +120,7 @@ export type ActiveLedgerSigningRequest<K extends LedgerSigningKind = LedgerSigni
 
 export type LedgerNonSigningFlowRequest =
   | ConfirmBtcPolicyAddressLedgerFlowRequest
+  | ConfirmStxPolicyAddressLedgerFlowRequest
   | LedgerFlowHandoffRequest;
 
 export type LedgerFlowRequest =
