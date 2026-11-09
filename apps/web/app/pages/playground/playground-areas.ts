@@ -84,4 +84,12 @@ export const playgroundAreas: PlaygroundArea[] = [
     issue: 2643,
     appShell: true,
   },
+  {
+    slug: 'approval-flows',
+    title: 'Approval flows',
+    description:
+      'Proposed extension approval screens next to today’s extension, plus walkable app → wallet → Activity journeys on illustrative fixtures.',
+    status: 'exploration',
+    section: 'extension',
+  },
 ];
