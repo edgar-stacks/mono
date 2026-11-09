@@ -2,7 +2,7 @@ function truncateHex(hex: string, offset = 5): string {
   return `${hex.substring(0, offset + 2)}…${hex.substring(hex.length - offset)}`;
 }
 
-export function truncateMiddle(input: string, offset = 5): string {
+export function truncateMiddle(input: string, offset = 4): string {
   if (!input) return input;
   // Hex
   if (input.startsWith('0x')) {
