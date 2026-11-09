@@ -10,7 +10,10 @@ import { type RateLimiterService, RateLimiterType } from '../../rate-limiter/rat
 import type { SettingsService } from '../../settings/settings.service';
 import { hiroApiRequestsPriorityLevels } from './hiro-request-priorities';
 import { HiroStacksApiClient } from './hiro-stacks-api.client';
-import type { HiroPrincipalMempoolTransactionsResponse } from './hiro-stacks-api.types';
+import type {
+  HiroPrincipalMempoolTransactionsResponse,
+  HiroPrincipalNftBalancesResponse,
+} from './hiro-stacks-api.types';
 
 const principal = 'SP3FBR2AGK5H9QBDH3EEN6DF8EK8JY7RX8QJ5SVTE';
 const mainnet = defaultNetworksKeyedById[WalletDefaultNetworkConfigurationIds.mainnet];
@@ -114,6 +117,114 @@ describe(HiroStacksApiClient.name, () => {
 
       expect(fetchWithCache).not.toHaveBeenCalled();
       expect(get).toHaveBeenCalledTimes(1);
+    });
+  });
+  describe('getPrincipalNftBalances', () => {
+    const assetIdentifier = 'SP000.collection::nft';
+    const nextCursor = `${assetIdentifier}:0x0100000000000000000000000000000001`;
+
+    function createNftBalancesResponse(
+      next: string | null,
+      reprs: string[]
+    ): HiroPrincipalNftBalancesResponse {
+      return {
+        limit: 200,
+        total: 2,
+        cursor: { next, previous: null, current: null },
+        results: reprs.map(repr => ({
+          asset_identifier: assetIdentifier,
+          value: { hex: `0x${repr}`, repr },
+        })),
+      };
+    }
+
+    beforeEach(() => {
+      get.mockImplementation((url: string) =>
+        Promise.resolve({
+          data: url.includes('cursor=')
+            ? createNftBalancesResponse(null, ['u2'])
+            : createNftBalancesResponse(nextCursor, ['u1']),
+        })
+      );
+    });
+
+    it('follows the cursor across pages of the v3 principal NFT balances endpoint', async () => {
+      const signal = new AbortController().signal;
+
+      const balances = await makeClient().getPrincipalNftBalances(
+        principal,
+        { maxPages: 10 },
+        { signal }
+      );
+
+      expect(balances.map(balance => balance.value.repr)).toEqual(['u1', 'u2']);
+      expect(get).toHaveBeenNthCalledWith(
+        1,
+        `${mainnet.chain.stacks.url}/extended/v3/principals/${principal}/balances/nft?limit=200`,
+        { signal }
+      );
+      expect(get).toHaveBeenNthCalledWith(
+        2,
+        `${mainnet.chain.stacks.url}/extended/v3/principals/${principal}/balances/nft?limit=200&cursor=${encodeURIComponent(nextCursor)}`,
+        { signal }
+      );
+      expect(add).toHaveBeenCalledWith(RateLimiterType.HiroStacks, {
+        priority: hiroApiRequestsPriorityLevels.getPrincipalNftBalances,
+        signal,
+        throwOnTimeout: true,
+      });
+      expect(fetchWithCache).toHaveBeenNthCalledWith(
+        1,
+        [
+          'hiro-stacks-get-principal-nft-balances',
+          principal,
+          'all',
+          'start',
+          200,
+          mainnet.chain.stacks.chainId,
+        ],
+        expect.any(Function)
+      );
+      expect(fetchWithCache).toHaveBeenNthCalledWith(
+        2,
+        [
+          'hiro-stacks-get-principal-nft-balances',
+          principal,
+          'all',
+          nextCursor,
+          200,
+          mainnet.chain.stacks.chainId,
+        ],
+        expect.any(Function)
+      );
+    });
+
+    it('passes the asset identifier filter to the request and cache key', async () => {
+      await makeClient().getPrincipalNftBalances(principal, { assetIdentifier, maxPages: 1 });
+
+      expect(get).toHaveBeenCalledTimes(1);
+      expect(get).toHaveBeenCalledWith(
+        `${mainnet.chain.stacks.url}/extended/v3/principals/${principal}/balances/nft?limit=200&asset_identifier=${encodeURIComponent(assetIdentifier)}`,
+        { signal: undefined }
+      );
+      expect(fetchWithCache).toHaveBeenCalledWith(
+        [
+          'hiro-stacks-get-principal-nft-balances',
+          principal,
+          assetIdentifier,
+          'start',
+          200,
+          mainnet.chain.stacks.chainId,
+        ],
+        expect.any(Function)
+      );
+    });
+
+    it('bypasses the cache when skipCache is set', async () => {
+      await makeClient().getPrincipalNftBalances(principal, { maxPages: 10 }, { skipCache: true });
+
+      expect(fetchWithCache).not.toHaveBeenCalled();
+      expect(get).toHaveBeenCalledTimes(2);
     });
   });
   describe('getTransactionById', () => {

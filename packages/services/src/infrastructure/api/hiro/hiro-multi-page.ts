@@ -1,4 +1,8 @@
-import { type HiroPageRequest, type HiroPageResponse } from './hiro-stacks-api.types';
+import {
+  type HiroCursorPageResponse,
+  type HiroPageRequest,
+  type HiroPageResponse,
+} from './hiro-stacks-api.types';
 
 interface HiroSomePagesRequest {
   allPages?: undefined;
@@ -47,4 +51,21 @@ export async function fetchHiroPages<T>(
 
     return [...firstPage.results, ...remainingPages.flatMap(page => page.results)];
   }
+}
+
+type HiroCursorPageFetchFn<T> = (cursor: string | null) => Promise<HiroCursorPageResponse<T>>;
+
+export async function fetchHiroCursorPages<T>(
+  fetchFn: HiroCursorPageFetchFn<T>,
+  { maxPages }: { maxPages: number }
+): Promise<T[]> {
+  const results: T[] = [];
+  let cursor: string | null = null;
+  for (let pageCount = 0; pageCount < maxPages; pageCount++) {
+    const page = await fetchFn(cursor);
+    results.push(...page.results);
+    cursor = page.cursor.next;
+    if (!cursor) break;
+  }
+  return results;
 }

@@ -11,7 +11,7 @@ export const hiroApiRequestsPriorityLevels = {
 
   getAccountNonces: 4,
   getNameInfo: 4,
-  getNftHoldings: 4,
+  getPrincipalNftBalances: 4,
   getPrincipalMempoolTransactions: 4,
   getRawTransactionById: 4,
   getTransactionById: 4,

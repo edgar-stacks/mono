@@ -1,5 +1,9 @@
-import { fetchHiroPages } from './hiro-multi-page';
-import { type HiroPageRequest, type HiroPageResponse } from './hiro-stacks-api.types';
+import { fetchHiroCursorPages, fetchHiroPages } from './hiro-multi-page';
+import {
+  type HiroCursorPageResponse,
+  type HiroPageRequest,
+  type HiroPageResponse,
+} from './hiro-stacks-api.types';
 
 describe(fetchHiroPages.name, () => {
   function createMockFetchFn(totalItems: number) {
@@ -92,5 +96,56 @@ describe(fetchHiroPages.name, () => {
       expect(result).toHaveLength(0);
       expect(mockFetch).toHaveBeenCalledTimes(1);
     });
+  });
+});
+
+describe(fetchHiroCursorPages.name, () => {
+  const pageCursors = ['page-1', 'page-2'];
+
+  function createMockCursorFetchFn(pageCount: number) {
+    return vi.fn(async (cursor: string | null): Promise<HiroCursorPageResponse<string>> => {
+      const pageIndex = cursor === null ? 0 : pageCursors.indexOf(cursor) + 1;
+      const next = pageIndex + 1 < pageCount ? pageCursors[pageIndex] : null;
+      return await Promise.resolve({
+        limit: 2,
+        total: pageCount * 2,
+        cursor: { next, previous: null, current: cursor },
+        results: pageCount === 0 ? [] : [`item-${pageIndex}-a`, `item-${pageIndex}-b`],
+      });
+    });
+  }
+
+  it('follows the next cursor until it is null', async () => {
+    const mockFetch = createMockCursorFetchFn(3);
+
+    const result = await fetchHiroCursorPages(mockFetch, { maxPages: 10 });
+
+    expect(result).toEqual([
+      'item-0-a',
+      'item-0-b',
+      'item-1-a',
+      'item-1-b',
+      'item-2-a',
+      'item-2-b',
+    ]);
+    expect(mockFetch.mock.calls).toEqual([[null], ['page-1'], ['page-2']]);
+  });
+
+  it('stops after maxPages', async () => {
+    const mockFetch = createMockCursorFetchFn(3);
+
+    const result = await fetchHiroCursorPages(mockFetch, { maxPages: 2 });
+
+    expect(result).toHaveLength(4);
+    expect(mockFetch.mock.calls).toEqual([[null], ['page-1']]);
+  });
+
+  it('makes one call for an empty first page', async () => {
+    const mockFetch = createMockCursorFetchFn(0);
+
+    const result = await fetchHiroCursorPages(mockFetch, { maxPages: 10 });
+
+    expect(result).toEqual([]);
+    expect(mockFetch).toHaveBeenCalledTimes(1);
   });
 });
