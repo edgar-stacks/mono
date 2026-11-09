@@ -18,7 +18,7 @@ export function ReceiveCollectibles({ stxAddress, onClickQrStacksNft }: ReceiveC
 
   async function copyAddress(address: string) {
     await copyToClipboard(address);
-    toast.success('Copied to clipboard!');
+    toast.success('Address copied to clipboard');
   }
   return (
     <Stack className={css(receiveTabStyle)}>
