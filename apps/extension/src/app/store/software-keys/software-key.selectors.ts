@@ -12,6 +12,7 @@ import { type RootState } from '@app/store/store';
 import { selectActiveAccount } from '../active/active.selectors';
 import { selectHasSwitched } from '../ui/ui.selectors';
 import { selectWalletEntities } from '../wallets/wallet.selectors';
+import { resolveSoftwareKeyAuthentication } from './software-key-state';
 import { keyAdapter } from './software-key.slice';
 
 function selectKeysSlice(state: RootState) {
@@ -50,6 +51,15 @@ const selectActiveSoftwareKey = createSelector(
 );
 
 export const selectWalletSalt = createSelector(selectKeysSlice, state => state.salt);
+
+const selectSoftwareKeyAuthenticationMode = createSelector(
+  selectKeysSlice,
+  state => resolveSoftwareKeyAuthentication(state).mode
+);
+
+export function useSoftwareKeyAuthenticationMode() {
+  return useSelector(selectSoftwareKeyAuthenticationMode);
+}
 
 export function useActiveSoftwareKey() {
   return useSelector(selectActiveSoftwareKey);

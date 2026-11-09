@@ -17,6 +17,7 @@ const multiWalletIntroducerId = 'multi-wallet-support';
 const signInAttemptLimit = 3;
 const signInPollTimeoutMs = 5000;
 const signInPollIntervalMs = 100;
+const biometricUnlockTimeoutMs = 15_000;
 
 // If default wallet state changes, this needs to be updated
 export const testFingerprint = 'e87a850b';
@@ -436,6 +437,35 @@ export class OnboardingPage {
     await passwordInput.waitFor();
     await passwordInput.fill(password);
     await this.page.getByTestId(OnboardingSelectors.SetPasswordBtn).click();
+  }
+
+  async chooseBiometricUnlock() {
+    const biometricSetupBtn = this.page.getByTestId(OnboardingSelectors.BiometricSetupBtn);
+    await expect(biometricSetupBtn).toBeEnabled();
+    await biometricSetupBtn.click();
+    await this.page.waitForURL('**' + RouteUrls.Home);
+    await this.page.getByTestId(HomePageSelectors.HomePageContainer).waitFor();
+  }
+
+  async signUpNewUserWithBiometrics() {
+    await this.page.getByTestId(OnboardingSelectors.SignUpBtn).click();
+    await this.page.waitForURL('**' + RouteUrls.BackUpSecretKey);
+    await this.page.getByTestId(OnboardingSelectors.BackUpSecretKeyBtn).click();
+    await this.chooseBiometricUnlock();
+    await this.dismissFeatureIntroducer();
+  }
+
+  async signInExistingUserWithBiometrics(secretKey = TEST_ACCOUNT_SECRET_KEY) {
+    await this.signInMnemonicKey(secretKey);
+    await this.page.getByTestId(OnboardingSelectors.SignInBtn).click();
+    await this.chooseBiometricUnlock();
+    await this.dismissFeatureIntroducer();
+  }
+
+  async unlockWithBiometrics() {
+    const unlockBtn = this.page.getByTestId(OnboardingSelectors.BiometricUnlockBtn);
+    await unlockBtn.click();
+    await expect(unlockBtn).toBeHidden({ timeout: biometricUnlockTimeoutMs });
   }
 
   async signUpNewUser(password = TEST_PASSWORD) {

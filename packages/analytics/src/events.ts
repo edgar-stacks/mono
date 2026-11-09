@@ -19,6 +19,17 @@ export type ComplianceScreeningPoint =
   | 'send_form_stx'
   | 'swap';
 
+export type BiometricUnlockFailureCategory =
+  | 'canceled'
+  | 'credential-mismatch'
+  | 'invalid-config'
+  | 'no-prf'
+  | 'unavailable'
+  | 'unknown'
+  | 'wallet-validation';
+
+export type BiometricUnlockContext = 'add-wallet' | 'unlock' | 'view-secret-key';
+
 // https://segment.com/academy/collecting-data/naming-conventions-for-clean-data/
 export interface Events extends HistoricalEvents {
   balance_updated: {
@@ -147,6 +158,19 @@ export interface Events extends HistoricalEvents {
   network_added: undefined;
   network_edited: undefined;
   taproot_utxo_warning_dialog_displayed: undefined;
+  biometric_unlock_enrollment_started: undefined;
+  biometric_unlock_enrollment_completed: undefined;
+  biometric_unlock_enrollment_failed: { category: BiometricUnlockFailureCategory };
+  biometric_unlock_attempt_started: {
+    context: BiometricUnlockContext;
+    trigger: 'automatic' | 'manual';
+  };
+  biometric_unlock_attempt_completed: { context: BiometricUnlockContext; durationMs: number };
+  biometric_unlock_attempt_canceled: { context: BiometricUnlockContext };
+  biometric_unlock_attempt_failed: {
+    context: BiometricUnlockContext;
+    category: BiometricUnlockFailureCategory;
+  };
 }
 
 // These are historical events that we'll maintain but that do not follow the object-action framework.

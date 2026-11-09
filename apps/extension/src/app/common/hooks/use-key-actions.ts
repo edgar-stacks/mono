@@ -9,6 +9,7 @@ import {
 } from '@leather.io/services';
 import { resetWallet } from '@leather.io/state';
 
+import { clearBiometricAutoPromptSuppression } from '@shared/biometric-unlock/biometric-auto-prompt';
 import { broadcastSignOut, broadcastWalletLock } from '@shared/messages';
 import { clearChromeStorage } from '@shared/storage/redux-persist';
 import { analytics } from '@shared/utils/analytics';
@@ -52,6 +53,36 @@ export function useKeyActions() {
         );
       },
 
+      createBiometricWallet({ mnemonic, fingerprint }: { mnemonic: string; fingerprint: string }) {
+        return dispatch(
+          keyActions.createBiometricSoftwareWallet({
+            mnemonic,
+            fingerprint,
+            leatherApiClient: getLeatherApiClient(),
+            hiroClient: getHiroStacksApiClient(),
+            bnsClient: getBnsV2ApiClient(),
+          })
+        );
+      },
+
+      addWalletWithBiometrics({
+        mnemonic,
+        fingerprint,
+      }: {
+        mnemonic: string;
+        fingerprint: string;
+      }) {
+        return dispatch(
+          keyActions.addSoftwareWalletWithBiometrics({
+            mnemonic,
+            fingerprint,
+            leatherApiClient: getLeatherApiClient(),
+            hiroClient: getHiroStacksApiClient(),
+            bnsClient: getBnsV2ApiClient(),
+          })
+        );
+      },
+
       generateWalletKey() {
         const mnemonic = generateMnemonic();
         const fingerprint = getMnemonicRootKeyFingerprint(mnemonic);
@@ -62,7 +93,12 @@ export function useKeyActions() {
         return dispatch(keyActions.unlockWalletAction(password));
       },
 
+      unlockWalletWithBiometrics() {
+        return dispatch(keyActions.unlockWalletWithBiometricsAction());
+      },
+
       switchAccount(accountId: AccountId) {
+        void clearBiometricAutoPromptSuppression();
         dispatch(userSwitchesAccount(accountId));
       },
 

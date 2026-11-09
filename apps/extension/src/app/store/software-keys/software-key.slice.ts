@@ -1,8 +1,15 @@
-import { type PayloadAction, createEntityAdapter, createSlice } from '@reduxjs/toolkit';
+import {
+  type EntityState,
+  type PayloadAction,
+  createEntityAdapter,
+  createSlice,
+} from '@reduxjs/toolkit';
+import { isDeepEqual } from 'remeda';
 
 import { resetWallet } from '@leather.io/state';
 import { fingerprintMigration, userRemovesWallet } from '@leather.io/state/wallet';
 
+import type { PlatformUnlockConfig } from '@shared/crypto/platform-unlock';
 import { assumedZeroFingerprint } from '@shared/utils';
 
 import { migrateVaultReducerStoreToNewStateStructure } from '../utils/vault-reducer-migration';
@@ -14,7 +21,32 @@ interface SoftwareKeyConfig {
 }
 export const keyAdapter = createEntityAdapter<SoftwareKeyConfig>();
 
-export const initialKeysState = keyAdapter.getInitialState<{ salt?: string }>({});
+type SoftwareKeyAuthenticationMode = 'biometric-only' | 'password';
+
+interface SoftwareKeyAuthenticationState {
+  salt?: string;
+  authenticationMode?: SoftwareKeyAuthenticationMode;
+  platformUnlock?: PlatformUnlockConfig;
+}
+
+type SoftwareKeysState = EntityState<SoftwareKeyConfig, string> & SoftwareKeyAuthenticationState;
+
+export const initialKeysState = keyAdapter.getInitialState<SoftwareKeyAuthenticationState>({});
+
+function clearAuthenticationState(state: SoftwareKeyAuthenticationState) {
+  delete state.salt;
+  delete state.authenticationMode;
+  delete state.platformUnlock;
+}
+
+function isBiometricOnly(state: SoftwareKeysState) {
+  return state.authenticationMode === 'biometric-only';
+}
+
+function canAddBiometricKey(state: SoftwareKeysState, platformUnlock: PlatformUnlockConfig) {
+  if (state.ids.length === 0) return true;
+  return isBiometricOnly(state) && isDeepEqual(state.platformUnlock, platformUnlock);
+}
 
 export const keySlice = createSlice({
   name: 'softwareKeys',
@@ -24,8 +56,22 @@ export const keySlice = createSlice({
       state,
       action: PayloadAction<{ salt: string; key: SoftwareKeyConfig }>
     ) {
+      if (isBiometricOnly(state)) return;
       keyAdapter.upsertOne(state, action.payload.key);
       state.salt = action.payload.salt;
+      state.authenticationMode = 'password';
+      delete state.platformUnlock;
+    },
+
+    createBiometricSoftwareWalletComplete(
+      state,
+      action: PayloadAction<{ platformUnlock: PlatformUnlockConfig; key: SoftwareKeyConfig }>
+    ) {
+      if (!canAddBiometricKey(state, action.payload.platformUnlock)) return;
+      keyAdapter.upsertOne(state, action.payload.key);
+      state.authenticationMode = 'biometric-only';
+      state.platformUnlock = action.payload.platformUnlock;
+      delete state.salt;
     },
 
     addNewWallet(state, action: PayloadAction<SoftwareKeyConfig>) {
@@ -37,6 +83,7 @@ export const keySlice = createSlice({
     // in place rather than adding a new one — the key already exists, only its
     // ciphertext (and the shared top-level salt) changed.
     softwareKeyReEncrypted(state, action: PayloadAction<{ salt: string; key: SoftwareKeyConfig }>) {
+      if (isBiometricOnly(state)) return;
       keyAdapter.upsertOne(state, action.payload.key);
       state.salt = action.payload.salt;
     },
@@ -52,11 +99,12 @@ export const keySlice = createSlice({
           keyAdapter.addOne(state, { ...existingKey, id: newFingerprint });
         }
       })
-      .addCase(userRemovesWallet, (state, action) =>
-        keyAdapter.removeOne(state, action.payload.fingerprint)
-      )
+      .addCase(userRemovesWallet, (state, action) => {
+        keyAdapter.removeOne(state, action.payload.fingerprint);
+        if (state.ids.length === 0) clearAuthenticationState(state);
+      })
       .addCase(resetWallet, state => {
-        if (state.salt) delete state.salt;
+        clearAuthenticationState(state);
         return keyAdapter.removeAll(state);
       }),
 });

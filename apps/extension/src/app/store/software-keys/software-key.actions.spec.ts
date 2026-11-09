@@ -9,8 +9,17 @@ import {
   walletAdapter,
 } from '@leather.io/state/wallet';
 
+import { isBiometricAutoPromptSuppressed } from '@shared/biometric-unlock/biometric-auto-prompt';
+import { getPlatformPrfOutput } from '@shared/biometric-unlock/platform-authenticator';
 import { deriveEncryptionKey } from '@shared/crypto/generate-encryption-key';
 import { decryptMnemonic } from '@shared/crypto/mnemonic-encryption';
+import {
+  encodeBase64Url,
+  generatePrfInput,
+  generateRegistrationTag,
+  generateWalletEncryptionKey,
+  wrapWalletEncryptionKey,
+} from '@shared/crypto/platform-unlock';
 import { assumedZeroFingerprint } from '@shared/utils';
 
 import { recurseAccountsForActivity } from '@app/common/account-restoration/account-restore';
@@ -24,6 +33,7 @@ import { stxChainSlice } from '../chains/stx-chain.slice';
 import * as inMemoryStore from '../in-memory-key/in-memory-storage';
 import { keyActions } from './software-key.actions';
 import { keyAdapter, keySlice } from './software-key.slice';
+import { encryptSecretKeyWithEncryptionKey } from './wallet-authentication';
 
 vi.mock('@app/store/store', () => ({
   persistor: { flush: vi.fn(() => Promise.resolve()) },
@@ -77,6 +87,11 @@ vi.mock('@leather.io/services', () => ({
   getLeatherApiClient: vi.fn(),
   getHiroStacksApiClient: vi.fn(),
   getBnsV2ApiClient: vi.fn(),
+}));
+
+vi.mock('@shared/biometric-unlock/platform-authenticator', () => ({
+  createPlatformCredential: vi.fn(),
+  getPlatformPrfOutput: vi.fn(),
 }));
 
 vi.mock('./utils', () => ({
@@ -411,5 +426,101 @@ describe('probeNextAccountAndDiscoverAccounts', () => {
     });
     expect(recurseAccountsForActivity).not.toHaveBeenCalled();
     expect(dispatch).not.toHaveBeenCalled();
+  });
+});
+
+async function buildBiometricState() {
+  const actualCrypto = await vi.importActual<typeof LeatherCrypto>('@leather.io/crypto');
+  const encryptionKey = generateWalletEncryptionKey();
+  const prfOutput = crypto.getRandomValues(new Uint8Array(32));
+  const platformUnlock = await wrapWalletEncryptionKey({
+    encryptionKey,
+    prfOutput,
+    credentialId: encodeBase64Url(crypto.getRandomValues(new Uint8Array(32))),
+    prfInput: encodeBase64Url(generatePrfInput()),
+    registrationTag: generateRegistrationTag(),
+  });
+  const mnemonic = actualCrypto.generateMnemonic();
+  const fingerprint = actualCrypto.getMnemonicRootKeyFingerprint(mnemonic);
+  const encryptedSecretKey = await encryptSecretKeyWithEncryptionKey(mnemonic, encryptionKey);
+  const softwareKeys = {
+    ...keyAdapter.addOne(keyAdapter.getInitialState(), {
+      type: 'software',
+      id: fingerprint,
+      encryptedSecretKey,
+    }),
+    authenticationMode: 'biometric-only' as const,
+    platformUnlock,
+  };
+  return { encryptionKey, prfOutput, mnemonic, fingerprint, state: { softwareKeys } };
+}
+
+describe('unlockWalletWithBiometricsAction', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  test('starts a session with the unwrapped key after re-reading persisted state', async () => {
+    const { encryptionKey, prfOutput, mnemonic, fingerprint, state } = await buildBiometricState();
+    await chrome.storage.local.set({ 'persist:root': state });
+    await chrome.storage.session.set({ biometricUnlockAutomaticPromptSuppressed: true });
+    vi.mocked(getPlatformPrfOutput).mockResolvedValue(prfOutput);
+
+    await keyActions.unlockWalletWithBiometricsAction()(
+      vi.fn(),
+      vi.fn().mockReturnValue(state),
+      undefined
+    );
+
+    expect(getPlatformPrfOutput).toHaveBeenCalledWith(state.softwareKeys.platformUnlock);
+    expect(initalizeWalletSession).toHaveBeenCalledWith(encryptionKey);
+    expect(inMemoryStore.setKey).toHaveBeenCalledWith(fingerprint, mnemonic);
+    await expect(isBiometricAutoPromptSuppressed()).resolves.toBe(false);
+  });
+
+  test('fails closed when persisted state does not match', async () => {
+    const { prfOutput, state } = await buildBiometricState();
+    const other = await buildBiometricState();
+    await chrome.storage.local.set({ 'persist:root': other.state });
+    vi.mocked(getPlatformPrfOutput).mockResolvedValue(prfOutput);
+
+    await expect(
+      keyActions.unlockWalletWithBiometricsAction()(
+        vi.fn(),
+        vi.fn().mockReturnValue(state),
+        undefined
+      )
+    ).rejects.toThrow();
+
+    expect(getPlatformPrfOutput).not.toHaveBeenCalled();
+    expect(initalizeWalletSession).not.toHaveBeenCalled();
+  });
+
+  test('does not start a session for the wrong PRF output', async () => {
+    const { state } = await buildBiometricState();
+    await chrome.storage.local.set({ 'persist:root': state });
+    vi.mocked(getPlatformPrfOutput).mockResolvedValue(crypto.getRandomValues(new Uint8Array(32)));
+
+    await expect(
+      keyActions.unlockWalletWithBiometricsAction()(
+        vi.fn(),
+        vi.fn().mockReturnValue(state),
+        undefined
+      )
+    ).rejects.toThrow();
+
+    expect(initalizeWalletSession).not.toHaveBeenCalled();
+    expect(inMemoryStore.setKey).not.toHaveBeenCalled();
+  });
+
+  test('password unlock is refused for a biometric-only profile', async () => {
+    const { state } = await buildBiometricState();
+
+    await expect(
+      keyActions.unlockWalletAction(password)(vi.fn(), vi.fn().mockReturnValue(state), undefined)
+    ).rejects.toThrow();
+
+    expect(deriveEncryptionKey).not.toHaveBeenCalled();
+    expect(initalizeWalletSession).not.toHaveBeenCalled();
   });
 });

@@ -92,7 +92,10 @@ test.describe('Onboarding an existing user', () => {
     delete walletState.chains.stx[testFingerprint].highestAccountIndex;
     delete testWalletState.chains.stx[testFingerprint].highestAccountIndex;
 
-    test.expect(walletState).toEqual(testWalletState);
+    test.expect(walletState).toEqual({
+      ...testWalletState,
+      softwareKeys: { ...testWalletState.softwareKeys, authenticationMode: 'password' },
+    });
   });
 
   test('mnemonic key validation: should show error for invalid mnemonic key words', async ({

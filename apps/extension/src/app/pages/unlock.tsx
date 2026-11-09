@@ -5,8 +5,8 @@ import { z } from 'zod';
 import { useRouteState } from '@app/common/hooks/use-route-state';
 import { whenPageMode } from '@app/common/utils';
 import { Content } from '@app/components/layout';
-import { RequestPassword } from '@app/components/request-password';
 import { UnlockHeader } from '@app/features/container/headers/unlock.header';
+import { WalletAuthenticationPrompt } from '@app/features/wallet-authentication/wallet-authentication-prompt';
 
 const unlockRouteStateSchema = z.object({ from: z.string().optional() }).nullish();
 
@@ -26,7 +26,7 @@ export function Unlock() {
     <>
       <UnlockHeader />
       <Content>
-        <RequestPassword onSuccess={returnToPreviousRoute} />
+        <WalletAuthenticationPrompt context="unlock" onSuccess={returnToPreviousRoute} />
         <Outlet />
       </Content>
     </>

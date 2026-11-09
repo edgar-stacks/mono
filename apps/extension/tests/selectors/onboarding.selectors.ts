@@ -1,5 +1,9 @@
 export const OnboardingSelectors = {
   BackUpSecretKeyBtn: 'back-up-secret-key-btn',
+  BiometricRecoveryLink: 'biometric-recovery-link',
+  BiometricSetupBtn: 'biometric-setup-btn',
+  BiometricSetupError: 'biometric-setup-error',
+  BiometricUnlockBtn: 'biometric-unlock-btn',
   LogoRouteToHome: 'logo-route-to-home',
   NewPasswordInput: 'set-or-enter-password-input',
   NoAssetsFundAccountLink: 'no-assets-fund-account-link',

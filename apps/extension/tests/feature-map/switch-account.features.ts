@@ -11,6 +11,7 @@ const multiwalletSpec = 'apps/extension/tests/specs/switch-account/multiwallet.s
 const switchAccountSpec = 'apps/extension/tests/specs/switch-account/switch-account.spec.ts';
 const multiwalletIntegritySpec =
   'apps/extension/tests/specs/switch-account/multiwallet-integrity.spec.ts';
+const biometricUnlockSpec = 'apps/extension/tests/specs/onboarding/biometric-unlock.spec.ts';
 const defaultMocks = ['setupMockApis', 'mockUnhandledRequests'] as const;
 
 export const switchAccountFeatures = [
@@ -38,6 +39,7 @@ export const switchAccountFeatures = [
         OnboardingSelectors.SignInSeedError,
         OnboardingSelectors.NewPasswordInput,
         OnboardingSelectors.SetPasswordBtn,
+        OnboardingSelectors.BiometricUnlockBtn,
       ],
     },
     actions: [
@@ -46,10 +48,11 @@ export const switchAccountFeatures = [
       'SwitchAccountPage.restoreWallet',
       'SwitchAccountPage.submitNewWalletPassword',
       'SwitchAccountPage.getWalletCount',
+      'OnboardingPage.unlockWithBiometrics',
     ],
-    specs: [multiwalletSpec],
+    specs: [multiwalletSpec, biometricUnlockSpec],
     description:
-      'Adds a second software wallet from a Secret Key. The page reuses the /sign-in mnemonic form (word inputs mnemonic-input-1 … mnemonic-input-24, 24 by default; "Have a 12-word Secret Key?" switches to 12) and then the password step, titled "Enter your Password" when a software wallet already exists ("Set a password" with strength validation for a Ledger-only user; set-password.tsx); the password must match the existing wallets\' password or the form shows "The password you entered doesn\'t match". A key already on the device shows "A wallet with this Secret Key has already been added to this device.", and a key already added as a Ledger wallet shows the cross-type error (wallet.selectors.ts getAddWalletError). On success the new wallet appears as its own group in the account switcher and the app returns home (HomePageContainer). multiwallet.spec also registers mockBnsV2NamesRequestEmpty again in beforeEach (setupMockApis already does) so account names stay "Account N".',
+      'Adds a second software wallet from a Secret Key. The page reuses the /sign-in mnemonic form (word inputs mnemonic-input-1 … mnemonic-input-24, 24 by default; "Have a 12-word Secret Key?" switches to 12) and then the password step, titled "Enter your Password" when a software wallet already exists ("Set a password" with strength validation for a Ledger-only user; set-password.tsx); the password must match the existing wallets\' password or the form shows "The password you entered doesn\'t match". In a biometric-only profile the password step is replaced by "Confirm it\'s you" with "Unlock with biometrics" (BiometricUnlockBtn), which adds the wallet under the same biometric unlock (biometric-unlock.spec). A key already on the device shows "A wallet with this Secret Key has already been added to this device.", and a key already added as a Ledger wallet shows the cross-type error (wallet.selectors.ts getAddWalletError). On success the new wallet appears as its own group in the account switcher and the app returns home (HomePageContainer). multiwallet.spec also registers mockBnsV2NamesRequestEmpty again in beforeEach (setupMockApis already does) so account names stay "Account N".',
   },
   {
     id: 'create-wallet',
