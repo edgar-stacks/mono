@@ -1,6 +1,9 @@
 export const HomePageSelectors = {
   AssetList: 'asset-list',
   AvailableBalance: 'available-balance',
+  CopyAddressMenuBtn: 'copy-address-menu-btn',
+  CopyAddressMenuTitle: 'copy-address-menu-title',
+  CopyAddressOption: 'copy-address-',
   HomePageContainer: 'home-page-container',
   ReceiveCryptoAssetBtn: 'receive-crypto-asset-btn',
   ReceiveBtcNativeSegwitQrCodeBtn: 'receive-native-segwit-qr-code-btn',

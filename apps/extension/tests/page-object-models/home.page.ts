@@ -73,6 +73,11 @@ export class HomePage {
   // Also, an open issue to consistently determine `isMac` in the workaround:
   // https://github.com/microsoft/playwright/issues/12168
   // Using the `Receive` route to get the account address for now.
+  async openCopyAddressMenu() {
+    await this.page.getByTestId(HomePageSelectors.CopyAddressMenuBtn).click();
+    await this.page.getByTestId(HomePageSelectors.CopyAddressMenuTitle).waitFor();
+  }
+
   async getReceiveNativeSegwitAddress() {
     await this.goToReceiveDialog();
     await this.page.getByTestId(HomePageSelectors.ReceiveBtcNativeSegwitQrCodeBtn).click();
