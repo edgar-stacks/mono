@@ -17,6 +17,7 @@ import {
   type Money,
   type QuoteCurrency,
   type Sip10Asset,
+  type StacksTransactionFees,
 } from '@leather.io/models';
 import { Button, Sip10AvatarIcon } from '@leather.io/ui/native';
 import { isNumber } from '@leather.io/utils';
@@ -27,6 +28,7 @@ interface Sip10FormProps {
   availableBalance: Money;
   quoteBalance: Money;
   nonce: number | undefined;
+  fees: StacksTransactionFees;
   marketData: MarketData;
   quoteCurrency: QuoteCurrency;
   assetItemAnimationOffsetTop?: number | null;
@@ -41,6 +43,7 @@ export function Sip10Form({
   quoteCurrency,
   marketData,
   nonce,
+  fees,
   onOpenAssetPicker,
   asset,
 }: Sip10FormProps) {
@@ -55,6 +58,7 @@ export function Sip10Form({
     account: currentAccount,
     availableBalance,
     nonce,
+    fees,
     asset,
   });
 
