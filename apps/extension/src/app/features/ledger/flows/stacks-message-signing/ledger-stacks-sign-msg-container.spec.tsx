@@ -10,6 +10,7 @@ import type * as GenericLedgerUtils from '@app/features/ledger/utils/generic-led
 import type * as StacksLedgerUtils from '@app/features/ledger/utils/stacks-ledger-utils';
 
 import { makeFakeDmk } from '../../dmk/ledger-dmk.mocks';
+import type { LedgerStacksApp } from '../../utils/ledger-app';
 import { fakeLedgerSessionId, makeFakeLedgerStacksApp } from '../../utils/ledger-app.mocks';
 import { LedgerSignMsgContainer } from './ledger-stacks-sign-msg-container';
 import { type LedgerMessageSigningContext } from './ledger-stacks-sign-msg.context';
@@ -169,13 +170,20 @@ function renderSignMsgContainer() {
       })
     );
   });
+  return {
+    unmount() {
+      act(() => {
+        root.unmount();
+      });
+    },
+  };
 }
 
-function renderSignMsgContext(): LedgerMessageSigningContext {
-  renderSignMsgContainer();
+function renderSignMsgContext() {
+  const { unmount } = renderSignMsgContainer();
   const call = mocks.captureContext.mock.calls.at(-1);
   if (!call) throw new Error('Message signing context was not rendered');
-  return call[0];
+  return { context: call[0], unmount };
 }
 
 function setupSignMessage() {
@@ -187,7 +195,14 @@ function setupSignMessage() {
   mocks.signUtf8Message.mockReturnValue(() =>
     Promise.resolve({ returnCode: LedgerError.NoErrors, signatureVRS: Buffer.alloc(65, 1) })
   );
-  return { context: renderSignMsgContext() };
+  return renderSignMsgContext();
+}
+
+function holdUtf8Signing() {
+  const signing = Promise.withResolvers<unknown>();
+  const signWithDevice = vi.fn(() => signing.promise);
+  mocks.signUtf8Message.mockReturnValue(signWithDevice);
+  return { signing, signWithDevice };
 }
 
 describe(LedgerSignMsgContainer.name, () => {
@@ -308,6 +323,121 @@ describe(LedgerSignMsgContainer.name, () => {
     expect(mocks.toDeviceDisconnectStep).toHaveBeenCalledOnce();
     expect(mocks.toErrorStep).not.toHaveBeenCalled();
     expect(mocks.disconnect).toHaveBeenCalledOnce();
+  });
+
+  test('ignores a second attempt while the first is still in flight', async () => {
+    const { context } = setupSignMessage();
+    const connection = Promise.withResolvers<LedgerStacksApp>();
+    mocks.prepareConnection.mockReturnValue(connection.promise);
+
+    const { first, second } = await act(() => ({
+      first: context.signMessage(),
+      second: context.signMessage(),
+    }));
+
+    await act(async () => {
+      connection.resolve(makeFakeLedgerStacksApp());
+      await Promise.all([first, second]);
+    });
+
+    expect(mocks.prepareConnection).toHaveBeenCalledOnce();
+    expect(mocks.signUtf8Message).toHaveBeenCalledOnce();
+    expect(mocks.messageSignedOnLedgerSuccessfully).toHaveBeenCalledOnce();
+    expect(mocks.settleLedgerAction).toHaveBeenCalledOnce();
+    expect(mocks.disconnect).toHaveBeenCalledOnce();
+  });
+
+  test('does not settle the flow but closes the session when signing succeeds after the flow is gone', async () => {
+    const { context, unmount } = setupSignMessage();
+    const { signing, signWithDevice } = holdUtf8Signing();
+
+    const { attempt } = await act(async () => {
+      const attempt = context.signMessage();
+      await vi.waitFor(() => expect(signWithDevice).toHaveBeenCalledOnce());
+      return { attempt };
+    });
+    unmount();
+
+    await act(async () => {
+      signing.resolve({ returnCode: LedgerError.NoErrors, signatureVRS: Buffer.alloc(65, 1) });
+      await attempt;
+    });
+
+    expect(mocks.toAwaitingDeviceOperation).not.toHaveBeenCalledWith({
+      hasApprovedOperation: true,
+    });
+    expect(mocks.messageSignedOnLedgerSuccessfully).not.toHaveBeenCalled();
+    expect(mocks.settleLedgerAction).not.toHaveBeenCalled();
+    expect(mocks.disconnect).toHaveBeenCalledOnce();
+    expect(mocks.disconnect).toHaveBeenCalledWith({ sessionId: fakeLedgerSessionId });
+  });
+
+  test('shows no error but closes the session when signing fails after the flow is gone', async () => {
+    const { context, unmount } = setupSignMessage();
+    const { signing, signWithDevice } = holdUtf8Signing();
+
+    const { attempt } = await act(async () => {
+      const attempt = context.signMessage();
+      await vi.waitFor(() => expect(signWithDevice).toHaveBeenCalledOnce());
+      return { attempt };
+    });
+    unmount();
+
+    await act(async () => {
+      signing.reject(new Error('device unplugged'));
+      await attempt;
+    });
+
+    expect(mocks.toErrorStep).not.toHaveBeenCalled();
+    expect(mocks.settleLedgerAction).not.toHaveBeenCalled();
+    expect(mocks.disconnect).toHaveBeenCalledOnce();
+    expect(mocks.disconnect).toHaveBeenCalledWith({ sessionId: fakeLedgerSessionId });
+  });
+
+  test('does not navigate but closes the session when the connection opens after the flow is gone', async () => {
+    const { context, unmount } = setupSignMessage();
+    const connection = Promise.withResolvers<LedgerStacksApp>();
+    mocks.prepareConnection.mockReturnValue(connection.promise);
+
+    const { attempt } = await act(() => ({ attempt: context.signMessage() }));
+    unmount();
+
+    await act(async () => {
+      connection.resolve(makeFakeLedgerStacksApp());
+      await attempt;
+    });
+
+    expect(mocks.toCheckingAppVersion).not.toHaveBeenCalled();
+    expect(mocks.signUtf8Message).not.toHaveBeenCalled();
+    expect(mocks.settleLedgerAction).not.toHaveBeenCalled();
+    expect(mocks.disconnect).toHaveBeenCalledOnce();
+    expect(mocks.disconnect).toHaveBeenCalledWith({ sessionId: fakeLedgerSessionId });
+  });
+
+  test('allows a new attempt once a failed attempt has closed its session', async () => {
+    const { context } = setupSignMessage();
+    mocks.signUtf8Message
+      .mockReturnValueOnce(() => Promise.reject(new Error('device unplugged')))
+      .mockReturnValueOnce(() =>
+        Promise.resolve({ returnCode: LedgerError.NoErrors, signatureVRS: Buffer.alloc(65, 1) })
+      );
+    const disconnectsBeforeErrorStep: number[] = [];
+    mocks.toErrorStep.mockImplementationOnce(() => {
+      disconnectsBeforeErrorStep.push(mocks.disconnect.mock.calls.length);
+    });
+
+    await act(async () => {
+      await context.signMessage();
+    });
+    await act(async () => {
+      await context.signMessage();
+    });
+
+    expect(mocks.toErrorStep).toHaveBeenCalledOnce();
+    expect(disconnectsBeforeErrorStep).toEqual([1]);
+    expect(mocks.settleLedgerAction).toHaveBeenCalledOnce();
+    expect(mocks.settleLedgerAction.mock.calls[0][1]).toMatchObject({ status: 'signed' });
+    expect(mocks.disconnect).toHaveBeenCalledTimes(2);
   });
 
   test('shows the error step and closes the session once when signing throws', async () => {

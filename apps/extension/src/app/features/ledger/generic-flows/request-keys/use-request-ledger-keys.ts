@@ -11,8 +11,10 @@ import { useLedgerSteps } from '../../flow/ledger-flow.context';
 import { useLedgerAnalytics } from '../../hooks/use-ledger-analytics.hook';
 import { type BitcoinAppVersion } from '../../utils/bitcoin-ledger-utils';
 import {
+  type LedgerAttempt,
   isCancellableConnectionInteraction,
   isUnlockDeviceInteraction,
+  useLedgerAttemptGuard,
   useLedgerResponseState,
 } from '../../utils/generic-ledger-utils';
 import type { LedgerApp } from '../../utils/ledger-app';
@@ -46,13 +48,16 @@ export function useRequestLedgerKeys<App extends LedgerApp>({
   const [isConnectionCancellable, setIsConnectionCancellable] = useState(false);
   const ledgerNavigate = useLedgerSteps();
   const ledgerAnalytics = useLedgerAnalytics();
+  const attemptGuard = useLedgerAttemptGuard();
 
-  async function checkCorrectAppIsOpenWithFailState(app: App) {
+  async function checkCorrectAppIsOpenWithFailState(app: App, attempt: LedgerAttempt) {
     // Show checking version page immediately
     ledgerNavigate.toCheckingAppVersion();
     await delay(1_000);
+    if (attempt.isDismissed()) return null;
 
     const response = await getAppVersion(app);
+    if (attempt.isDismissed()) return null;
 
     if (!isAppOpen({ name: response.name })) {
       setAwaitingDeviceConnection(false);
@@ -69,7 +74,10 @@ export function useRequestLedgerKeys<App extends LedgerApp>({
   }
 
   async function requestKeys() {
+    const attempt = attemptGuard.start();
+    if (!attempt) return;
     let app: App | undefined;
+    let failure: { error: unknown } | undefined;
     try {
       setLatestDeviceResponse({ deviceLocked: false });
       setAwaitingDeviceConnection(true);
@@ -81,8 +89,10 @@ export function useRequestLedgerKeys<App extends LedgerApp>({
           setIsConnectionCancellable(isCancellableConnectionInteraction(interaction));
         },
       });
+      if (attempt.isDismissed()) return;
       setIsConnectionCancellable(false);
-      const versionCheckResult = await checkCorrectAppIsOpenWithFailState(app);
+      const versionCheckResult = await checkCorrectAppIsOpenWithFailState(app, attempt);
+      if (attempt.isDismissed()) return;
 
       // If version check failed, return early (navigation already handled)
       if (versionCheckResult === null) {
@@ -93,16 +103,26 @@ export function useRequestLedgerKeys<App extends LedgerApp>({
       setAwaitingDeviceConnection(false);
       ledgerNavigate.toConnectionSuccessStep(chain);
       await delay(1250);
+      if (attempt.isDismissed()) return;
       const pullKeysResult = await pullKeysFromDevice(app);
+      if (attempt.isDismissed()) return;
       if (pullKeysResult.status === 'failure') return;
       ledgerAnalytics.publicKeysPulledFromLedgerSuccessfully();
       onSuccess?.();
     } catch (e) {
       setAwaitingDeviceConnection(false);
       setIsConnectionCancellable(false);
-      handleLedgerConnectionError(e, { chain, ledgerNavigate, setLatestDeviceResponse });
+      failure = { error: e };
     } finally {
       if (app) await closeLedgerSession(dmk, app.sessionId);
+      attempt.finish();
+    }
+    if (failure && !attempt.isDismissed()) {
+      handleLedgerConnectionError(failure.error, {
+        chain,
+        ledgerNavigate,
+        setLatestDeviceResponse,
+      });
     }
   }
 
