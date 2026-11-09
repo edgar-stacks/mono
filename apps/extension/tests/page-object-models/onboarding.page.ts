@@ -60,6 +60,7 @@ export function getTestSoftwareAccountDefaultWalletState() {
     },
     softwareKeys: {
       salt: 'a086b877fc757a4daa7c6343d2861c05',
+      authenticationMode: 'password',
       ids: [testFingerprint],
       entities: {
         [testFingerprint]: {
@@ -447,6 +448,22 @@ export class OnboardingPage {
     await this.page.getByTestId(HomePageSelectors.HomePageContainer).waitFor();
     await this.dismissFeatureIntroducer();
   }
+  async chooseBiometricUnlock() {
+    const biometricSetupBtn = this.page.getByTestId(OnboardingSelectors.BiometricSetupBtn);
+    await expect(biometricSetupBtn).toBeEnabled();
+    await biometricSetupBtn.click();
+    await this.page.waitForURL('**' + RouteUrls.Home);
+    await this.page.getByTestId(HomePageSelectors.HomePageContainer).waitFor();
+  }
+
+  async signUpNewUserWithBiometrics() {
+    await this.page.getByTestId(OnboardingSelectors.SignUpBtn).click();
+    await this.page.waitForURL('**' + RouteUrls.BackUpSecretKey);
+    await this.page.getByTestId(OnboardingSelectors.BackUpSecretKeyBtn).click();
+    await this.chooseBiometricUnlock();
+    await this.dismissFeatureIntroducer();
+  }
+
   async initiateSignIn() {
     await this.page.getByTestId(OnboardingSelectors.SignInLink).click();
   }

@@ -28,11 +28,15 @@ import { selectStacksChain } from '../chains/stx-chain.selectors';
 import { stxChainSlice } from '../chains/stx-chain.slice';
 import * as inMemoryStore from '../in-memory-key/in-memory-storage';
 import { selectAllWallets, selectWalletEntities } from '../wallets/wallet.selectors';
-import { selectSoftwareKeys, selectWalletSalt } from './software-key.selectors';
+import {
+  selectIsBiometricOnlyProfile,
+  selectSoftwareKeys,
+  selectWalletSalt,
+} from './software-key.selectors';
 import { keySlice } from './software-key.slice';
 import { checkPassword } from './utils';
 
-interface AccountDiscoveryClients {
+export interface AccountDiscoveryClients {
   leatherApiClient: Pick<
     ReturnType<typeof getLeatherApiClient>,
     'fetchUtxosByAddress' | 'fetchBitcoinTransactionsByAddress'
@@ -176,6 +180,25 @@ function startRecursiveAccountDiscovery({
     });
 }
 
+interface StartNewWalletAccountDiscoveryArgs extends AccountDiscoveryClients {
+  dispatch(action: ReturnType<typeof stxChainSlice.actions.restoreAccountIndex>): void;
+  fingerprint: string;
+  mnemonic: string;
+}
+export function startNewWalletAccountDiscovery({
+  dispatch,
+  fingerprint,
+  mnemonic,
+  ...clients
+}: StartNewWalletAccountDiscoveryArgs) {
+  startRecursiveAccountDiscovery({
+    dispatch,
+    doesAddressHaveActivityFn: createAccountActivityChecker({ ...clients, mnemonic }),
+    fingerprint,
+    fromAccountIndex: 0,
+  });
+}
+
 function probeNextAccountAndDiscoverAccounts(clients: AccountDiscoveryClients): AppThunk {
   return async (dispatch, getState) => {
     const state = getState();
@@ -230,6 +253,9 @@ function setWalletEncryptionPassword(
   return async (dispatch, getState) => {
     const softwareKeys = selectSoftwareKeys(getState());
     const hasSoftwareKeys = softwareKeys.length > 0;
+
+    if (selectIsBiometricOnlyProfile(getState()))
+      throw new Error('Biometric-only profiles cannot use a password');
 
     const existingSalt = hasSoftwareKeys ? selectWalletSalt(getState()) : undefined;
 
@@ -312,6 +338,9 @@ function setWalletEncryptionPassword(
 function unlockWalletAction(password: string): AppThunk {
   return async (dispatch, getState) => {
     const state = getState();
+    if (selectIsBiometricOnlyProfile(state))
+      throw new Error('Biometric-only profiles cannot use a password');
+
     const salt = selectWalletSalt(state);
     const softwareKeys = selectSoftwareKeys(state);
 

@@ -3,9 +3,11 @@ import { type PayloadAction, createEntityAdapter, createSlice } from '@reduxjs/t
 import { resetWallet } from '@leather.io/state';
 import { fingerprintMigration, userRemovesWallet } from '@leather.io/state/wallet';
 
+import type { PlatformUnlockConfig } from '@shared/crypto/platform-unlock';
 import { assumedZeroFingerprint } from '@shared/utils';
 
 import { migrateVaultReducerStoreToNewStateStructure } from '../utils/vault-reducer-migration';
+import type { WalletAuthenticationMode } from './software-key-state';
 
 interface SoftwareKeyConfig {
   type: 'software';
@@ -14,7 +16,25 @@ interface SoftwareKeyConfig {
 }
 export const keyAdapter = createEntityAdapter<SoftwareKeyConfig>();
 
-export const initialKeysState = keyAdapter.getInitialState<{ salt?: string }>({});
+interface SoftwareKeysAuthentication {
+  salt?: string;
+  authenticationMode?: WalletAuthenticationMode;
+  platformUnlock?: PlatformUnlockConfig;
+}
+
+export const initialKeysState = keyAdapter.getInitialState<SoftwareKeysAuthentication>({});
+
+function clearAuthentication(state: SoftwareKeysAuthentication) {
+  delete state.salt;
+  delete state.authenticationMode;
+  delete state.platformUnlock;
+}
+
+function setPasswordAuthentication(state: SoftwareKeysAuthentication, salt: string) {
+  delete state.platformUnlock;
+  state.authenticationMode = 'password';
+  state.salt = salt;
+}
 
 export const keySlice = createSlice({
   name: 'softwareKeys',
@@ -25,7 +45,17 @@ export const keySlice = createSlice({
       action: PayloadAction<{ salt: string; key: SoftwareKeyConfig }>
     ) {
       keyAdapter.upsertOne(state, action.payload.key);
-      state.salt = action.payload.salt;
+      setPasswordAuthentication(state, action.payload.salt);
+    },
+
+    createBiometricWalletComplete(
+      state,
+      action: PayloadAction<{ platformUnlock: PlatformUnlockConfig; key: SoftwareKeyConfig }>
+    ) {
+      keyAdapter.upsertOne(state, action.payload.key);
+      delete state.salt;
+      state.authenticationMode = 'biometric-only';
+      state.platformUnlock = action.payload.platformUnlock;
     },
 
     addNewWallet(state, action: PayloadAction<SoftwareKeyConfig>) {
@@ -38,7 +68,7 @@ export const keySlice = createSlice({
     // ciphertext (and the shared top-level salt) changed.
     softwareKeyReEncrypted(state, action: PayloadAction<{ salt: string; key: SoftwareKeyConfig }>) {
       keyAdapter.upsertOne(state, action.payload.key);
-      state.salt = action.payload.salt;
+      setPasswordAuthentication(state, action.payload.salt);
     },
   },
   extraReducers: builder =>
@@ -52,11 +82,12 @@ export const keySlice = createSlice({
           keyAdapter.addOne(state, { ...existingKey, id: newFingerprint });
         }
       })
-      .addCase(userRemovesWallet, (state, action) =>
-        keyAdapter.removeOne(state, action.payload.fingerprint)
-      )
+      .addCase(userRemovesWallet, (state, action) => {
+        keyAdapter.removeOne(state, action.payload.fingerprint);
+        if (state.ids.length === 0) clearAuthentication(state);
+      })
       .addCase(resetWallet, state => {
-        if (state.salt) delete state.salt;
+        clearAuthentication(state);
         return keyAdapter.removeAll(state);
       }),
 });

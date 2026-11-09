@@ -127,6 +127,12 @@ export class HomePage {
     await expect(passwordInput).toBeHidden({ timeout: unlockTimeoutMs });
   }
 
+  async unlockWithBiometrics() {
+    const biometricUnlockBtn = this.page.getByTestId(SettingsSelectors.BiometricUnlockBtn);
+    await biometricUnlockBtn.click();
+    await expect(biometricUnlockBtn).toBeHidden({ timeout: unlockTimeoutMs });
+  }
+
   async setBitcoinIncreasedFeeRate(feeRate: string) {
     await expect(this.page.getByTestId(ActivitySelectors.TransactionActionBalance)).toHaveText(
       loadedTransactionActionBalance

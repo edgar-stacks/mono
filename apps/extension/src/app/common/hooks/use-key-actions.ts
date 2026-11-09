@@ -13,6 +13,7 @@ import { broadcastSignOut, broadcastWalletLock } from '@shared/messages';
 import { clearChromeStorage } from '@shared/storage/redux-persist';
 import { analytics } from '@shared/utils/analytics';
 
+import { clearBiometricAutoPromptSuppression } from '@app/common/biometric-unlock/biometric-auto-prompt';
 import { queryClient } from '@app/common/persistence';
 import { partiallyClearLocalStorage } from '@app/common/store-utils';
 import { useAppDispatch } from '@app/store';
@@ -24,6 +25,7 @@ import { clearKeychainSelectorCaches } from '@app/store/in-memory-key/keychain-s
 import { parsePolicyParent } from '@app/store/policy/policy-store.utils';
 import { clearWalletSession } from '@app/store/session-restore';
 import { keyActions } from '@app/store/software-keys/software-key.actions';
+import { walletAuthenticationActions } from '@app/store/software-keys/wallet-authentication';
 
 export function useKeyActions() {
   const dispatch = useAppDispatch();
@@ -52,6 +54,36 @@ export function useKeyActions() {
         );
       },
 
+      createBiometricWallet({ mnemonic, fingerprint }: { mnemonic: string; fingerprint: string }) {
+        return dispatch(
+          walletAuthenticationActions.createBiometricWallet({
+            mnemonic,
+            fingerprint,
+            leatherApiClient: getLeatherApiClient(),
+            hiroClient: getHiroStacksApiClient(),
+            bnsClient: getBnsV2ApiClient(),
+          })
+        );
+      },
+
+      addWalletWithBiometrics({
+        mnemonic,
+        fingerprint,
+      }: {
+        mnemonic: string;
+        fingerprint: string;
+      }) {
+        return dispatch(
+          walletAuthenticationActions.addWalletWithBiometrics({
+            mnemonic,
+            fingerprint,
+            leatherApiClient: getLeatherApiClient(),
+            hiroClient: getHiroStacksApiClient(),
+            bnsClient: getBnsV2ApiClient(),
+          })
+        );
+      },
+
       generateWalletKey() {
         const mnemonic = generateMnemonic();
         const fingerprint = getMnemonicRootKeyFingerprint(mnemonic);
@@ -62,7 +94,12 @@ export function useKeyActions() {
         return dispatch(keyActions.unlockWalletAction(password));
       },
 
+      unlockWalletWithBiometrics() {
+        return dispatch(walletAuthenticationActions.unlockWalletWithBiometrics());
+      },
+
       switchAccount(accountId: AccountId) {
+        void clearBiometricAutoPromptSuppression();
         dispatch(userSwitchesAccount(accountId));
       },
 
@@ -77,6 +114,7 @@ export function useKeyActions() {
 
       async signOut() {
         await clearWalletSession();
+        await clearBiometricAutoPromptSuppression();
         inMemoryStore.clearAll();
         clearKeychainSelectorCaches();
         void broadcastSignOut();

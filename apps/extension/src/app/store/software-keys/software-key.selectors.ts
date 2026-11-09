@@ -12,6 +12,7 @@ import { type RootState } from '@app/store/store';
 import { selectActiveAccount } from '../active/active.selectors';
 import { selectHasSwitched } from '../ui/ui.selectors';
 import { selectWalletEntities } from '../wallets/wallet.selectors';
+import { resolveSoftwareKeyAuthentication } from './software-key-state';
 import { keyAdapter } from './software-key.slice';
 
 function selectKeysSlice(state: RootState) {
@@ -50,6 +51,19 @@ const selectActiveSoftwareKey = createSelector(
 );
 
 export const selectWalletSalt = createSelector(selectKeysSlice, state => state.salt);
+
+export const selectSoftwareKeyAuthentication = createSelector(selectKeysSlice, state =>
+  resolveSoftwareKeyAuthentication(state)
+);
+
+export const selectIsBiometricOnlyProfile = createSelector(
+  selectKeysSlice,
+  state => state.authenticationMode === 'biometric-only'
+);
+
+export function useIsBiometricOnlyProfile() {
+  return useSelector(selectIsBiometricOnlyProfile);
+}
 
 export function useActiveSoftwareKey() {
   return useSelector(selectActiveSoftwareKey);
