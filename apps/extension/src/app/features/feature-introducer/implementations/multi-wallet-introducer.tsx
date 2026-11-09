@@ -6,8 +6,10 @@ import { FeatureIntroducer } from '../feature-introducer';
 import { useFeatureIntroducer } from '../use-feature-introducer';
 import { MultiWalletIllustration } from './multi-wallet-illustration';
 
+export const multiWalletIntroducerId = 'multi-wallet-support';
+
 export function MultiWalletIntroducer() {
-  const { shouldShow, markAsSeen } = useFeatureIntroducer('multi-wallet-support');
+  const { shouldShow, markAsSeen } = useFeatureIntroducer(multiWalletIntroducerId);
 
   if (!shouldShow) return null;
 

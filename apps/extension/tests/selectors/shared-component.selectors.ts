@@ -34,6 +34,7 @@ export const SharedComponentsSelectors = {
   // FeatureIntroducer
   FeatureIntroducerCloseBtn: 'feature-introducer-close-btn',
   FeatureIntroducerTryItOutBtn: 'feature-introducer-try-it-out-btn',
+  SidePanelModeIntroducerGotItBtn: 'side-panel-mode-introducer-got-it-btn',
 } as const;
 export type SharedComponentsSelectors =
   (typeof SharedComponentsSelectors)[keyof typeof SharedComponentsSelectors];

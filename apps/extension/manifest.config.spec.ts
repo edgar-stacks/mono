@@ -37,8 +37,34 @@ test('creates a Chromium development manifest', () => {
         resources: ['inpage.js'],
         use_dynamic_url: false,
       },
+      {
+        resources: [
+          'assets/icons/leather-icon-128.png',
+          'assets/fonts/diatype/diatype-regular.woff2',
+          'assets/fonts/diatype/diatype-medium.woff2',
+        ],
+        use_dynamic_url: false,
+      },
     ],
   });
+});
+
+test('adds the Chrome side panel and the request overlay assets', () => {
+  const manifest = createManifest({
+    previewRelease: false,
+    version: '1.2.3',
+    walletEnvironment: 'production',
+  });
+
+  expect(manifest.permissions).toContain('sidePanel');
+  expect(manifest.side_panel).toEqual({ default_path: 'side-panel.html' });
+  expect(manifest.web_accessible_resources.flatMap(entry => entry.resources)).toEqual(
+    expect.arrayContaining([
+      'assets/icons/leather-icon-128.png',
+      'assets/fonts/diatype/diatype-regular.woff2',
+      'assets/fonts/diatype/diatype-medium.woff2',
+    ])
+  );
 });
 
 test('creates a preview manifest', () => {

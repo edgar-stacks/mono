@@ -4,12 +4,22 @@
  the browser. Content scripts read and modify the DOM of web pages the browser visits.
  https://developer.chrome.com/docs/extensions/mv3/architecture-overview/#contentScripts
  */
+import { isPlainObject } from 'remeda';
 import { z } from 'zod/mini';
 
-import type { RpcResponses } from '@leather.io/rpc';
-
 import { DomEventName } from '@shared/inpage-types';
-import { CONTENT_SCRIPT_PORT } from '@shared/message-types';
+import {
+  createSidePanelOverlayActionMessage,
+  isHideSidePanelOverlayMessage,
+  parseShowSidePanelOverlayMessage,
+  sidePanelOverlayMethods,
+} from '@shared/utils/side-panel-request-overlay';
+
+import {
+  hideSidePanelRequestOverlay,
+  hideSidePanelRequestOverlayOnResponse,
+  showSidePanelRequestOverlay,
+} from './side-panel-request-overlay-card';
 
 const inpageScriptUrl = 'inpage.js';
 
@@ -18,27 +28,37 @@ const rpcRequestEnvelopeSchema = z.looseObject({
   id: z.string(),
   method: z.string(),
 });
-type RpcRequestEnvelope = z.infer<typeof rpcRequestEnvelopeSchema>;
-
-let backgroundPort: chrome.runtime.Port;
-
-// Connection to background script - fires onConnect event in background script
-// and establishes two-way communication
-function connect() {
-  backgroundPort = chrome.runtime.connect({ name: CONTENT_SCRIPT_PORT });
-  backgroundPort.onDisconnect.addListener(connect);
-}
-
-connect();
 
 // Sends message to background script that an event has fired
-function sendMessageToBackground(message: RpcRequestEnvelope) {
-  backgroundPort.postMessage(message);
+function sendMessageToBackground(message: unknown) {
+  chrome.runtime.sendMessage(message).catch(() => undefined);
 }
 
 // Receives message from background script to execute in browser
-chrome.runtime.onMessage.addListener((message: RpcResponses) => {
-  if (message.jsonrpc === '2.0') {
+chrome.runtime.onMessage.addListener((message: unknown) => {
+  const showOverlayMessage = parseShowSidePanelOverlayMessage(message);
+  if (showOverlayMessage) {
+    showSidePanelRequestOverlay({
+      message: showOverlayMessage,
+      onOpenPanel() {
+        sendMessageToBackground(
+          createSidePanelOverlayActionMessage(sidePanelOverlayMethods.openPanel)
+        );
+      },
+      onDismiss() {
+        sendMessageToBackground(
+          createSidePanelOverlayActionMessage(sidePanelOverlayMethods.dismiss)
+        );
+      },
+    });
+    return;
+  }
+  if (isHideSidePanelOverlayMessage(message)) {
+    hideSidePanelRequestOverlay();
+    return;
+  }
+  if (isPlainObject(message) && message.jsonrpc === '2.0') {
+    hideSidePanelRequestOverlayOnResponse(message.id);
     window.postMessage(message, window.location.origin);
   }
 });

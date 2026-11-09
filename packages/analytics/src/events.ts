@@ -174,6 +174,7 @@ interface HistoricalEvents {
   click_change_theme_menu_item: undefined;
   click_settings_menu_item: undefined;
   click_toggle_privacy: undefined;
+  click_toggle_side_panel_mode: undefined;
   request_sign_psbt_submit: undefined;
   request_signature_cancel: undefined;
   requesting_origin_tab_closed_with_pending_action: undefined;

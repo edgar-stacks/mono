@@ -31,27 +31,32 @@ import { getHostnameFromUrl } from '@shared/utils/urls';
 
 import type { RootState } from '@app/store';
 import { popup } from '@background/popup';
+import {
+  openRequestInSidePanel,
+  registerSidePanelDismissResponse,
+} from '@background/side-panel/side-panel-requests';
 
+import type { RequestSender } from './define-rpc-request-handler';
 import { trackRpcRequestError } from './rpc-helpers';
 
-function getTabIdFromPort(port: chrome.runtime.Port) {
+function getTabIdFromPort(port: RequestSender) {
   return port.sender?.tab?.id ?? 0;
 }
 
-function getFrameIdFromPort(port: chrome.runtime.Port) {
+function getFrameIdFromPort(port: RequestSender) {
   return port.sender?.frameId ?? 0;
 }
 
-export function getOriginatingFrameFromPort(port: chrome.runtime.Port): OriginatingFrame {
+export function getOriginatingFrameFromPort(port: RequestSender): OriginatingFrame {
   return { frameId: getFrameIdFromPort(port), tabId: getTabIdFromPort(port) };
 }
 
-export function getOriginFromPort(port: chrome.runtime.Port) {
+export function getOriginFromPort(port: RequestSender) {
   if (port.sender?.url) return new URL(port.sender.url).origin;
   return port.sender?.origin;
 }
 
-function getTopOriginFromPort(port: chrome.runtime.Port) {
+function getTopOriginFromPort(port: RequestSender) {
   const tabUrl = port.sender?.tab?.url;
   if (!tabUrl) return undefined;
   try {
@@ -61,7 +66,7 @@ function getTopOriginFromPort(port: chrome.runtime.Port) {
   }
 }
 
-function getHostnameFromPort(port: chrome.runtime.Port) {
+function getHostnameFromPort(port: RequestSender) {
   const origin = getOriginFromPort(port);
   if (!origin) throw new Error('No URL found in port sender');
   return getHostnameFromUrl(origin);
@@ -85,6 +90,7 @@ interface ListenForPopupCloseArgs {
   response: unknown;
 }
 export function listenForPopupClose({ frameId, id, tabId, response }: ListenForPopupCloseArgs) {
+  if (isUndefined(id) && tabId) registerSidePanelDismissResponse(tabId, { frameId, response });
   chrome.windows.onRemoved.addListener(winId => {
     if (winId !== id || !tabId) return;
     const responseMessage = response;
@@ -133,7 +139,7 @@ export function listenForOriginTabClose({ tabId }: ListenForOriginTabCloseArgs) 
 export type RequestParams = [string, string][];
 
 export function createConnectingAppMetadataSearchParams(
-  port: chrome.runtime.Port,
+  port: RequestSender,
   otherParams: RequestParams = []
 ) {
   const urlParams = new URLSearchParams();
@@ -150,7 +156,7 @@ export function createConnectingAppMetadataSearchParams(
 }
 
 export async function createConnectingAppSearchParamsWithLastKnownAccount(
-  port: chrome.runtime.Port,
+  port: RequestSender,
   otherParams: RequestParams = []
 ) {
   const { urlParams, origin, frameId, tabId } = createConnectingAppMetadataSearchParams(
@@ -173,14 +179,21 @@ export async function createConnectingAppSearchParamsWithLastKnownAccount(
 
 const IS_TEST_ENV = process.env.TEST_ENV === 'true';
 
-export async function triggerRequestPopupWindowOpen(path: RouteUrls, urlParams: URLSearchParams) {
+const sidePanelRequestSurface = { id: undefined };
+
+async function openRequestSurface(path: string, urlParams: URLSearchParams) {
   if (IS_TEST_ENV) return openRequestInFullPage(path, urlParams);
-  return popup({ url: `/popup.html#${path}?${urlParams.toString()}` });
+  const route = `${path}?${urlParams.toString()}`;
+  if (await openRequestInSidePanel(route, urlParams)) return sidePanelRequestSurface;
+  return popup({ url: `/popup.html#${route}` });
+}
+
+export async function triggerRequestPopupWindowOpen(path: RouteUrls, urlParams: URLSearchParams) {
+  return openRequestSurface(path, urlParams);
 }
 
 export async function triggerSwapWindowOpen(path: To, urlParams: URLSearchParams) {
-  if (IS_TEST_ENV) return openRequestInFullPage(path, urlParams);
-  return popup({ url: `/popup.html#${String(path)}?${urlParams.toString()}` });
+  return openRequestSurface(String(path), urlParams);
 }
 
 type ValidationResult = 'success' | 'failure';
@@ -189,7 +202,7 @@ interface ValidateRequestParamsArgs {
   id: string;
   method: RpcMethodNames;
   params: unknown;
-  port: chrome.runtime.Port;
+  port: RequestSender;
   schema: z.Schema;
 }
 export function validateRequestParams({
@@ -243,7 +256,7 @@ type ConnectedWalletCheckResult =
   | { status: 'failure'; reason: ConnectedWalletFailureReason; frameId: number; tabId: number };
 
 async function checkConnectedWalletExists(
-  port: chrome.runtime.Port
+  port: RequestSender
 ): Promise<ConnectedWalletCheckResult> {
   const tabId = getTabIdFromPort(port);
   const frameId = getFrameIdFromPort(port);
@@ -264,7 +277,7 @@ async function checkConnectedWalletExists(
 
 export async function validateConnectedWalletExists(
   request: RpcRequests,
-  port: chrome.runtime.Port,
+  port: RequestSender,
   errorMessage = walletNoLongerAvailableMessage
 ): Promise<{ status: ValidationResult }> {
   const result = await checkConnectedWalletExists(port);

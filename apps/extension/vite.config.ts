@@ -236,6 +236,7 @@ export default defineConfig(({ mode, command }) => {
           index: path.join(extensionRoot, 'index.html'),
           popup: path.join(extensionRoot, 'popup.html'),
           actionPopup: path.join(extensionRoot, 'action-popup.html'),
+          sidePanel: path.join(extensionRoot, 'side-panel.html'),
           debug: path.join(extensionRoot, 'debug.html'),
         },
         output: {

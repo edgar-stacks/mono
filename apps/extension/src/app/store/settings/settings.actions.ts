@@ -24,6 +24,11 @@ export function useToggleNetworkBadgeAlwaysOn() {
   return () => dispatch(settingsActions.toggleNetworkBadgeAlwaysOn());
 }
 
+export function useToggleSidePanelMode() {
+  const dispatch = useDispatch();
+  return () => dispatch(settingsActions.toggleSidePanelMode());
+}
+
 export function useMarkFeatureAsSeen() {
   const dispatch = useDispatch();
   return (featureId: string) => dispatch(settingsActions.featureIntroSeen(featureId));

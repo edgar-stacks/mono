@@ -2,11 +2,13 @@
 // This file is the entrypoint to the extension's background script
 // https://developer.chrome.com/docs/extensions/mv3/architecture-overview/#background_script
 import type { RpcRequests } from '@leather.io/rpc';
+import { isDefined } from '@leather.io/utils';
 
 import { listenForSessionDurationPort } from '@shared/analytics/session-duration-tracking';
 import { logger } from '@shared/logger';
-import { CONTENT_SCRIPT_PORT } from '@shared/message-types';
+import { isRpcRequestEnvelope } from '@shared/rpc/is-rpc-request';
 import { warnUsersAboutDevToolsDangers } from '@shared/utils/dev-tools-warning-log';
+import { parseSidePanelOverlayActionMessage } from '@shared/utils/side-panel-request-overlay';
 
 import { queueAnalyticsRequest } from './background-analytics';
 import { initExtensionUpdateMonitor } from './extension-update-monitor';
@@ -14,10 +16,18 @@ import { initContextMenuActions } from './init-context-menus';
 import { internalBackgroundMessageHandler } from './messaging/internal-methods/message-handler';
 import { rpcMessageHandler } from './messaging/rpc-message-handler';
 import { initAddressMonitor } from './monitors/address-monitor';
+import { initSidePanelAvailabilitySync } from './side-panel/side-panel-availability';
+import {
+  handleSidePanelOverlayAction,
+  listenForSidePanelRequestPorts,
+  prepareSidePanelForRequest,
+} from './side-panel/side-panel-requests';
 
 initContextMenuActions();
 initExtensionUpdateMonitor();
 warnUsersAboutDevToolsDangers();
+initSidePanelAvailabilitySync();
+listenForSidePanelRequestPorts();
 
 chrome.runtime.onInstalled.addListener(details => {
   const reason: string = details.reason;
@@ -28,27 +38,38 @@ chrome.runtime.onInstalled.addListener(details => {
   }
 });
 
-// Listen for connection to the content-script - port for two-way communication
-chrome.runtime.onConnect.addListener(port => {
-  if (port.name !== CONTENT_SCRIPT_PORT) return;
+function isContentScriptSender(sender: chrome.runtime.MessageSender) {
+  const isExtensionPage = sender.url?.startsWith(chrome.runtime.getURL('')) ?? false;
+  return sender.id === chrome.runtime.id && isDefined(sender.tab) && !isExtensionPage;
+}
 
-  port.onMessage.addListener((message: RpcRequests, port) => {
-    if (!port.sender?.tab?.id)
-      return logger.error('Message reached background script without a corresponding tab');
+function handleContentScriptMessage(message: RpcRequests, sender: chrome.runtime.MessageSender) {
+  const tabId = sender.tab?.id;
+  if (!tabId) return logger.error('Message reached background script without a corresponding tab');
 
-    // Chromium/Firefox discrepancy
-    const originUrl = port.sender?.origin ?? port.sender?.url;
+  const overlayAction = parseSidePanelOverlayActionMessage(message);
+  if (overlayAction) return handleSidePanelOverlayAction(tabId, overlayAction.method);
 
-    if (!originUrl)
-      return logger.error('Message reached background script without a corresponding origin');
+  if (!isRpcRequestEnvelope(message)) return;
 
-    void rpcMessageHandler(message, port);
-  });
-});
+  // Chromium/Firefox discrepancy
+  const originUrl = sender.origin ?? sender.url;
+
+  if (!originUrl)
+    return logger.error('Message reached background script without a corresponding origin');
+
+  prepareSidePanelForRequest(tabId, message);
+  void rpcMessageHandler(message, { sender });
+}
 
 //
 // Events from the extension frames script
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+chrome.runtime.onMessage.addListener((message: RpcRequests, sender, sendResponse) => {
+  if (isContentScriptSender(sender)) {
+    handleContentScriptMessage(message, sender);
+    sendResponse();
+    return false;
+  }
   void internalBackgroundMessageHandler(message, sender, sendResponse);
   // Listener fn must return `true` to indicate the response will be async
   return true;
