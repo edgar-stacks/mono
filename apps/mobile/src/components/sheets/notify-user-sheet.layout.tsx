@@ -1,5 +1,5 @@
 import unavailableFeatureImage from '@/assets/unavailable-feature.png';
-import { analytics } from '@/utils/analytics';
+import { analytics } from '@/store/analytics';
 import { t } from '@lingui/core/macro';
 import { Image } from 'expo-image';
 

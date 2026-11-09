@@ -7,7 +7,7 @@ import { InlineAssetPicker } from '@/features/send/components/inline-asset-picke
 import { useSendNavigation, useSendRoute } from '@/features/send/navigation';
 import { useSendFlowContext } from '@/features/send/send-flow-provider';
 import { useAccounts } from '@/store/accounts/accounts.read';
-import { analytics } from '@/utils/analytics';
+import { analytics } from '@/store/analytics';
 import { t } from '@lingui/core/macro';
 
 import { type FungibleCryptoAsset } from '@leather.io/models';

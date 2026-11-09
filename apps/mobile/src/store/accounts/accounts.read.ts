@@ -5,7 +5,7 @@ import { createSelector } from '@reduxjs/toolkit';
 
 import { isDefined } from '@leather.io/utils';
 
-import { type RootState } from '../store';
+import type { RootState } from '../store';
 import { accountsAdapter } from './accounts.write';
 import { type AccountStatus, type AccountStore, deriveIconFromAccountId } from './utils';
 

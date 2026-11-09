@@ -3,8 +3,8 @@ import Animated, { Easing, FadeIn, FadeOut } from 'react-native-reanimated';
 
 import { useSwapDependencies } from '@/features/swap/use-swap-dependencies';
 import { useSwapDisabledPairs } from '@/features/swap/use-swap-disabled-pairs';
+import { analytics } from '@/store/analytics';
 import { useSettings } from '@/store/settings/settings';
-import { analytics } from '@/utils/analytics';
 
 import { stxAsset } from '@leather.io/constants';
 import { type SwappableFungibleCryptoAsset } from '@leather.io/models';

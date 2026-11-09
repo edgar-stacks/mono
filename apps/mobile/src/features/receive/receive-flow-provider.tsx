@@ -1,6 +1,6 @@
 import { type ReactNode, createContext, useContext, useReducer } from 'react';
 
-import { type SelectedAsset } from '@/features/receive/screens/select-asset';
+import type { SelectedAsset } from '@/features/receive/screens/select-asset';
 
 import { type AccountId } from '@leather.io/models';
 

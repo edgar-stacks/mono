@@ -1,5 +1,7 @@
+import { getMixpanelToken } from '@/shared/environment';
 import { selectAnalyticsPreference } from '@/store/settings/settings.read';
 import { store } from '@/store/store';
+import { getDeviceId } from '@/utils/get-device-id';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Application from 'expo-application';
 import { Mixpanel } from 'mixpanel-react-native';
@@ -7,8 +9,6 @@ import { Mixpanel } from 'mixpanel-react-native';
 import { configureAnalyticsClient } from '@leather.io/analytics';
 import type { NetworkConfiguration } from '@leather.io/models';
 import { noop } from '@leather.io/utils';
-
-import { getDeviceId } from './get-device-id';
 
 type Network = NetworkConfiguration['chain']['bitcoin']['mode'];
 
@@ -36,9 +36,8 @@ function getMockedMixpanel() {
   };
 }
 
-const mixpanelClient = process.env.EXPO_PUBLIC_MIXPANEL_TOKEN
-  ? new Mixpanel(process.env.EXPO_PUBLIC_MIXPANEL_TOKEN, false)
-  : getMockedMixpanel();
+const mixpanelToken = getMixpanelToken();
+const mixpanelClient = mixpanelToken ? new Mixpanel(mixpanelToken, false) : getMockedMixpanel();
 
 async function initMixpanelClient() {
   await mixpanelClient.init();

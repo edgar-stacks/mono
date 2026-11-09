@@ -8,7 +8,7 @@ import { QrCard } from '@/features/receive/components/qr-card';
 import { useCopyAddress } from '@/hooks/use-copy-address';
 import { TestId } from '@/shared/test-id';
 import { useAccounts } from '@/store/accounts/accounts.read';
-import { analytics } from '@/utils/analytics';
+import { analytics } from '@/store/analytics';
 import { t } from '@lingui/core/macro';
 
 import {

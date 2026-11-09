@@ -3,8 +3,8 @@ import { type RefObject, useImperativeHandle, useRef, useState } from 'react';
 import { FullHeightSheet } from '@/components/sheets/full-height-sheet/full-height-sheet';
 import { useGlobalSheets } from '@/core/global-sheet-provider';
 import { SheetNavigationContainer } from '@/core/sheet-navigation-container';
+import { analytics } from '@/store/analytics';
 import { useSettings } from '@/store/settings/settings';
-import { analytics } from '@/utils/analytics';
 
 import { type SheetInstance, useHaptics } from '@leather.io/ui/native';
 import { assertExistence } from '@leather.io/utils';

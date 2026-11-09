@@ -5,7 +5,7 @@ import { useGlobalSheets } from '@/core/global-sheet-provider';
 import { SheetNavigationContainer } from '@/core/sheet-navigation-container';
 import { Swap } from '@/features/swap/swap';
 import { usePreloadSwapData } from '@/features/swap/use-preload-swap-data';
-import { analytics } from '@/utils/analytics';
+import { analytics } from '@/store/analytics';
 
 import { type SwappableFungibleCryptoAsset } from '@leather.io/models';
 import { type SheetInstance, useHaptics } from '@leather.io/ui/native';
