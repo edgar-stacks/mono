@@ -99,9 +99,18 @@ function PendingStatus() {
   );
 }
 
+function useCopyWithToast(value: string, subject: string) {
+  const toast = useToast();
+  const { onCopy } = useClipboard(value);
+  return async function copyAndNotify() {
+    const hasCopied = await onCopy();
+    if (hasCopied === true) toast.success(`${subject} copied`);
+    if (hasCopied === false) toast.error(`Unable to copy ${subject.toLowerCase()}. Try again.`);
+  };
+}
+
 function CopyMessageButton({ message }: { message: string }) {
-  const { success: showToast } = useToast();
-  const { onCopy } = useClipboard(message);
+  const copyAndNotify = useCopyWithToast(message, 'Invite message');
   return (
     <BasicTooltip
       asChild
@@ -114,10 +123,7 @@ function CopyMessageButton({ message }: { message: string }) {
           height="30px"
           px="space.03"
           textStyle="label.03"
-          onClick={() => {
-            onCopy();
-            showToast('Invite message copied');
-          }}
+          onClick={() => void copyAndNotify()}
         >
           <Flex alignItems="center" gap="space.01">
             <CopyIcon variant="small" />
@@ -130,8 +136,7 @@ function CopyMessageButton({ message }: { message: string }) {
 }
 
 function CopyLinkButton({ link }: { link: string }) {
-  const { success: showToast } = useToast();
-  const { onCopy } = useClipboard(link);
+  const copyAndNotify = useCopyWithToast(link, 'Invite link');
   return (
     <Button
       variant="solid"
@@ -140,10 +145,7 @@ function CopyLinkButton({ link }: { link: string }) {
       px="space.03"
       textStyle="label.03"
       flexShrink={0}
-      onClick={() => {
-        onCopy();
-        showToast('Invite link copied');
-      }}
+      onClick={() => void copyAndNotify()}
     >
       <Flex alignItems="center" gap="space.01" color="ink.background-primary">
         <LinkIcon />
