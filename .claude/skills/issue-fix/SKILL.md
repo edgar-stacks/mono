@@ -167,7 +167,11 @@ fix → verify → review:
   change back to fix; the review is skipped.
 - **Review.** A separate Claude pass with `.github/prompts/issue-fix-review.md` writes `review.json`:
   confirmed `critical`, `blocker` and `regression` findings under `blocking`, anything smaller under
-  `minor`. Later rounds see earlier reviews and only re-raise unfixed or newly introduced findings.
+  `minor`. It maps every expected behavior, `Settled:` line and `Done when` box to the code that
+  delivers it (a gap is a `blocker`), traces each user-visible state through to its render, and
+  checks every doubt in the fixer's questions and `Not verified` lines in the code instead of
+  passing it over. Later rounds see earlier reviews and only re-raise unfixed or newly introduced
+  findings, scope gaps and confirmed doubts.
   The run fails if the review touched any file. Blocking findings send the change back to fix; minor
   ones are left for the human review.
 
