@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 
-import { getHostnameFromUrl } from '@shared/utils/urls';
+import { getOriginFromUrl } from '@shared/utils/urls';
 
 import { useCurrentAccountId } from '../accounts/account';
 import { useCurrentNetwork } from '../networks/networks.selectors';
@@ -18,11 +18,10 @@ export function useAppPermissions() {
     () => ({
       allAppPermissions,
       hasRequestedAccounts(origin: string, policyId?: string) {
-        const url = getHostnameFromUrl(origin);
         dispatch(
           appPermissionsSlice.actions.updatePermission({
             ...account,
-            origin: url,
+            origin: getOriginFromUrl(origin),
             requestedAccounts: new Date().toISOString(),
             networkMode: currentNetwork.chain.bitcoin.mode,
             ...(policyId ? { policyId } : {}),
