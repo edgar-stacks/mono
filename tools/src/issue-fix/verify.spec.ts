@@ -14,10 +14,14 @@ import { verifyFix } from './verify.js';
 
 const gate = [
   'format',
+  'syncpack:lint',
+  'lint:filenames',
   'lint',
   'typecheck',
   'knip',
   '--filter @leather.io/extension lint:unused-exports',
+  'turbo run build --filter={./packages/*}[HEAD]',
+  'lint:deps',
   'turbo run test:unit --filter=...[HEAD]',
 ];
 
@@ -65,7 +69,7 @@ describe('verifyFix', () => {
     repo.writeStatus(doneStatus);
     const pnpm = fakePnpm(repo, { fail: 'typecheck' });
     expect(verify(pnpm, true)).toMatchObject({ passed: false, message: '`pnpm typecheck` failed' });
-    expect(pnpm.calls).toEqual(['format', 'lint', 'typecheck']);
+    expect(pnpm.calls).toEqual(gate.slice(0, gate.indexOf('typecheck') + 1));
     expect(readFileSync(repo.paths.verifyReport, 'utf8')).toBe(
       'FAILED: `pnpm typecheck` failed\n\n```\ntypecheck output\nerror: something broke\n```\n'
     );
@@ -89,7 +93,7 @@ describe('verifyFix', () => {
     repo.writeStatus(blockedStatus);
     const pnpm = fakePnpm(repo, { fail: 'lint' });
     expect(verify(pnpm)).toMatchObject({ passed: false, message: '`pnpm lint` failed' });
-    expect(pnpm.calls).toEqual(['format', 'lint']);
+    expect(pnpm.calls).toEqual(gate.slice(0, gate.indexOf('lint') + 1));
   });
 
   test('fails when the fixer is done but nothing changed', () => {

@@ -26,8 +26,9 @@ to write in the status file.
    done unless the brief says none applies. Mobile changes run `pnpm lingui` from `apps/mobile/`
    first.
 3. Run every Verify line and the verification list from `CLAUDE.md` (`pnpm format`, `pnpm lint`,
-   `pnpm typecheck`, `pnpm knip`, `pnpm --filter @leather.io/extension lint:unused-exports`) and the
-   unit tests of the packages you changed. Fix what fails. Leave the tree formatted: the workflow
+   `pnpm typecheck`, `pnpm knip`, `pnpm --filter @leather.io/extension lint:unused-exports`), the
+   checks CI adds (`pnpm syncpack:lint`, `pnpm lint:filenames`, and `pnpm lint:deps` after building
+   the packages you changed) and the unit tests of the packages you changed. Fix what fails. Leave the tree formatted: the workflow
    runs `pnpm format` again and fails the run if it changes anything.
 4. Run the extension end-to-end specs the brief names, after reproducing the bug with one first when
    you can. `apps/extension/.env` is already written and the Chromium browser is installed; build

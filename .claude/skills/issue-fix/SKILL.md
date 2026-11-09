@@ -172,8 +172,9 @@ fix → verify → review:
 - **Fix.** Round 1 follows `.github/prompts/issue-fix.md`; later rounds follow
   `.github/prompts/issue-fix-round.md` and fix only what the previous round reported.
 - **Verify.** `pnpm lt issue-fix round verify`: the status in `status.json` must be valid, every
-  change must be under the allowed paths, `pnpm format` must change nothing, then lint, typecheck,
-  knip, the extension's unused exports and the unit tests of every changed package and its
+  change must be under the allowed paths, `pnpm format` must change nothing, then syncpack,
+  filenames, lint, typecheck, knip, the extension's unused exports, the dependency rules (after
+  building the changed packages) and the unit tests of every changed package and its
   dependents. A failure is written to `verify.md` with the tail of the failing output and sends the
   change back to fix; the review is skipped.
 - **Review.** A separate Claude pass with `.github/prompts/issue-fix-review.md` writes `review.json`:

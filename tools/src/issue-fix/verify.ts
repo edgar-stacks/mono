@@ -19,10 +19,14 @@ type VerifyResult =
 
 const formatCommand: readonly string[] = ['format'];
 const gateCommands: readonly (readonly string[])[] = [
+  ['syncpack:lint'],
+  ['lint:filenames'],
   ['lint'],
   ['typecheck'],
   ['knip'],
   ['--filter', '@leather.io/extension', 'lint:unused-exports'],
+  ['turbo', 'run', 'build', '--filter={./packages/*}[HEAD]'],
+  ['lint:deps'],
   ['turbo', 'run', 'test:unit', '--filter=...[HEAD]'],
 ];
 const reportTailLines = 150;
