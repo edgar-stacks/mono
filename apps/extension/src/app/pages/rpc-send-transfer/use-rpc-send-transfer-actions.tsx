@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router';
 
 import { bytesToHex } from '@noble/hashes/utils';
 import { base64 } from '@scure/base';
+import { styled } from 'leather-styles/jsx';
 
 import {
   compileWshDescriptor,
@@ -12,6 +13,7 @@ import {
 } from '@leather.io/bitcoin';
 import { createRpcSuccessResponse } from '@leather.io/rpc';
 import { buildUnsignedMultisigBtcTransfer } from '@leather.io/services';
+import { Button } from '@leather.io/ui';
 import { delay } from '@leather.io/utils';
 
 import { logger } from '@shared/logger';
@@ -33,6 +35,7 @@ import { createPolicyAddresses } from '@app/store/policy/policy-addresses';
 import { useCurrentPolicy } from '@app/store/policy/policy.selectors';
 
 import { useRpcSendTransferContext } from './rpc-send-transfer.context';
+import { useRpcSendTransferError } from './use-rpc-send-transfer-error';
 import type { RpcSendTransferTx } from './use-rpc-send-transfer-tx';
 
 interface SendTransferActionLabels {
@@ -57,7 +60,7 @@ export function useRpcSendTransferActions({
   tx: unsignedTx,
   error: unsignedTxError,
 }: RpcSendTransferTx) {
-  const { availableBalance, selectedFee } = useFeeEditorContext();
+  const { selectedFee } = useFeeEditorContext();
   const { amount, broadcast, frameId, isLoadingBalance, recipients, requestId, tabId } =
     useRpcSendTransferContext();
   const [isSubmitted, setIsSubmitted] = useState(false);
@@ -71,8 +74,7 @@ export function useRpcSendTransferActions({
   const network = useCurrentNetwork();
   const { proposeMultisigTransaction } = useProposeMultisigTransaction();
   const isBitcoinPolicy = policy?.chain === 'bitcoin';
-
-  const isInsufficientBalance = availableBalance.amount.isLessThan(amount.amount);
+  const sendTransferError = useRpcSendTransferError();
 
   const approverActions = useMemo(() => {
     function onCancel() {
@@ -205,9 +207,17 @@ export function useRpcSendTransferActions({
       }
     }
 
+    if (sendTransferError && !isLoadingBalance) {
+      return [
+        <Button key="cancel" onClick={onCancel} fullWidth variant="outline">
+          <styled.span textStyle="label.02">Cancel</styled.span>
+        </Button>,
+      ];
+    }
+
     return getTransactionActions({
       isLoading: isLoadingBalance,
-      isError: isInsufficientBalance,
+      isError: false,
       isBroadcasting,
       isSubmitted,
       onCancel,
@@ -216,7 +226,7 @@ export function useRpcSendTransferActions({
     });
   }, [
     isLoadingBalance,
-    isInsufficientBalance,
+    sendTransferError,
     isBroadcasting,
     isSubmitted,
     navigate,

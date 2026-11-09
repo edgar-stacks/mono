@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 
 import { Box } from 'leather-styles/jsx';
 
@@ -10,27 +10,39 @@ import { analytics } from '@shared/utils/analytics';
 import { formatCurrency } from '@app/common/currency-formatter';
 import { focusTabAndWindow } from '@app/common/focus-tab';
 import { useConvertCryptoCurrencyToFiatAmount } from '@app/common/hooks/use-convert-to-fiat-amount';
+import { useSwitchAccountSheet } from '@app/common/switch-account/use-switch-account-sheet-context';
 import { AccountBitcoinAddress } from '@app/components/account/account-bitcoin-address';
+import { FormError } from '@app/components/form-error';
 import { BackgroundOverlay } from '@app/components/loading-overlay';
 import { NoBroadcastWarningLabel } from '@app/components/rpc-transaction-request/no-broadcast-warning-label';
 import { TransactionActionsTitle } from '@app/components/rpc-transaction-request/transaction-actions-title';
-import { TransactionError } from '@app/components/rpc-transaction-request/transaction-error';
 import { TransactionHeader } from '@app/components/rpc-transaction-request/transaction-header';
 import { TransactionRecipientsLayout } from '@app/components/rpc-transaction-request/transaction-recipients.layout';
 import { TransactionWrapper } from '@app/components/rpc-transaction-request/transaction-wrapper';
 import { SpendSourcesApproverRows } from '@app/components/spend-sources/spend-sources-approver-rows';
 import { SpendSourcesTaprootCallout } from '@app/components/spend-sources/spend-sources-taproot-callout';
 import { FeeEditor } from '@app/features/fee-editor/fee-editor';
-import { useFeeEditorContext } from '@app/features/fee-editor/fee-editor.context';
+import {
+  type FeesErrorReason,
+  useFeeEditorContext,
+} from '@app/features/fee-editor/fee-editor.context';
 import { SigningAccountCard } from '@app/features/rpc-stacks-transaction-request/signing-account-card/signing-account-card';
 import { useBreakOnNonCompliantEntity } from '@app/query/common/compliance-checker/compliance-checker.query';
 import { useCurrentAccountId } from '@app/store/accounts/account';
 import { useCurrentPolicy } from '@app/store/policy/policy.selectors';
 
+import { RpcSendTransferInsufficientFunds } from './rpc-send-transfer-insufficient-funds';
 import { getRpcSendTransferSpendSources } from './rpc-send-transfer-spend-sources';
 import { useRpcSendTransferContext } from './rpc-send-transfer.context';
 import { useRpcSendTransferActions } from './use-rpc-send-transfer-actions';
+import { useRpcSendTransferError } from './use-rpc-send-transfer-error';
 import { useRpcSendTransferTx } from './use-rpc-send-transfer-tx';
+
+const sendTransferErrorMessages: Record<FeesErrorReason, string> = {
+  'insufficient-funds':
+    "This account doesn't have enough funds for this transfer. Switch account or cancel the request.",
+  'fee-estimation-failed': 'Unable to estimate network fees for this request',
+};
 
 export function RpcSendTransfer() {
   const currentAccount = useCurrentAccountId();
@@ -41,10 +53,15 @@ export function RpcSendTransfer() {
     useRpcSendTransferContext();
 
   const convertToFiatAmount = useConvertCryptoCurrencyToFiatAmount('BTC');
+  const { toggleSwitchAccount, setAccountFilter } = useSwitchAccountSheet();
+  const sendTransferError = useRpcSendTransferError();
 
   useBreakOnNonCompliantEntity('rpc_send_transfer', recipientAddresses);
 
-  const isInsufficientBalance = availableBalance.amount.isLessThan(amount.amount);
+  useEffect(() => {
+    setAccountFilter('bitcoin');
+  }, [setAccountFilter]);
+
   const isBitcoinPolicy = policy?.chain === 'bitcoin';
   const isSignOnly = !broadcast && !isBitcoinPolicy;
   const generatedTx = useRpcSendTransferTx();
@@ -88,6 +105,7 @@ export function RpcSendTransfer() {
             fiatBalance={convertToFiatAmount(availableBalance)}
             isLoadingBalance={isLoadingBalance}
             showPolicyAccount={isBitcoinPolicy}
+            onSelectAccount={toggleSwitchAccount}
           />
           <TransactionRecipientsLayout
             title="Bitcoin"
@@ -96,22 +114,27 @@ export function RpcSendTransfer() {
             convertToFiatAmount={convertToFiatAmount}
             recipients={recipients}
           />
-          <FeeEditor.Trigger
-            feeType="fee-rate"
-            isLoading={isLoadingFees}
-            isSponsored={false}
-            marketData={marketData}
-            onEditFee={onUserActivatesFeeEditor}
-            selectedFee={selectedFee}
-          />
+          {sendTransferError === 'insufficient-funds' && <RpcSendTransferInsufficientFunds />}
+          {!sendTransferError && (
+            <FeeEditor.Trigger
+              feeType="fee-rate"
+              isLoading={isLoadingFees}
+              isSponsored={false}
+              marketData={marketData}
+              onEditFee={onUserActivatesFeeEditor}
+              selectedFee={selectedFee}
+            />
+          )}
         </Box>
         <Approver.Actions actions={approverActions}>
-          <TransactionActionsTitle amount={totalFiatValue} isLoading={isLoadingBalance} />
-          {spendSources && <SpendSourcesApproverRows breakdown={spendSources.breakdown} />}
-          <TransactionError
-            isLoading={isLoadingBalance}
-            isInsufficientBalance={isInsufficientBalance}
-          />
+          {sendTransferError ? (
+            <FormError text={sendTransferErrorMessages[sendTransferError]} />
+          ) : (
+            <>
+              <TransactionActionsTitle amount={totalFiatValue} isLoading={isLoadingBalance} />
+              {spendSources && <SpendSourcesApproverRows breakdown={spendSources.breakdown} />}
+            </>
+          )}
         </Approver.Actions>
       </Approver>
     </TransactionWrapper>

@@ -16,11 +16,13 @@ import {
   mockTaprootUtxo,
 } from '@tests/mocks/mock-mixed-utxos';
 import { makeBitcoinPolicy, policyStateOverrides } from '@tests/mocks/mock-policies';
-import { mockFundedBitcoinAddressUtxos } from '@tests/mocks/mock-utxos';
+import { mockFundedBitcoinAddressUtxos, mockUtxosFundedLater } from '@tests/mocks/mock-utxos';
 import {
   getConnectedTestAppPermissionsState,
   testFingerprint,
 } from '@tests/page-object-models/onboarding.page';
+import { SwitchAccountPage } from '@tests/page-object-models/switch-account.page';
+import { AccountSelectors } from '@tests/selectors/account.selectors';
 import { SendCryptoAssetSelectors } from '@tests/selectors/send.selectors';
 
 import { BITCOIN_API_BASE_URL_TESTNET4 } from '@leather.io/models';
@@ -198,6 +200,74 @@ test.describe('RPC: sendTransfer', () => {
         message: 'User rejected request',
       },
     });
+  });
+});
+
+const insufficientFundsMessage =
+  "This account doesn't have enough funds for this transfer. Switch account or cancel the request.";
+
+test.describe('RPC: sendTransfer with insufficient funds', () => {
+  let utxoFunding: Awaited<ReturnType<typeof mockUtxosFundedLater>>;
+
+  test.beforeEach(async ({ extensionId, globalPage, onboardingPage, page, context }) => {
+    await globalPage.setupAndUseApiCalls(extensionId);
+    await mockLeatherApiRequests(context);
+    utxoFunding = await mockUtxosFundedLater(context);
+    await onboardingPage.signInWithTestAccount(extensionId, getConnectedTestAppPermissionsState());
+    await page.goto('localhost:3000');
+  });
+
+  test('that the popup explains the shortfall and only offers Cancel', async ({
+    page,
+    context,
+  }) => {
+    const resultPromise = openSendTransfer(page)({
+      recipients: [{ address: TEST_TESTNET_ACCOUNT_2_BTC_ADDRESS, amount: '100000000' }],
+      network: 'testnet4',
+    });
+    const popup = await context.waitForEvent('page');
+
+    await test.expect(popup.getByText(insufficientFundsMessage)).toBeVisible({ timeout: 15_000 });
+    await test.expect(popup.getByText('Requested amount', { exact: true })).toBeVisible();
+    await test.expect(popup.getByText('Available to send', { exact: true })).toBeVisible();
+    await test.expect(popup.getByText('Something went wrong')).toHaveCount(0);
+    await test.expect(popup.getByRole('button', { name: 'Approve' })).toHaveCount(0);
+    await popup.getByRole('button', { name: 'Cancel' }).click();
+
+    const result = await resultPromise;
+
+    assertExistence(result, 'Expected result');
+    delete result.id;
+
+    test.expect(result).toEqual({
+      jsonrpc: '2.0',
+      error: {
+        code: 4001,
+        message: 'User rejected request',
+      },
+    });
+  });
+
+  test('that switching to a funded account makes Approve available', async ({ page, context }) => {
+    const resultPromise = openSendTransfer(page)({
+      recipients: [{ address: TEST_TESTNET_ACCOUNT_2_BTC_ADDRESS, amount: '10000' }],
+      network: 'testnet4',
+    });
+    const popup = await context.waitForEvent('page');
+
+    await test.expect(popup.getByText(insufficientFundsMessage)).toBeVisible({ timeout: 15_000 });
+    utxoFunding.fund();
+
+    await popup.getByTestId(AccountSelectors.SigningAccountCard).click();
+    await new SwitchAccountPage(popup).selectAccount(1);
+
+    await test
+      .expect(popup.getByRole('button', { name: 'Approve' }))
+      .toBeVisible({ timeout: 15_000 });
+    await test.expect(popup.getByText(insufficientFundsMessage)).toHaveCount(0);
+
+    await popup.close();
+    await test.expect(resultPromise).resolves.toBeDefined();
   });
 });
 

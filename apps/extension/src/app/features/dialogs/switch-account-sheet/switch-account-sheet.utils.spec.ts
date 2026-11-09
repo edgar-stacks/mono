@@ -6,7 +6,11 @@ import type { AccountId } from '@leather.io/models';
 import type { WalletType } from '@app/store/common/wallet-type.selectors';
 import type { PolicyStore } from '@app/store/policy/policy-store.utils';
 
-import { buildWalletRows, canHideAccount } from './switch-account-sheet.utils';
+import {
+  buildWalletRows,
+  canHideAccount,
+  filterWalletTreeToBitcoinAccounts,
+} from './switch-account-sheet.utils';
 
 const fingerprint = 'a1b2c3d4';
 function account(accountIndex: number): AccountId {
@@ -57,6 +61,51 @@ describe(buildWalletRows.name, () => {
       acc.accountIndex === 0 ? [policy] : []
     );
     expect(rows.map(row => row.kind)).toEqual(['account', 'policy', 'account']);
+  });
+});
+
+describe(filterWalletTreeToBitcoinAccounts.name, () => {
+  const ledgerFingerprint = 'e5f6a7b8';
+  function ledgerWallet(accountCount: number): {
+    fingerprint: string;
+    type: WalletType;
+    accounts: AccountId[];
+  } {
+    return {
+      fingerprint: ledgerFingerprint,
+      type: 'ledger',
+      accounts: Array.from({ length: accountCount }, (_, accountIndex) => ({
+        fingerprint: ledgerFingerprint,
+        accountIndex,
+      })),
+    };
+  }
+
+  test('software wallets keep every account', () => {
+    const software = { fingerprint, ...walletGroup('software', 3) };
+
+    expect(filterWalletTreeToBitcoinAccounts([software], [])).toEqual([software]);
+  });
+
+  test('ledger wallets keep only accounts with a bitcoin keychain', () => {
+    const filtered = filterWalletTreeToBitcoinAccounts(
+      [ledgerWallet(3)],
+      [makeAccountIdentifer(ledgerFingerprint, 1), makeAccountIdentifer(fingerprint, 0)]
+    );
+
+    expect(filtered).toHaveLength(1);
+    expect(filtered[0].accounts).toEqual([{ fingerprint: ledgerFingerprint, accountIndex: 1 }]);
+  });
+
+  test('drops ledger wallets left without accounts', () => {
+    const software = { fingerprint, ...walletGroup('software', 1) };
+
+    const filtered = filterWalletTreeToBitcoinAccounts(
+      [software, ledgerWallet(2)],
+      [makeAccountIdentifer(fingerprint, 0)]
+    );
+
+    expect(filtered).toEqual([software]);
   });
 });
 

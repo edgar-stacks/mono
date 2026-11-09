@@ -202,6 +202,18 @@ export async function mockFundedBitcoinAddressUtxos(
   );
 }
 
+export async function mockUtxosFundedLater(target: Page | BrowserContext) {
+  let isFunded = false;
+  await target.route('**/v1/utxos/**', route =>
+    isFunded ? route.fallback() : route.fulfill({ json: [] })
+  );
+  return {
+    fund() {
+      isFunded = true;
+    },
+  };
+}
+
 export async function mockMixedUtxoRequests(page: Page | BrowserContext, utxos: LeatherUtxoMock[]) {
   await page.route('**/v1/utxos/**', route => {
     const url = route.request().url();
