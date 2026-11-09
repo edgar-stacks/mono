@@ -22,14 +22,30 @@ import {
 import { useStacksBroadcastTransaction } from '@app/common/transactions/stacks/use-stacks-broadcast-transaction';
 import { Content, Page } from '@app/components/layout';
 import { PageHeader } from '@app/features/container/headers/page.header';
+import { sbtcFeeCurrency } from '@app/features/sbtc-sponsorship/sbtc-sponsorship.utils';
 import { useCryptoCurrencyMarketData } from '@app/query/common/market-data/market-data.hooks';
 
 import type { ProposalSentSummaryState } from '../../../sent-summary/proposal-sent-summary';
 import { stacksConfirmationRouteStateSchema } from '../../hooks/use-send-form-navigate';
 import { SendFormConfirmationLayout } from '../send-form-confirmation.layout';
+import { SbtcSponsoredSendFormConfirmation } from './sbtc-sponsored-send-form-confirmation';
 import { useProposeStacksSendTransaction } from './use-propose-stacks-send-transaction';
 
 export function StacksSendFormConfirmation() {
+  const routeState = useRouteState(stacksConfirmationRouteStateSchema);
+  if (routeState.sponsorship) {
+    return (
+      <SbtcSponsoredSendFormConfirmation
+        routeState={routeState}
+        sponsorship={routeState.sponsorship}
+        symbol={sbtcFeeCurrency}
+      />
+    );
+  }
+  return <StacksBroadcastSendFormConfirmation />;
+}
+
+function StacksBroadcastSendFormConfirmation() {
   const {
     tx: txHex,
     decimals,

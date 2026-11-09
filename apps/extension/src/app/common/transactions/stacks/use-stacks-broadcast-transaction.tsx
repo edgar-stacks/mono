@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
 
-import { type StacksTransactionWire } from '@stacks/transactions';
+import { AuthType, type StacksTransactionWire } from '@stacks/transactions';
 
 import type { CryptoCurrency } from '@leather.io/models';
 import { isError, isString } from '@leather.io/utils';
@@ -14,6 +14,7 @@ import {
   StacksTransactionActionType,
   stacksTransactionToHex,
 } from '@app/common/transactions/stacks/transaction.utils';
+import { sponsoredTransactionLocalBroadcastErrorMessage } from '@app/features/sbtc-sponsorship/sbtc-sponsorship.utils';
 import { toastDurations, useToast } from '@app/features/toasts/use-toast';
 import { useSignStacksTransaction } from '@app/store/transactions/transaction.hooks';
 import { LoadingKeys } from '@app/store/ui/ui.hooks';
@@ -99,6 +100,10 @@ export function useStacksBroadcastTransaction({
     async function broadcastTransaction(unsignedTx: StacksTransactionWire) {
       try {
         if (!unsignedTx) return;
+        if (unsignedTx.auth.authType === AuthType.Sponsored) {
+          toast.error(sponsoredTransactionLocalBroadcastErrorMessage);
+          return;
+        }
         const signedTx = await signStacksTransaction(unsignedTx);
         // TODO: Maybe better error handling here?
         if (!signedTx) return;

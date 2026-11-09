@@ -20,10 +20,12 @@ export const SharedComponentsSelectors = {
   FeeToBePaidLabel: 'fee-to-be-paid-label',
   LowFeeEstimateItem: 'low-fee',
   MiddleFeeEstimateItem: 'standard-fee',
+  HighFeeEstimateItem: 'high-fee',
   FeesListItem: 'fee-list-item',
   FeesListItemFeeValue: 'fee-list-item-fee-value',
   FeeTabRecommended: 'tab-recommended',
   FeeTabCustom: 'tab-custom',
+  SponsoredFeeBadge: 'sponsored-fee-badge',
 
   // Error
   BroadcastErrorTitle: 'broadcast-error-title',

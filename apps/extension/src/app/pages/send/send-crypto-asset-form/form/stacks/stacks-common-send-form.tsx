@@ -17,6 +17,7 @@ import { FeesRow } from '@app/components/fees-row/fees-row';
 import { AvailableBalance, ButtonRow, Card, Page } from '@app/components/layout';
 import { NonceSetter } from '@app/components/nonce-setter';
 import { useUpdatePersistedSendFormValues } from '@app/features/popup-send-form-restoration/use-update-persisted-send-form-values';
+import { FeeCurrencySync } from '@app/features/sbtc-sponsorship/fee-currency-sync';
 import { HighFeeSheet } from '@app/features/stacks-high-fee-warning/stacks-high-fee-dialog';
 import { useCurrentPolicy } from '@app/store/policy/policy.selectors';
 import { useIsPrivateMode } from '@app/store/settings/settings.selectors';
@@ -36,6 +37,10 @@ interface StacksCommonSendFormProps {
   selectedAssetField: React.JSX.Element;
   availableTokenBalance: Money;
   fees?: StacksTransactionFees;
+  feeCurrency?: string;
+  feeBadge?: React.ReactNode;
+  feeFiatValue?(fee: string | number): Money | null;
+  allowCustomFee?: boolean;
 }
 
 export function StacksCommonSendForm({
@@ -46,6 +51,10 @@ export function StacksCommonSendForm({
   selectedAssetField,
   fees,
   availableTokenBalance,
+  feeCurrency = 'STX',
+  feeBadge,
+  feeFiatValue,
+  allowCustomFee = true,
 }: StacksCommonSendFormProps) {
   const navigate = useNavigate();
   const { onFormStateChange } = useUpdatePersistedSendFormValues();
@@ -65,6 +74,7 @@ export function StacksCommonSendForm({
           return (
             <>
               <NonceSetter />
+              <FeeCurrencySync feeCurrency={feeCurrency} />
               <Form>
                 <Card
                   dataTestId={SendCryptoAssetSelectors.SendForm}
@@ -95,7 +105,13 @@ export function StacksCommonSendForm({
                     <StacksRecipientField />
                     <MemoField />
                     <Box mt="space.04" width="100%">
-                      <FeesRow fees={fees} isSponsored={false} />
+                      <FeesRow
+                        fees={fees}
+                        isSponsored={false}
+                        allowCustom={allowCustomFee}
+                        feeBadge={feeBadge}
+                        feeFiatValue={feeFiatValue}
+                      />
                     </Box>
                     {!isStacksPolicy && (
                       <Link
