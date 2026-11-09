@@ -6,6 +6,7 @@ import { createGetPox5PayoutPreferenceQueryOptions } from './create-get-pox5-pay
 const address = 'SP21YTSM60CAY6D011EZVEVNKXVW8FVZE198XEFFP';
 const signerManagerContractId = 'SP21YTSM60CAY6D011EZVEVNKXVW8FVZE198XEFFP.custom-signer-manager';
 const btcRewardAddress = 'bc1qw508d6qejxtdg4y5r3zarvary0c5xw7kv8f3t4';
+const p2pkhRewardAddress = '1BvBMSEYstWetqTFn5Au4m4GFg7xJaNVN2';
 
 function makeClient(result: { okay: boolean; result?: string; cause?: string }) {
   return {
@@ -47,11 +48,11 @@ function serializePreference() {
   )}`;
 }
 
-function serializePayoutConfig() {
+function serializePayoutConfig(rewardAddress = btcRewardAddress) {
   return `0x${serializeCV(
     someCV(
       tupleCV({
-        'pox-addr': poxAddressToTuple(btcRewardAddress),
+        'pox-addr': poxAddressToTuple(rewardAddress),
         'max-fee': uintCV(2500),
         'min-claim': uintCV(3047),
       })
@@ -116,6 +117,23 @@ describe(createGetPox5PayoutPreferenceQueryOptions.name, () => {
       supportsMinClaim: true,
     });
     expect(calledFunctions).toEqual(['get-payout-config']);
+  });
+
+  test('decodes a Fast Pool payout config with a P2PKH pox-addr', async () => {
+    const options = createGetPox5PayoutPreferenceQueryOptions({
+      address,
+      signerManagerContractId,
+      networkName: 'mainnet',
+      client: makeClient({ okay: true, result: serializePayoutConfig(p2pkhRewardAddress) }),
+    });
+    await expect(options.queryFn()).resolves.toEqual({
+      preference: {
+        btcRewardAddress: p2pkhRewardAddress,
+        maxFeeSats: 2500n,
+        minClaimSats: 3047n,
+      },
+      supportsMinClaim: true,
+    });
   });
 
   test('falls back to get-pox-addr on a v1 contract', async () => {

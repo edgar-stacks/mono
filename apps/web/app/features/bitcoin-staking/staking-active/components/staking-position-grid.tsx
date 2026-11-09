@@ -15,11 +15,7 @@ import { toHumanReadableMicroStx } from '~/utils/unit-convert';
 
 import { PoolTvlValue } from '../../components/pool-tvl-value';
 import { type Pox5StakerInfo } from '../../queries/create-get-pox5-staker-info-query-options';
-import {
-  getPoolPayoutMode,
-  getRewardsTokenSymbol,
-  isBtcPayoutRequired,
-} from '../../utils/pool-payout';
+import { getPoolPayoutMode, isBtcPayoutRequired } from '../../utils/pool-payout';
 import { type ActiveStakingDetails } from '../hooks/use-active-staking-info';
 import { StakingActionButtons } from './staking-action-buttons';
 
@@ -41,7 +37,19 @@ export function StakingPositionGrid({ poolSlug, pool, info, details }: StakingPo
     ? poolSignerManagerContractIds
     : [info.signerManagerContractId];
   const payoutMode = getPoolPayoutMode(pool);
-  const defaultPayoutLabel = isBtcPayoutRequired(payoutMode) ? EM_DASH : 'sBTC on Stacks';
+  const isPayoutPreferenceLoaded = details.payoutPreferenceStatus === 'success';
+  const payoutPreference = isPayoutPreferenceLoaded ? details.payoutPreference : null;
+
+  function getRewardsToken() {
+    if (isBtcPayoutRequired(payoutMode)) return 'BTC';
+    if (!isPayoutPreferenceLoaded) return EM_DASH;
+    return payoutPreference ? 'BTC' : 'sBTC';
+  }
+
+  function getDefaultPayoutLabel() {
+    if (isBtcPayoutRequired(payoutMode) || !isPayoutPreferenceLoaded) return EM_DASH;
+    return 'sBTC on Stacks';
+  }
 
   return (
     <StackingInfoGridLayout
@@ -123,11 +131,7 @@ export function StakingPositionGrid({ poolSlug, pool, info, details }: StakingPo
           />
         ),
         rewardsToken: (
-          <ValueDisplayer
-            gap="space.04"
-            name="Rewards token"
-            value={getRewardsTokenSymbol(payoutMode)}
-          />
+          <ValueDisplayer gap="space.04" name="Rewards token" value={getRewardsToken()} />
         ),
         poolAddress: (
           <ValueDisplayer
@@ -141,15 +145,10 @@ export function StakingPositionGrid({ poolSlug, pool, info, details }: StakingPo
             gap="space.04"
             name="Rewards payout"
             value={
-              details.payoutPreference ? (
-                <CopyAddress
-                  addr={details.payoutPreference.btcRewardAddress}
-                  emphasis
-                  underlined
-                  wide
-                />
+              payoutPreference ? (
+                <CopyAddress addr={payoutPreference.btcRewardAddress} emphasis underlined wide />
               ) : (
-                defaultPayoutLabel
+                getDefaultPayoutLabel()
               )
             }
           />
