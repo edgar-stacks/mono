@@ -16,6 +16,7 @@ import { expectDefined } from '../test-utils/expect-defined';
 import {
   type FinalizeWshDescriptorPsbtResult,
   compileWshDescriptor,
+  compilesToP2wpkhScriptCode,
   extractWshDescriptorPreimages,
   finalizeWshDescriptorPsbt,
   findAccountDescriptorKey,
@@ -1217,6 +1218,56 @@ describe('extractWshDescriptorPreimages', () => {
 
   it('reads the threshold from a multi descriptor', () => {
     expect(getWshDescriptorThreshold(`wsh(multi(1,${xpubA}/0/0,${xpubB}/0/0))`)).toBe(1);
+  });
+});
+
+describe('compilesToP2wpkhScriptCode', () => {
+  const pubkeyHexA = bytesToHex(pubkeyA);
+  const pubkeyHexB = bytesToHex(makeNativeSegwitAddressPubkey(2));
+
+  it('flags a wsh(pkh()) descriptor over a raw pubkey', () => {
+    expect(compilesToP2wpkhScriptCode(`wsh(pkh(${pubkeyHexA}))`)).toBe(true);
+  });
+
+  it('flags wsh(pkh()) descriptors over ranged and fixed-path xpubs', () => {
+    expect(compilesToP2wpkhScriptCode(`wsh(pkh(${xpubA}/0/*))`)).toBe(true);
+    expect(compilesToP2wpkhScriptCode(`wsh(pkh(${xpubA}/1/3))`)).toBe(true);
+  });
+
+  it('flags a checksummed wsh(pkh()) descriptor', () => {
+    const body = `wsh(pkh(${pubkeyHexA}))`;
+    expect(compilesToP2wpkhScriptCode(`${body}#${checksum(body)}`)).toBe(true);
+  });
+
+  it('does not flag descriptors whose witness script is not a P2WPKH scriptCode', () => {
+    expect(compilesToP2wpkhScriptCode(`wsh(pk(${pubkeyHexA}))`)).toBe(false);
+    expect(compilesToP2wpkhScriptCode(`wsh(multi(1,${pubkeyHexA},${pubkeyHexB}))`)).toBe(false);
+    expect(compilesToP2wpkhScriptCode(`wsh(sortedmulti(1,${pubkeyHexA},${pubkeyHexB}))`)).toBe(
+      false
+    );
+    expect(compilesToP2wpkhScriptCode(`wsh(and_v(v:after(5),pk(${pubkeyHexA})))`)).toBe(false);
+    expect(compilesToP2wpkhScriptCode(`wsh(and_v(v:pk(${pubkeyHexB}),pk(${pubkeyHexA})))`)).toBe(
+      false
+    );
+    expect(
+      compilesToP2wpkhScriptCode(
+        `wsh(and_v(v:pk(${pubkeyHexB}),and_v(v:pk(${pubkeyHexA}),pk(${pubkeyHexB}))))`
+      )
+    ).toBe(false);
+    expect(compilesToP2wpkhScriptCode(`wsh(and_v(v:pk(${pubkeyHexB}),pkh(${pubkeyHexA})))`)).toBe(
+      false
+    );
+  });
+
+  it('does not flag descriptors that do not compile', () => {
+    expect(compilesToP2wpkhScriptCode('wsh(nonsense)')).toBe(false);
+    expect(compilesToP2wpkhScriptCode(`wsh(pkh(${xpubA}))`)).toBe(false);
+    expect(compilesToP2wpkhScriptCode('wsh(pkh(unimportant))')).toBe(false);
+  });
+
+  it('does not flag non-wsh descriptors', () => {
+    expect(compilesToP2wpkhScriptCode(`wpkh(${pubkeyHexA})`)).toBe(false);
+    expect(compilesToP2wpkhScriptCode(`wpkh(${xpubA}/0/*)`)).toBe(false);
   });
 });
 
