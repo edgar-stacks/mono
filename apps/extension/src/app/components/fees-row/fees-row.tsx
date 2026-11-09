@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useFormContext, useWatch } from 'react-hook-form';
 
 import { SharedComponentsSelectors } from '@tests/selectors/shared-component.selectors';
 import BigNumber from 'bignumber.js';
-import { useField } from 'formik';
 import { Box } from 'leather-styles/jsx';
 
 import { STX_DECIMALS } from '@leather.io/constants';
@@ -42,6 +42,12 @@ function transactionFeesToEstimates(txFees: StacksTransactionFees): StacksFeeEst
   return [toEstimate(low), toEstimate(standard), toEstimate(high)];
 }
 
+interface FeesRowFormValues {
+  fee: unknown;
+  feeCurrency: CryptoCurrency;
+  feeType: string;
+}
+
 interface FeeRowProps {
   fees?: StacksTransactionFees;
   allowCustom?: boolean;
@@ -56,76 +62,76 @@ export function FeesRow({
   defaultFeeValue,
   disableFeeSelection,
 }: FeeRowProps) {
-  const [feeField, _, feeHelper] = useField<unknown>('fee');
-  const [feeCurrencyField] = useField<CryptoCurrency>('feeCurrency');
-  const [feeTypeField, __, feeTypeHelper] = useField<string>('feeType');
+  const { control, setValue } = useFormContext<FeesRowFormValues>();
+  const [feeValue, feeCurrencySymbol, feeType] = useWatch({
+    control,
+    name: ['fee', 'feeCurrency', 'feeType'],
+  });
   const [fieldWarning, setFieldWarning] = useState<string | undefined>(undefined);
   const [isSelectVisible, setIsSelectVisible] = useState(false);
 
-  const isCustom = feeTypeField.value === FeeTypes[FeeTypes.Custom];
-  const selectedItem = Number(feeTypesByName[feeTypeField.value]);
+  const isCustom = feeType === FeeTypes[FeeTypes.Custom];
+  const selectedItem = Number(feeTypesByName[feeType]);
 
   const estimates = useMemo(() => (fees ? transactionFeesToEstimates(fees) : []), [fees]);
   const hasFeeEstimates = estimates.length > 0;
-  const feeCurrencySymbol = feeCurrencyField.value;
 
   const convertCryptoCurrencyToUsd = useConvertCryptoCurrencyToFiatAmount(feeCurrencySymbol);
 
   const feeInUsd = useMemo(() => {
-    if ((!isNumber(feeField.value) && !isString(feeField.value)) || !feeCurrencySymbol) return null;
-    const feeAsMoney = createMoney(new BigNumber(feeField.value), feeCurrencySymbol);
+    if ((!isNumber(feeValue) && !isString(feeValue)) || !feeCurrencySymbol) return null;
+    const feeAsMoney = createMoney(new BigNumber(feeValue), feeCurrencySymbol);
     return convertCryptoCurrencyToUsd(feeAsMoney);
-  }, [convertCryptoCurrencyToUsd, feeCurrencySymbol, feeField.value]);
+  }, [convertCryptoCurrencyToUsd, feeCurrencySymbol, feeValue]);
 
   useEffect(() => {
     if (defaultFeeValue) {
-      void feeHelper.setValue(
-        convertAmountToBaseUnit(new BigNumber(Number(defaultFeeValue)), STX_DECIMALS).toString()
+      setValue(
+        'fee',
+        convertAmountToBaseUnit(new BigNumber(Number(defaultFeeValue)), STX_DECIMALS).toString(),
+        { shouldDirty: true }
       );
-      void feeTypeHelper.setValue(FeeTypes[FeeTypes.Custom]);
+      setValue('feeType', FeeTypes[FeeTypes.Custom], { shouldDirty: true });
     }
-  }, [feeHelper, defaultFeeValue, feeTypeHelper]);
+  }, [defaultFeeValue, setValue]);
 
   useEffect(() => {
     if (isSponsored) {
-      void feeHelper.setValue(0);
+      setValue('fee', 0, { shouldDirty: true });
       return;
     }
 
-    if (!defaultFeeValue && hasFeeEstimates && !feeField.value && !isCustom) {
-      void feeHelper.setValue(convertAmountToBaseUnit(estimates[FeeTypes.Middle].fee).toString());
-      void feeTypeHelper.setValue(FeeTypes[FeeTypes.Middle]);
+    if (!defaultFeeValue && hasFeeEstimates && !feeValue && !isCustom) {
+      setValue('fee', convertAmountToBaseUnit(estimates[FeeTypes.Middle].fee).toString(), {
+        shouldDirty: true,
+      });
+      setValue('feeType', FeeTypes[FeeTypes.Middle], { shouldDirty: true });
       return;
     }
-  }, [
-    defaultFeeValue,
-    feeField.value,
-    feeHelper,
-    feeTypeHelper,
-    estimates,
-    hasFeeEstimates,
-    isCustom,
-    isSponsored,
-  ]);
+  }, [defaultFeeValue, feeValue, setValue, estimates, hasFeeEstimates, isCustom, isSponsored]);
 
   const handleSelectFeeEstimateOrCustomField = useCallback(
     (index: number) => {
-      void feeTypeHelper.setValue(FeeTypes[index]);
+      setValue('feeType', FeeTypes[index], { shouldDirty: true });
       if (index === customFeeTypeIndex)
-        void feeHelper.setValue(
+        setValue(
+          'fee',
           defaultFeeValue
             ? convertAmountToBaseUnit(
                 new BigNumber(Number(defaultFeeValue)),
                 STX_DECIMALS
               ).toString()
-            : ''
+            : '',
+          { shouldDirty: true }
         );
       else if (estimates.length > 0)
-        void feeHelper.setValue(convertAmountToBaseUnit(estimates[index].fee).toString());
+        setValue('fee', convertAmountToBaseUnit(estimates[index].fee).toString(), {
+          shouldDirty: true,
+        });
       setFieldWarning('');
       setIsSelectVisible(false);
     },
-    [feeTypeHelper, feeHelper, estimates, defaultFeeValue]
+    [setValue, estimates, defaultFeeValue]
   );
 
   if (!hasFeeEstimates || !fees) return <SkeletonLoader isLoading height="32px" width="100%" />;
@@ -148,7 +154,7 @@ export function FeesRow({
             width="100%"
           >
             <TransactionFee
-              fee={toDisplayableFee(feeField.value)}
+              fee={toDisplayableFee(feeValue)}
               feeCurrencySymbol={feeCurrencySymbol}
               usdAmount={feeInUsd}
             />

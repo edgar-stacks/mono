@@ -1,6 +1,5 @@
-import { useAsync } from 'react-async-hook';
-
-import { useFormikContext } from 'formik';
+import { useEffect } from 'react';
+import { useFormContext } from 'react-hook-form';
 
 import { isDefined } from '@leather.io/utils';
 
@@ -14,7 +13,7 @@ import { useCurrentStacksAccountAddress } from '@app/store/accounts/blockchain/s
 import { useCurrentPolicy } from '@app/store/policy/policy.selectors';
 
 export function NonceSetter() {
-  const { setFieldValue, touched, values } = useFormikContext<
+  const { getFieldState, getValues, setValue } = useFormContext<
     StacksSendFormValues | StacksTransactionFormValues
   >();
   const stxAddress = useCurrentStacksAccountAddress();
@@ -22,13 +21,16 @@ export function NonceSetter() {
   const policy = useCurrentPolicy();
   const isStacksPolicy = policy?.chain === 'stacks';
 
-  useAsync(async () => {
+  useEffect(() => {
     if (isStacksPolicy) return;
-    if (isDefined(nextNonce?.nonce) && !touched.nonce && values.nonce !== nextNonce?.nonce) {
-      return await setFieldValue('nonce', nextNonce?.nonce);
+    if (
+      isDefined(nextNonce?.nonce) &&
+      !getFieldState('nonce').isTouched &&
+      getValues('nonce') !== nextNonce?.nonce
+    ) {
+      setValue('nonce', nextNonce?.nonce, { shouldDirty: true });
     }
-    return;
-  }, [nextNonce?.nonce, isStacksPolicy]);
+  }, [getFieldState, getValues, nextNonce?.nonce, isStacksPolicy, setValue]);
 
   return <></>;
 }

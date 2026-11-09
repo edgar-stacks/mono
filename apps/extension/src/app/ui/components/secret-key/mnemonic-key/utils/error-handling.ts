@@ -1,6 +1,8 @@
-import { type FormikErrors, type FormikTouched, type FormikValues } from 'formik';
+import type { FieldErrors } from 'react-hook-form';
 
-export function hasMnemonicFormValues(values: FormikValues): boolean {
+import type { MnemonicFormValues } from './validation';
+
+export function hasMnemonicFormValues(values: MnemonicFormValues): boolean {
   return Object.values(values).filter(value => value !== '').length > 0;
 }
 
@@ -13,9 +15,9 @@ export function getMnemonicErrorMessage(mnemonicErrorFields: string[]): string {
 }
 
 export function getMnemonicErrorFields(
-  errors: FormikErrors<FormikValues>,
-  touched: FormikTouched<FormikValues>,
-  values: FormikValues
+  errors: FieldErrors<MnemonicFormValues>,
+  touched: Partial<Record<string, boolean>>,
+  values: MnemonicFormValues
 ): string[] {
   return Object.keys(errors)
     .filter(

@@ -36,3 +36,11 @@ export interface TransferRecipient {
   address: string;
   amount: Money;
 }
+
+export interface RecipientFormValues {
+  recipient: string;
+  recipientBnsName: string;
+  symbol?: string;
+}
+
+export type RecipientFieldName = 'recipient' | 'recipientBnsName';

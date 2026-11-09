@@ -1,5 +1,6 @@
+import { useForm, useWatch } from 'react-hook-form';
+
 import { SettingsSelectors } from '@tests/selectors/settings.selectors';
-import { useFormik } from 'formik';
 import { Flex, HStack, styled } from 'leather-styles/jsx';
 import { mapToObj } from 'remeda';
 
@@ -15,6 +16,11 @@ import {
   getSignOutCalloutTitle,
 } from './sign-out.utils';
 
+interface SignOutFormValues {
+  backups: Record<string, boolean>;
+  confirmPasswordDisable: boolean;
+}
+
 interface SignOutSheetProps {
   isShowing: boolean;
   onUserDeleteWallet(): void;
@@ -25,18 +31,19 @@ export function SignOutSheet({ isShowing, onUserDeleteWallet, onClose }: SignOut
   const softwareWalletCount = softwareWallets.length;
   const hasSoftwareKeys = softwareWalletCount > 0;
 
-  const form = useFormik({
-    initialValues: {
+  const { control, handleSubmit, register } = useForm<SignOutFormValues>({
+    defaultValues: {
       backups: mapToObj(softwareWallets, wallet => [wallet.fingerprint, false]),
       confirmPasswordDisable: !hasSoftwareKeys,
     },
-    onSubmit() {
-      handleSignOut();
-    },
+  });
+  const [backups, confirmPasswordDisable] = useWatch({
+    control,
+    name: ['backups', 'confirmPasswordDisable'],
   });
 
-  const allBackedUp = softwareWallets.every(wallet => form.values.backups[wallet.fingerprint]);
-  const canSignOut = allBackedUp && form.values.confirmPasswordDisable;
+  const allBackedUp = softwareWallets.every(wallet => backups[wallet.fingerprint]);
+  const canSignOut = allBackedUp && confirmPasswordDisable;
 
   function handleSignOut() {
     if (canSignOut) {
@@ -77,7 +84,7 @@ export function SignOutSheet({ isShowing, onUserDeleteWallet, onClose }: SignOut
         {getSignOutCalloutBody(softwareWalletCount)}
       </Callout>
       <Flex alignItems="center" flexDirection="column" p="space.05">
-        <form onChange={form.handleChange} onSubmit={form.handleSubmit}>
+        <form onSubmit={e => void handleSubmit(handleSignOut)(e)}>
           {softwareWallets.map((wallet, index) => (
             <styled.label
               key={wallet.fingerprint}
@@ -88,8 +95,7 @@ export function SignOutSheet({ isShowing, onUserDeleteWallet, onClose }: SignOut
               <HStack gap="space.03">
                 <input
                   type="checkbox"
-                  name={`backups.${wallet.fingerprint}`}
-                  defaultChecked={false}
+                  {...register(`backups.${wallet.fingerprint}`)}
                   data-testid={`${SettingsSelectors.SignOutConfirmHasBackupCheckbox}-${wallet.fingerprint}`}
                 />
 
@@ -107,8 +113,7 @@ export function SignOutSheet({ isShowing, onUserDeleteWallet, onClose }: SignOut
             <HStack gap="space.03">
               <input
                 type="checkbox"
-                name="confirmPasswordDisable"
-                defaultChecked={form.values.confirmPasswordDisable}
+                {...register('confirmPasswordDisable')}
                 data-testid={SettingsSelectors.SignOutConfirmPasswordDisable}
               />
               <styled.p textStyle="caption.01" userSelect="none">

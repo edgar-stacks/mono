@@ -1,30 +1,35 @@
 import { useState } from 'react';
-
-import { useField } from 'formik';
+import { useFormContext, useWatch } from 'react-hook-form';
 
 import { Input } from '@leather.io/ui';
 import { extractPhraseFromString } from '@leather.io/utils';
 
-import { useIsFieldDirty } from '@app/common/form-utils';
+import { useFieldError, useIsFieldDirty } from '@app/common/form-utils';
+
+import type { MnemonicFormValues } from './utils/validation';
 
 interface MnemonicWordInputProps {
   fieldNumber: number;
   value: string;
+  onBlur(): void;
   onUpdateWord(word: string): void;
   onPasteEntireKey(word: string): void;
 }
 export function MnemonicWordInput({
   fieldNumber,
   value,
+  onBlur,
   onUpdateWord,
   onPasteEntireKey,
 }: MnemonicWordInputProps) {
   const name = `${fieldNumber}`;
-  const [field, meta] = useField<string>(name);
+  const { control, setValue, trigger } = useFormContext<MnemonicFormValues>();
+  const fieldValue = useWatch({ control, name });
+  const error = useFieldError(name);
   const [isFocused, setIsFocused] = useState(false);
   const isDirty = useIsFieldDirty(name);
   return (
-    <Input.Root hasError={isDirty && !!meta.error} shrink={!!value}>
+    <Input.Root hasError={isDirty && !!error} shrink={!!value}>
       <Input.Field
         // Limitation of the animated label is that we cannot detect
         // programatically updated inputs. Here we add an empty place holder to
@@ -36,8 +41,13 @@ export function MnemonicWordInput({
         id={name}
         type={isFocused ? 'text' : 'password'}
         onFocus={() => setIsFocused(!isFocused)}
-        {...field}
-        value={value || field.value || ''}
+        name={name}
+        value={value || fieldValue || ''}
+        onChange={e => setValue(name, e.target.value, { shouldValidate: true })}
+        onBlur={() => {
+          onBlur();
+          void trigger(name);
+        }}
         // using onChangeCapture + onBlurCapture to keep Formik validation
         onChangeCapture={(e: React.ChangeEvent<HTMLInputElement>) => {
           e.preventDefault();

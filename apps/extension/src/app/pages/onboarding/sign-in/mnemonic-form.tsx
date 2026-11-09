@@ -1,5 +1,7 @@
+import { useState } from 'react';
+import { FormProvider, useForm } from 'react-hook-form';
+
 import { OnboardingSelectors } from '@tests/selectors/onboarding.selectors';
-import { Form, Formik } from 'formik';
 import { Stack } from 'leather-styles/jsx';
 
 import { Button } from '@leather.io/ui';
@@ -12,7 +14,10 @@ import {
   getMnemonicErrorMessage,
   hasMnemonicFormValues,
 } from '@app/ui/components/secret-key/mnemonic-key/utils/error-handling';
-import { validationSchema } from '@app/ui/components/secret-key/mnemonic-key/utils/validation';
+import {
+  type MnemonicFormValues,
+  mnemonicFormResolver,
+} from '@app/ui/components/secret-key/mnemonic-key/utils/validation';
 import { SecretKeyGrid } from '@app/ui/components/secret-key/secret-key-grid';
 
 interface MnemonicFormProps {
@@ -31,15 +36,19 @@ export function MnemonicForm({
   error,
   isLoading,
 }: MnemonicFormProps) {
+  const [touched, setTouched] = useState<Partial<Record<string, boolean>>>({});
+
   function mnemonicWordUpdate(index: number, word: string) {
     const newMnemonic = [...mnemonic];
     newMnemonic[index] = word;
     setMnemonic(newMnemonic);
   }
 
-  function updateEntireKey(key: string, setFieldValue: (name: string, value: number) => void) {
+  function updateEntireKey(key: string) {
     const newKey = key.split(' ');
-    newKey.map((index, value) => setFieldValue(`${index + 1}`, value));
+    newKey.forEach((word, index) =>
+      methods.setValue(`${index + 1}`, word, { shouldValidate: true })
+    );
     setMnemonic(newKey);
     void onSubmit(key);
   }
@@ -57,64 +66,60 @@ export function MnemonicForm({
     (accumulator, _, index) => ((accumulator[`${index + 1}`] = ''), accumulator),
     {}
   );
+  const methods = useForm<MnemonicFormValues>({
+    defaultValues: initialValues,
+    resolver: mnemonicFormResolver,
+    mode: 'all',
+  });
+  const { errors, isValid } = methods.formState;
+  const values = methods.watch();
+  const hasFormValues = hasMnemonicFormValues(values);
+  const mnemonicErrorFields = getMnemonicErrorFields(errors, touched, values);
+  const showMnemonicErrors = !isEmpty(mnemonicErrorFields) && hasFormValues;
+  const mnemonicErrorMessage = getMnemonicErrorMessage(mnemonicErrorFields);
+
   return (
-    <Formik
-      initialValues={initialValues}
-      // this onSubmit is to appease Formik and is only really needed in the onClick()
-      onSubmit={handleSubmit}
-      validationSchema={validationSchema}
-      validateOnBlur
-      validateOnChange
-    >
-      {({ errors, touched, setFieldValue, values, isValid }) => {
-        const hasFormValues = hasMnemonicFormValues(values);
-        const mnemonicErrorFields = getMnemonicErrorFields(errors, touched, values);
-        const showMnemonicErrors = !isEmpty(mnemonicErrorFields) && hasFormValues;
-        const mnemonicErrorMessage = getMnemonicErrorMessage(mnemonicErrorFields);
-
-        return (
-          <Form>
-            <Stack gap="space.05">
-              <SecretKeyGrid>
-                {mnemonicFieldArray.map((_, i) => (
-                  <MnemonicWordInput
-                    fieldNumber={i + 1}
-                    key={i}
-                    value={mnemonic[i] || ''}
-                    onPasteEntireKey={key => {
-                      if (document.activeElement instanceof HTMLElement)
-                        document.activeElement.blur();
-                      updateEntireKey(key, (name, value) => void setFieldValue(name, value));
-                    }}
-                    onUpdateWord={w => mnemonicWordUpdate(i, w)}
-                  />
-                ))}
-              </SecretKeyGrid>
-              {(showMnemonicErrors || error) && (
-                <ErrorLabel data-testid={OnboardingSelectors.SignInSeedError}>
-                  {showMnemonicErrors ? mnemonicErrorMessage : error}
-                </ErrorLabel>
-              )}
-
-              <Button
-                data-testid={OnboardingSelectors.SignInBtn}
-                aria-disabled={isLoading || showMnemonicErrors}
-                disabled={isEmpty(touched) || !isValid || !hasFormValues}
-                aria-busy={isLoading}
-                fullWidth
-                type="submit"
-                variant="solid"
-                onClick={e => {
-                  e.preventDefault();
-                  void handleSubmit();
+    <FormProvider {...methods}>
+      <form onSubmit={e => void methods.handleSubmit(handleSubmit)(e)}>
+        <Stack gap="space.05">
+          <SecretKeyGrid>
+            {mnemonicFieldArray.map((_, i) => (
+              <MnemonicWordInput
+                fieldNumber={i + 1}
+                key={i}
+                value={mnemonic[i] || ''}
+                onBlur={() => setTouched(current => ({ ...current, [`${i + 1}`]: true }))}
+                onPasteEntireKey={key => {
+                  if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
+                  updateEntireKey(key);
                 }}
-              >
-                Continue
-              </Button>
-            </Stack>
-          </Form>
-        );
-      }}
-    </Formik>
+                onUpdateWord={w => mnemonicWordUpdate(i, w)}
+              />
+            ))}
+          </SecretKeyGrid>
+          {(showMnemonicErrors || error) && (
+            <ErrorLabel data-testid={OnboardingSelectors.SignInSeedError}>
+              {showMnemonicErrors ? mnemonicErrorMessage : error}
+            </ErrorLabel>
+          )}
+
+          <Button
+            data-testid={OnboardingSelectors.SignInBtn}
+            aria-disabled={isLoading || showMnemonicErrors}
+            disabled={isEmpty(touched) || !isValid || !hasFormValues}
+            aria-busy={isLoading}
+            fullWidth
+            type="submit"
+            variant="solid"
+            onClick={e => {
+              e.preventDefault();
+              void handleSubmit();
+            }}
+          >
+            Continue
+          </Button>
+        </Stack>
+      </form>
+    </FormProvider>
   );
 }
