@@ -23,3 +23,9 @@ export const PostConditionSelectors = {
 } as const;
 export type PostConditionSelectors =
   (typeof PostConditionSelectors)[keyof typeof PostConditionSelectors];
+
+export const ApprovalScreensPreviewSelectors = {
+  Heading: 'approval-screens-preview-heading',
+} as const;
+export type ApprovalScreensPreviewSelectors =
+  (typeof ApprovalScreensPreviewSelectors)[keyof typeof ApprovalScreensPreviewSelectors];

@@ -84,4 +84,12 @@ export const playgroundAreas: PlaygroundArea[] = [
     issue: 2643,
     appShell: true,
   },
+  {
+    slug: 'extension-approval-screens',
+    title: 'Extension approval screens',
+    description:
+      'Every dApp approval screen the extension shows, captured side by side per layout and scored on what each one states.',
+    status: 'exploration',
+    section: 'extension',
+  },
 ];

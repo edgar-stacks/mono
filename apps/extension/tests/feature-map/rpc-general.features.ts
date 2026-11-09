@@ -1,5 +1,8 @@
 import { HomePageSelectors } from '@tests/selectors/home.selectors';
+import { ApprovalScreensPreviewSelectors } from '@tests/selectors/requests.selectors';
 import { SwapRevampSelectors } from '@tests/selectors/swap-revamp.selectors';
+
+import { RouteUrls } from '@shared/route-urls';
 
 import type { ExtensionFeatureEntry } from './extension-feature-entry';
 
@@ -82,5 +85,30 @@ export const rpcGeneralFeatures = [
     specs: [],
     description:
       'Handler apps/extension/src/background/messaging/rpc-methods/supported-methods.ts. Pure background response with a hard-coded list of 15 methods and their gitbook links; it omits the registered btc_addAccount and stx_addAccount (rpc-message-handler.ts). No UI and no session requirement. No extension spec; the test-app supportedMethods card (tagged ci) exercises it.',
+  },
+  {
+    id: 'approval-screens-preview',
+    anchor: { kind: 'route' },
+    routes: [RouteUrls.ApprovalScreensPreview],
+    params: [],
+    entry: [
+      {
+        kind: 'deepLink',
+        steps: [
+          'Open chrome-extension://<id>/index.html#/approval-screens-preview in a build with WALLET_ENVIRONMENT=development or testing; production builds do not register the route',
+        ],
+      },
+    ],
+    gate: 'none',
+    flags: [],
+    preconditions: { session: 'signed-in', mocks: [...defaultMocks] },
+    selectors: { ready: ApprovalScreensPreviewSelectors.Heading, others: [] },
+    actions: [],
+    specs: [
+      'apps/extension/tests/specs/screenshots/approval-screens-preview.spec.ts',
+      'apps/extension/tests/specs/screenshots/approval-screens.spec.ts',
+    ],
+    description:
+      'Developer page, not a user screen (approval-screens-preview.tsx). Under the heading "Approval screens — live components" it renders the real approval layout components with fixture props from approval-screens-preview.fixtures.ts, each in a 390×756 frame: shared header, contract call, allow mode, contract deploy, STX transfer and large-amount transfer, multisig co-sign, sponsored fee, Connect app and the message-signing header. Buttons do nothing. approval-screens.spec.ts drives the real dApp popups instead and writes one PNG per screen to apps/web/app/pages/playground/areas/extension-approval-screens/shots/ for the web playground area.',
   },
 ] as const satisfies readonly ExtensionFeatureEntry[];

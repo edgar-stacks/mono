@@ -83,6 +83,8 @@ export const RouteUrls = {
   FeeEditor: 'edit-fee',
   NonceEditor: 'edit-nonce',
   BroadcastError: 'broadcast-error',
+
+  ApprovalScreensPreview: '/approval-screens-preview',
 } as const;
 export type RouteUrls = (typeof RouteUrls)[keyof typeof RouteUrls];
 

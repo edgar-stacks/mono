@@ -26,6 +26,8 @@ export const TEST_ACCOUNT_1_STX_ADDRESS_HEX = '0x1632864de61d8269090af3cf6ef12e2
 // Account public keys
 export const TEST_ACCOUNT_1_PUBKEY =
   '02b6b0afe5f620bc8e532b640b148dd9dea0ed19d11f8ab420fcce488fe3974893';
+export const TEST_ACCOUNT_1_STX_PUBKEY =
+  '0329b076bc20f7b1592b2a1a5cb91dfefe8c966e50e256458e23dd2c5d63f8f1af';
 export const TEST_ACCOUNT_3_PUBKEY =
   '03c1e856462ca2844adb898aee90af5237e9d1be0fe51212635b2f7a643b0585e1';
 
