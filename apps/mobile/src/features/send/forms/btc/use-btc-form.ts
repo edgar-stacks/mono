@@ -1,6 +1,6 @@
 import { useForm, useWatch } from 'react-hook-form';
 
-import { useToastContext } from '@/components/toast/toast-context';
+import { useToastContext } from '@/core/toast/toast-context';
 import {
   type BtcFormSchema,
   useBtcSendFormSchema,
@@ -9,12 +9,12 @@ import { useCalculateBtcMaxSpend } from '@/features/send/hooks/use-calculate-btc
 import { useSendMax } from '@/features/send/hooks/use-send-max';
 import { useSendNavigation } from '@/features/send/navigation';
 import { btcFormValuesToPsbtHex } from '@/features/send/utils';
+import { analytics } from '@/store/analytics';
 import {
   useBitcoinAccounts,
   useBitcoinPayerFromKeyOrigin,
 } from '@/store/keychains/bitcoin/bitcoin-keychains.read';
 import { useSettings } from '@/store/settings/settings';
-import { analytics } from '@/utils/analytics';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { t } from '@lingui/core/macro';
 
