@@ -28,6 +28,7 @@ interface SendFormConfirmationLayoutProps {
   isLoading: boolean;
   feeWarningTooltip?: React.ReactNode;
   confirmButtonLabel?: string;
+  additionalContent?: React.ReactNode;
   onBroadcastTransaction(): void;
 }
 export function SendFormConfirmationLayout({
@@ -45,6 +46,7 @@ export function SendFormConfirmationLayout({
   symbol,
   feeWarningTooltip,
   confirmButtonLabel,
+  additionalContent,
 }: SendFormConfirmationLayoutProps) {
   const principalType = recipient ? inferPrincipalTypeFromAddress(recipient) : 'invalid';
 
@@ -110,6 +112,7 @@ export function SendFormConfirmationLayout({
           data-testid={SendCryptoAssetSelectors.ConfirmationDetailsMemo}
         />
         {nonce && <InfoCardRow title="Nonce" value={nonce} />}
+        {additionalContent}
       </Stack>
     </Card>
   );

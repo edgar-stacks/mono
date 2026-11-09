@@ -22,6 +22,7 @@ export const SendCryptoAssetSelectors = {
   RecipientBnsAddressCopyToClipboard: 'recipient-bns-address-copy-to-clipboard',
   SendForm: 'send-form',
   SendMaxBtn: 'send-max-btn',
+  SendAndRotateSwitch: 'send-and-rotate-switch',
 
   SendPageReady: 'send-page-ready',
 
