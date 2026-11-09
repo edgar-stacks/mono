@@ -33,6 +33,51 @@ export function isWshDescriptor(descriptor: string) {
   return descriptor.trimStart().startsWith(wshDescriptorPrefix);
 }
 
+export const maxMultisigKeys = 20;
+const maxMultisigThreshold = 16;
+const maxKeyExpressionLength = 256;
+
+const wshMultisigDescriptorPattern = /^wsh\((?:sorted)?multi\(([^()]+)\)\)$/;
+
+export function isValidMultisigThreshold(threshold: number, keyCount: number): boolean {
+  return (
+    Number.isInteger(threshold) &&
+    threshold >= 1 &&
+    threshold <= Math.min(keyCount, maxMultisigThreshold)
+  );
+}
+
+export interface MultisigArguments {
+  threshold: number;
+  keyExpressions: string[];
+}
+
+export function parseMultisigArguments(args: string): MultisigArguments | null {
+  const [rawThreshold, ...keyExpressions] = args.split(',');
+  if (!rawThreshold || !/^\d{1,2}$/.test(rawThreshold)) return null;
+  if (!keyExpressions.length || keyExpressions.length > maxMultisigKeys) return null;
+  if (
+    keyExpressions.some(
+      keyExpression =>
+        !keyExpression ||
+        keyExpression.length > maxKeyExpressionLength ||
+        keyExpression.includes('*')
+    )
+  )
+    return null;
+
+  const threshold = Number(rawThreshold);
+  if (!isValidMultisigThreshold(threshold, keyExpressions.length)) return null;
+  return { threshold, keyExpressions };
+}
+
+export function isWshMultisigDescriptor(descriptor: string): boolean {
+  const compactDescriptor = stripDescriptorChecksum(descriptor).replace(/\s/g, '');
+  const match = wshMultisigDescriptorPattern.exec(compactDescriptor);
+  if (!match?.[1]) return false;
+  return parseMultisigArguments(match[1]) !== null;
+}
+
 const testnetExtendedKeyPrefixes = ['tpub', 'tprv', 'upub', 'uprv', 'vpub', 'vprv'];
 const mainnetExtendedKeyPrefixes = ['xpub', 'xprv', 'ypub', 'yprv', 'zpub', 'zprv'];
 const keyExpressionStarts = ['(', ',', ']'];

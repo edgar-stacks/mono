@@ -144,8 +144,9 @@ describe(useBondProposalRoute.name, () => {
       unlockHeight,
       hash,
       counterpartyKey,
+      vaultKind: 'multi',
       vaultThreshold: 2,
-      vaultKeyCount: 3,
+      vaultKeyExpressions: getBondVaultKeys(policyDescriptor).keyExpressions,
     });
   });
 
@@ -178,8 +179,9 @@ describe(useBondProposalRoute.name, () => {
       unlockHeight,
       hash,
       counterpartyKey: rawCounterpartyKey,
+      vaultKind: 'multi',
       vaultThreshold: 2,
-      vaultKeyCount: 3,
+      vaultKeyExpressions: getBondVaultKeys(policyDescriptor).keyExpressions,
     });
   });
 
@@ -202,6 +204,35 @@ describe(useBondProposalRoute.name, () => {
       expect.objectContaining({
         status: 'error',
         code: RpcErrorCode.INVALID_PARAMS,
+        message: 'Descriptor is not a supported bond template',
+      })
+    );
+  });
+
+  test('errors when the bond vault is a single key', () => {
+    const singleKeyBondDescriptor = `wsh(and_v(v:or_i(after(${unlockHeight}),and_v(v:sha256(${hash}),pk(${counterpartyKey}))),pk(${xpubA}/0/0)))`;
+    const route = useBondProposalRoute({
+      descriptor: singleKeyBondDescriptor,
+      psbtHex: buildBondPsbtHex(),
+    });
+    expect(route).toEqual(
+      expect.objectContaining({
+        status: 'error',
+        code: RpcErrorCode.INVALID_PARAMS,
+        message: 'Descriptor is not a supported bond template',
+      })
+    );
+  });
+
+  test('errors when the bond vault has raw public keys', () => {
+    const rawKeyBondDescriptor = `wsh(and_v(v:or_i(after(${unlockHeight}),and_v(v:sha256(${hash}),pk(${counterpartyKey}))),sortedmulti(1,${bytesToHex(makeNativeSegwitAddressPubkey(1))},${xpubB}/0/0)))`;
+    const route = useBondProposalRoute({
+      descriptor: rawKeyBondDescriptor,
+      psbtHex: buildBondPsbtHex(),
+    });
+    expect(route).toEqual(
+      expect.objectContaining({
+        status: 'error',
         message: 'Descriptor is not a supported bond template',
       })
     );

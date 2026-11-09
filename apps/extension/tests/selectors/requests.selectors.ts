@@ -7,6 +7,7 @@ export const ConnectAccountSelectors = {
   WalletName: 'connect-account-wallet-name',
   ApproveBtn: 'get-addresses-approve-button',
   BtcAddAccountApproveBtn: 'btc-add-account-approve-button',
+  BtcAddAccountAddress: 'btc-add-account-address',
   StxAddAccountApproveBtn: 'stx-add-account-approve-button',
   MissingAccountCallout: 'get-addresses-missing-account-callout',
 } as const;

@@ -5,6 +5,7 @@ import { equalBytes } from '@scure/btc-signer/utils';
 
 import {
   type BondDescriptorMatch,
+  type BondVaultLeaf,
   compileWshDescriptor,
   getBondVaultKeys,
   getDescriptorInputsWithDisallowedSighash,
@@ -33,8 +34,9 @@ interface BondProposalMatch {
   unlockHeight: number;
   hash: string;
   counterpartyKey: string;
+  vaultKind: BondVaultLeaf['kind'];
   vaultThreshold: number;
-  vaultKeyCount: number;
+  vaultKeyExpressions: string[];
 }
 
 type BondProposalRoute = BondProposalError | BondProposalMatch | null;
@@ -55,7 +57,7 @@ function tryCompileScriptPubKey(descriptor: string): Uint8Array | null {
 interface InstantiatedBondDescriptor {
   bondDescriptor: string;
   vaultThreshold: number;
-  vaultKeyCount: number;
+  vaultKeyExpressions: string[];
 }
 
 function tryInstantiateBondDescriptor(
@@ -71,7 +73,7 @@ function tryInstantiateBondDescriptor(
       threshold,
       keyExpressions,
     });
-    return { bondDescriptor, vaultThreshold: threshold, vaultKeyCount: keyExpressions.length };
+    return { bondDescriptor, vaultThreshold: threshold, vaultKeyExpressions: keyExpressions };
   } catch {
     return null;
   }
@@ -132,7 +134,7 @@ export function useBondProposalRoute({
     const instantiated = tryInstantiateBondDescriptor(bondMatch, policy.descriptor);
     if (!instantiated) return makeBondDescriptorMismatchError();
 
-    const { bondDescriptor, vaultThreshold, vaultKeyCount } = instantiated;
+    const { bondDescriptor, vaultThreshold, vaultKeyExpressions } = instantiated;
     const bondScriptPubKey = tryCompileScriptPubKey(bondDescriptor);
     if (!bondScriptPubKey) return makeBondDescriptorMismatchError();
     if (!equalBytes(bondScriptPubKey, requestScriptPubKey))
@@ -158,8 +160,9 @@ export function useBondProposalRoute({
       unlockHeight: bondMatch.unlockHeight,
       hash: bondMatch.hash,
       counterpartyKey: bondMatch.counterpartyKey,
+      vaultKind: 'multi',
       vaultThreshold,
-      vaultKeyCount,
+      vaultKeyExpressions,
     };
   }, [policy, descriptor, psbtHex]);
 }
