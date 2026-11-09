@@ -4,6 +4,7 @@ import { useToastContext } from '@/components/toast/toast-context';
 import { BaseStxTxApproverLayout } from '@/features/approver/layouts/base-stx-tx-approver.layout';
 import { getTxOptions } from '@/features/approver/utils';
 import { useBroadcastStacksTransaction } from '@/queries/stacks/use-broadcast-stacks-transaction';
+import { RpcStacksSelectors } from '@/shared/selectors/rpc-stacks.selectors';
 import { useAccounts } from '@/store/accounts/accounts.read';
 import { type App } from '@/store/apps/utils';
 import { useStacksSigners } from '@/store/keychains/stacks/stacks-keychains.read';
@@ -90,6 +91,7 @@ export function TransferStxApprover({
 
   return (
     <BaseStxTxApproverLayout
+      testID={RpcStacksSelectors.TransferStxApprover}
       accountId={accountId}
       accounts={accounts}
       onApprove={onApprove}

@@ -1,4 +1,5 @@
 import { type ParserResult, QrScanner } from '@/features/qr-scanner/qr-scanner';
+import { SendSelectors } from '@/shared/selectors/send.selectors';
 import { t } from '@lingui/core/macro';
 
 import { bip21, isValidBitcoinAddress } from '@leather.io/bitcoin';
@@ -11,7 +12,14 @@ interface RecipientQrScannerProps {
 }
 
 export function RecipientQrScanner({ onClose, onScanned }: RecipientQrScannerProps) {
-  return <QrScanner parse={parse} onClose={onClose} onScanned={onScanned} />;
+  return (
+    <QrScanner
+      parse={parse}
+      onClose={onClose}
+      onScanned={onScanned}
+      testID={SendSelectors.QrScanner}
+    />
+  );
 }
 
 function parse(data: string): ParserResult<{ address: string; chain: SupportedBlockchains }> {

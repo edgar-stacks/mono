@@ -4,6 +4,7 @@ import { useGlobalSheets } from '@/core/global-sheet-provider';
 import { PsbtSigner } from '@/features/psbt-signer/psbt-signer';
 import { useSendNavigation, useSendRoute } from '@/features/send/navigation';
 import { useSendFlowContext } from '@/features/send/send-flow-provider';
+import { SendSelectors } from '@/shared/selectors/send.selectors';
 
 import { makeAccountIdentifer } from '@leather.io/crypto';
 import { Box } from '@leather.io/ui/native';
@@ -37,6 +38,7 @@ export function SendApprover() {
           accountIndex={accountIndex}
           broadcast
           psbtHex={txHex}
+          testID={SendSelectors.Approver}
           onBack={goBack}
           onClose={() => {
             sendSheetRef.current?.dismiss();

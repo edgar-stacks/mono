@@ -17,6 +17,7 @@ import {
   useManagedSip10Tools,
   useSip10AccountBalance,
 } from '@/queries/balance/sip10-balance.query';
+import { HomeSelectors } from '@/shared/selectors/home.selectors';
 import { useSettings } from '@/store/settings/settings';
 import { t } from '@lingui/core/macro';
 
@@ -98,6 +99,7 @@ export function ManageTokensSheet({ sheetRef, currentAccount }: ManageTokenSheet
                 title={t`Default set`}
                 caption={getTokenPresetLabel(tokenPreset).title}
                 onPress={() => presetSheetRef.current?.present()}
+                testID={HomeSelectors.ManageTokensPresetItem}
               />
             </Box>
             <Box px="5" pt="2">

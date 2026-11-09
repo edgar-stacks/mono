@@ -2,6 +2,7 @@ import { useState } from 'react';
 
 import { BaseStxTxApproverLayout } from '@/features/approver/layouts/base-stx-tx-approver.layout';
 import { getTxOptions } from '@/features/approver/utils';
+import { RpcStacksSelectors } from '@/shared/selectors/rpc-stacks.selectors';
 import { useAccounts } from '@/store/accounts/accounts.read';
 import { type App } from '@/store/apps/utils';
 import { useStacksSigners } from '@/store/keychains/stacks/stacks-keychains.read';
@@ -63,6 +64,7 @@ export function SignTransactionApprover({
 
   return (
     <BaseStxTxApproverLayout
+      testID={RpcStacksSelectors.SignTransactionApprover}
       accountId={accountId}
       accounts={accounts}
       onApprove={onApprove}

@@ -1,4 +1,5 @@
 import { InfoSheet } from '@/features/swap/components/info-sheet/info-sheet';
+import { SwapSelectors } from '@/shared/selectors/swap.selectors';
 import { formatCurrency } from '@/utils/currency-formatter';
 import { type MessageDescriptor, i18n } from '@lingui/core';
 import { msg, t } from '@lingui/core/macro';
@@ -27,7 +28,7 @@ export function FeesInfoSheet({ fees, provider }: FeesInfoSheetProps) {
   const providerName = i18n._(providerDisplayNames[provider]);
 
   return (
-    <InfoSheet title={t`Fees`}>
+    <InfoSheet title={t`Fees`} testID={SwapSelectors.FeesInfoSheet}>
       <Box gap="4">
         <FeeRow
           label={t`Network fee`}

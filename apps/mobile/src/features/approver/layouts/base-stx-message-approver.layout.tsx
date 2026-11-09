@@ -24,6 +24,7 @@ interface BaseStxMessageApproverLayoutProps {
         message: string;
         domain: string;
       };
+  testID?: string;
 }
 
 export function BaseStxMessageApproverLayout({
@@ -33,12 +34,13 @@ export function BaseStxMessageApproverLayout({
   accountId,
   accounts,
   messageToSign,
+  testID,
 }: BaseStxMessageApproverLayoutProps) {
   return (
     <Approver requester={origin}>
       <Approver.Container>
         <Approver.Header title={t`Sign Message`} />
-        <Approver.Section>
+        <Approver.Section testID={testID}>
           <ApproverAccountCard
             accounts={accounts.filter(
               acc => makeAccountIdentifer(acc.fingerprint, acc.accountIndex) === accountId

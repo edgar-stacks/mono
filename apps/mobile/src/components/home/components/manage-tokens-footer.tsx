@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 
 import { useSip10AccountBalance } from '@/queries/balance/sip10-balance.query';
+import { HomeSelectors } from '@/shared/selectors/home.selectors';
 import { plural, t } from '@lingui/core/macro';
 import { LinearGradient } from 'expo-linear-gradient';
 
@@ -53,7 +54,13 @@ export function ManageTokensFooter({ account, onPress }: ManageTokensFooterProps
   return (
     <Box flexDirection="row" alignItems="center" px="5" pb="6" style={{ marginTop: -spacing['3'] }}>
       <FadingLine direction="left" />
-      <Button variant="outline" size="sm" iconEnd={ChevronRightIcon} onPress={onPress}>
+      <Button
+        variant="outline"
+        size="sm"
+        iconEnd={ChevronRightIcon}
+        onPress={onPress}
+        testID={HomeSelectors.HiddenTokensButton}
+      >
         {t({
           message: plural(hiddenCount, {
             one: '# hidden token',

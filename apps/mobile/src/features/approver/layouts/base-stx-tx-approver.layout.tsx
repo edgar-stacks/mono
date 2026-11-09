@@ -57,6 +57,7 @@ interface BaseStxTxApproverLayoutProps {
   txOptions: TxOptions;
   origin?: string;
   onBack(): void;
+  testID?: string;
 }
 
 export function BaseStxTxApproverLayout({
@@ -69,6 +70,7 @@ export function BaseStxTxApproverLayout({
   txOptions,
   origin,
   onBack,
+  testID,
 }: BaseStxTxApproverLayoutProps) {
   const approverWarningSheetRef = useRef<SheetInstance>(null);
   const tx = deserializeTransaction(txHex);
@@ -126,7 +128,7 @@ export function BaseStxTxApproverLayout({
           {isContractCall(tx.payload) && <AllowModePostConditionWarning txHex={txHex} />}
           {broadcastedTxid && <StxStatusRow txid={broadcastedTxid} />}
 
-          <Approver.Section>
+          <Approver.Section testID={testID}>
             <ApproverAccountCard
               accounts={accounts.filter(
                 acc => makeAccountIdentifer(acc.fingerprint, acc.accountIndex) === accountId

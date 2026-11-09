@@ -2,6 +2,7 @@ import { useRef, useState } from 'react';
 
 import { AccountSelectorSheet } from '@/features/account/account-selector/account-selector-sheet';
 import { GetAddressesApproverLayout } from '@/features/approver/layouts/get-addresses.layout';
+import { RpcBitcoinSelectors } from '@/shared/selectors/rpc-bitcoin.selectors';
 import { useAccounts } from '@/store/accounts/accounts.read';
 import { userConnectsApp } from '@/store/apps/apps.write';
 import { type App } from '@/store/apps/utils';
@@ -87,6 +88,7 @@ export function GetAddressesApprover(props: GetAddressesApproverProps) {
   return (
     <>
       <GetAddressesApproverLayout
+        testID={RpcBitcoinSelectors.GetAddressesApprover}
         onApprove={onApprove}
         onOpenAccountSelection={onOpenAccountSelection}
         onCloseApprover={props.closeApprover}

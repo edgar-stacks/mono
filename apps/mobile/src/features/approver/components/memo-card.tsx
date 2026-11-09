@@ -1,3 +1,4 @@
+import { ApproverSelectors } from '@/shared/selectors/approver.selectors';
 import { t } from '@lingui/core/macro';
 
 import { Avatar, Box, Cell, ChevronRightIcon, NoteTextIcon } from '@leather.io/ui/native';
@@ -10,7 +11,7 @@ interface MemoCardProps {
 
 export function MemoCard({ memo, onPress, disabled }: MemoCardProps) {
   return (
-    <Box mx="-5">
+    <Box mx="-5" testID={ApproverSelectors.MemoCard}>
       <Cell.Root pressable={!disabled} onPress={onPress} disabled={disabled}>
         <Cell.Icon>
           <Avatar icon={<NoteTextIcon />} />

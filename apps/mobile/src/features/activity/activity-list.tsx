@@ -3,6 +3,7 @@ import { type ReactNode, useCallback } from 'react';
 import { type FetchState } from '@/components/loading/fetch-state';
 import { Screen } from '@/components/screen/screen';
 import { RefreshControl } from '@/features/refresh-control/refresh-control';
+import { ActivitySelectors } from '@/shared/selectors/activity.selectors';
 
 import { type ActivityView } from '@leather.io/features';
 
@@ -30,6 +31,7 @@ export function ActivityList({ data, header }: ActivityListProps) {
   if (data.state === 'error') {
     return (
       <Screen.List
+        testID={ActivitySelectors.List}
         data={[]}
         keyExtractor={keyExtractor}
         renderItem={renderItem}
@@ -41,6 +43,7 @@ export function ActivityList({ data, header }: ActivityListProps) {
 
   return (
     <Screen.List
+      testID={ActivitySelectors.List}
       data={data.value}
       renderItem={renderItem}
       keyExtractor={keyExtractor}

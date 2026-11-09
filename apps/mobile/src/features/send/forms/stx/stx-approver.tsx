@@ -4,6 +4,7 @@ import { useToastContext } from '@/components/toast/toast-context';
 import { BaseStxTxApproverLayout } from '@/features/approver/layouts/base-stx-tx-approver.layout';
 import { getTxOptions } from '@/features/approver/utils';
 import { useBroadcastStacksTransaction } from '@/queries/stacks/use-broadcast-stacks-transaction';
+import { SendSelectors } from '@/shared/selectors/send.selectors';
 import { useAccounts } from '@/store/accounts/accounts.read';
 import { useStacksSigners } from '@/store/keychains/stacks/stacks-keychains.read';
 import { assertStacksSigner } from '@/store/keychains/stacks/utils';
@@ -50,6 +51,7 @@ export function StxApprover({ txHex: _txHex, onEdit, accountId, closeApprover }:
 
   return (
     <BaseStxTxApproverLayout
+      testID={SendSelectors.Approver}
       accountId={accountId}
       accounts={accounts}
       onApprove={onApprove}

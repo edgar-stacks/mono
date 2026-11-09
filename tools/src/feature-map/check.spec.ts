@@ -11,7 +11,8 @@ import { type RpcHandler, type SelectorObject } from './test-assets.js';
 const config = getFeatureMapAppConfig('extension');
 const appRoutes = path.join(config.appDir, 'src/app/routes/app-routes.tsx');
 const sendRoutes = path.join(config.appDir, 'src/app/pages/send/send.routes.tsx');
-const mockApis = path.join(config.mocksDir, 'mock-apis.ts');
+const mockApis = path.join(config.appDir, 'tests/mocks/mock-apis.ts');
+const rpcMethodsDir = path.join(config.appDir, 'src/background/messaging/rpc-methods');
 
 function route(overrides: Partial<RoutedRoute>): RoutedRoute {
   return {
@@ -347,7 +348,7 @@ function selectorObject(name: string, fileName: string, members: string[]): Sele
 }
 
 function rpcHandler(name: string, methods: string[]): RpcHandler {
-  return { name, file: path.join(config.rpcMethodsDir, `${name}.ts`), line: 1, methods };
+  return { name, file: path.join(rpcMethodsDir, `${name}.ts`), line: 1, methods };
 }
 
 const selectorObjects = new Map([

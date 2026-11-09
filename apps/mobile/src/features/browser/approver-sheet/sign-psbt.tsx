@@ -1,4 +1,5 @@
 import { PsbtSigner } from '@/features/psbt-signer/psbt-signer';
+import { RpcBitcoinSelectors } from '@/shared/selectors/rpc-bitcoin.selectors';
 import { useGetBtcNetworkFromRequestParams } from '@/shared/utils';
 import { deserializeAccountId } from '@/store/accounts/accounts';
 import { type App } from '@/store/apps/utils';
@@ -45,6 +46,7 @@ export function SignPsbtApprover(props: SignPsbtApproverProps) {
       psbtHex={decoratedPsbt.psbtHex}
       network={networkMode}
       feeEditorEnabled={false}
+      testID={RpcBitcoinSelectors.SignPsbtApprover}
       onBack={props.closeApprover}
       onClose={props.closeApprover}
       onResult={(result: RpcResult<typeof signPsbt>) => {

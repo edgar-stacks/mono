@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 
 import { compareStrings } from '../utils/compare.js';
 import { type FeatureMapAppConfig } from './app-config.js';
+import { buildExpoRouterModel, loadExpoScreens } from './expo-routes-parser.js';
 import { type FeatureGate, type FeatureParam, featureGates } from './feature-entry.js';
 import {
   type FeaturesParseResult,
@@ -9,6 +10,8 @@ import {
   type ResolvedString,
   parseFeaturesSource,
 } from './features-parser.js';
+import { loadMaestroActions, loadMaestroFlows } from './maestro-flows.js';
+import { loadDispatchedRpcHandlers, loadHookFeatureFlags } from './mobile-assets.js';
 import {
   type RouteReference,
   type RoutedRoute,
@@ -17,7 +20,6 @@ import {
   parseRouterFiles,
 } from './routers-parser.js';
 import {
-  type PageObjectAction,
   type RpcHandler,
   type SelectorObject,
   type SetupMocks,
@@ -44,7 +46,7 @@ export interface FeatureMapModel {
   readonly router: RouterModel;
   readonly features: readonly ParsedFeature[];
   readonly parseErrors: readonly string[];
-  readonly pageObjectActions: ReadonlyMap<string, PageObjectAction>;
+  readonly pageObjectActions: ReadonlyMap<string, SourceLocation>;
   readonly mocks: ReadonlyMap<string, SourceLocation>;
   readonly setupMocks: SetupMocks | undefined;
   readonly specs: ReadonlyMap<string, SpecFile>;
@@ -66,6 +68,26 @@ function parseAllFeatures(files: readonly string[], table: StringTable): Feature
   return { features, errors };
 }
 
+function loadRouter(
+  config: FeatureMapAppConfig,
+  routeUrls: ReadonlyMap<string, string>,
+  table: StringTable
+): RouterModel {
+  if (config.expoRouter) return buildExpoRouterModel(loadExpoScreens(config.expoRouter), routeUrls);
+  return parseRouterFiles(
+    loadRouterFiles(config),
+    table,
+    config.routeUrlsObjectName,
+    config.importAliases
+  );
+}
+
+function loadAllSpecs(config: FeatureMapAppConfig): Map<string, SpecFile> {
+  const specs = loadSpecs(config);
+  if (!config.maestro) return specs;
+  return new Map([...loadMaestroFlows(config.maestro), ...specs]);
+}
+
 export function buildFeatureMapModel(config: FeatureMapAppConfig): FeatureMapModel {
   const routeUrls = loadRouteUrls(config);
   const selectorTable = loadSelectorTable(config);
@@ -73,12 +95,7 @@ export function buildFeatureMapModel(config: FeatureMapAppConfig): FeatureMapMod
     selectorTable,
     new Map([[config.routeUrlsObjectName, routeUrls]]),
   ]);
-  const router = parseRouterFiles(
-    loadRouterFiles(config),
-    table,
-    config.routeUrlsObjectName,
-    config.importAliases
-  );
+  const router = loadRouter(config, routeUrls, table);
   const parsed = parseAllFeatures(loadFeatureFiles(config), table);
   const mocks = loadMockFunctions(config);
 
@@ -89,14 +106,18 @@ export function buildFeatureMapModel(config: FeatureMapAppConfig): FeatureMapMod
     router,
     features: parsed.features,
     parseErrors: parsed.errors,
-    pageObjectActions: loadPageObjectActions(config),
+    pageObjectActions: config.maestro
+      ? loadMaestroActions(config.maestro)
+      : loadPageObjectActions(config),
     mocks,
     setupMocks: loadSetupMocks(config, mocks),
-    specs: loadSpecs(config),
-    flags: loadFeatureFlags(config),
+    specs: loadAllSpecs(config),
+    flags: config.featureFlagHooks ? loadHookFeatureFlags(config) : loadFeatureFlags(config),
     rpcMethods: loadRpcMethods(config),
     selectorObjects: loadSelectorObjects(config),
-    rpcHandlers: loadRpcHandlers(config),
+    rpcHandlers: config.rpcDispatchFiles
+      ? loadDispatchedRpcHandlers(config)
+      : loadRpcHandlers(config),
   };
 }
 

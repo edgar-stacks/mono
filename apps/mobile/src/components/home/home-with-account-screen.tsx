@@ -14,6 +14,7 @@ import { useActivity } from '@/queries/activity/activity.query';
 import { useAccountTotalBalance } from '@/queries/balance/account-balance.query';
 import { useSip10AccountBalance } from '@/queries/balance/sip10-balance.query';
 import { useAccountCollectibles } from '@/queries/collectibles/account-collectibles.query';
+import { HomeSelectors } from '@/shared/selectors/home.selectors';
 import { useSettings } from '@/store/settings/settings';
 import {
   useAccountScaledBalanceAnalytics,
@@ -65,7 +66,7 @@ export function HomeScreenWithAccount({ currentAccount }: HomeScreenWithAccountP
   const isErrorTotalBalance = totalBalance.state === 'error';
 
   return (
-    <Screen>
+    <Screen testID={HomeSelectors.ScreenWithAccount}>
       <AccountScreenHeader account={currentAccount} onOpenAccountSelector={onOpenAccountSelector} />
       {isErrorTotalBalance && <FetchErrorCallout />}
 

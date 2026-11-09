@@ -10,6 +10,7 @@ import { LanguageSheet } from '@/features/settings/language-sheet';
 import SettingsLayout from '@/features/settings/settings-layout';
 import { ThemeSheet } from '@/features/settings/theme-sheet';
 import { supportedLanguages } from '@/i18n/languages';
+import { SettingsSelectors } from '@/shared/selectors/settings.selectors';
 import { useSettings } from '@/store/settings/settings';
 import { select, t } from '@lingui/core/macro';
 import { keys } from 'remeda';
@@ -65,6 +66,7 @@ export default function SettingsDisplayScreen() {
           onPress={() => {
             themeSheetRef.current?.present();
           }}
+          testID={SettingsSelectors.DisplayThemeButton}
         />
         {btcConversionUnitEnabled && (
           <>
@@ -75,6 +77,7 @@ export default function SettingsDisplayScreen() {
               onPress={() => {
                 bitcoinUnitSheetRef.current?.present();
               }}
+              testID={SettingsSelectors.DisplayBitcoinUnitButton}
             />
           </>
         )}
@@ -86,6 +89,7 @@ export default function SettingsDisplayScreen() {
             onPress={() => {
               languageSheetRef.current?.present();
             }}
+            testID={SettingsSelectors.DisplayLanguageButton}
           />
         )}
         <SettingsListItem
@@ -95,6 +99,7 @@ export default function SettingsDisplayScreen() {
           onPress={() => {
             conversionUnitSheetRef.current?.present();
           }}
+          testID={SettingsSelectors.DisplayConversionUnitButton}
         />
         <SettingsListItem
           title={t`Account identifier`}
@@ -111,6 +116,7 @@ export default function SettingsDisplayScreen() {
           onPress={() => {
             accountIdentifierSheetRef.current?.present();
           }}
+          testID={SettingsSelectors.DisplayAccountIdentifierButton}
         />
         <SettingsListItem
           title={t`Haptics`}
@@ -119,6 +125,7 @@ export default function SettingsDisplayScreen() {
           type="switch"
           onSwitchValueChange={() => onUpdateHapticsPreference()}
           switchValue={hapticsPreference === 'enabled'}
+          testID={SettingsSelectors.DisplayHapticsSwitch}
         />
       </SettingsList>
       <ThemeSheet sheetRef={themeSheetRef} />

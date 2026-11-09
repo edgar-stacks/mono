@@ -68,6 +68,7 @@ interface PsbtSignerProps extends AccountId {
   onBack(): void;
   onResult(result: { hex: string; txid?: string }): void;
   onClose(): void;
+  testID?: string;
 }
 export function PsbtSigner(props: PsbtSignerProps) {
   const feeRatesQuery = useAverageBitcoinFeeRates();
@@ -94,6 +95,7 @@ function BasePsbtSigner(props: BasePsbtSignerProps) {
     network: requestedNetwork,
     origin,
     onClose,
+    testID,
   } = props;
   const [psbtHex, setPsbtHex] = useState(_psbtHex);
   const [broadcastedTxid, setBroadcastedTxid] = useState<null | string>(null);
@@ -302,7 +304,7 @@ function BasePsbtSigner(props: BasePsbtSignerProps) {
             </Approver.Section>
           </Approver.Overview>
 
-          <Approver.Section>
+          <Approver.Section testID={testID}>
             <ApproverAccountCard accounts={psbtAccounts} />
           </Approver.Section>
 

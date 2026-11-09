@@ -7,6 +7,7 @@ import { Box, IconButton, InfoCircleIcon, Sheet, type SheetInstance } from '@lea
 interface InfoSheetProps {
   title: string;
   children: ReactNode;
+  testID?: string;
 }
 
 /**
@@ -22,7 +23,7 @@ interface InfoSheetProps {
  *   </Box>
  * </InfoSheet>
  * */
-export function InfoSheet({ title, children }: InfoSheetProps) {
+export function InfoSheet({ title, children, testID }: InfoSheetProps) {
   const sheetRef = useRef<SheetInstance>(null);
   const [open, setOpen] = useState(false);
 
@@ -45,7 +46,7 @@ export function InfoSheet({ title, children }: InfoSheetProps) {
         <Sheet ref={sheetRef} onDismiss={() => setOpen(false)}>
           <Sheet.View>
             <Sheet.Header leftElement={<Sheet.Title>{title}</Sheet.Title>} />
-            <Box px="5" pb="4">
+            <Box px="5" pb="4" testID={testID}>
               {children}
             </Box>
           </Sheet.View>

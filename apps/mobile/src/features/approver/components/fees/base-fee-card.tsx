@@ -1,6 +1,7 @@
 import { type ReactElement } from 'react';
 
 import { Balance } from '@/components/balance/balance';
+import { ApproverSelectors } from '@/shared/selectors/approver.selectors';
 
 import { type MarketData, type Money } from '@leather.io/models';
 import { Avatar, Box, Cell, ChevronRightIcon, type IconProps } from '@leather.io/ui/native';
@@ -28,7 +29,7 @@ export function BaseFeeCard({
   const quoteAmount = baseCurrencyAmountInQuoteWithFallback(amount, marketData);
 
   return (
-    <Box mx="-5">
+    <Box mx="-5" testID={ApproverSelectors.FeeCard}>
       <Cell.Root pressable={!disabled} onPress={onPress} disabled={disabled}>
         <Cell.Icon>
           <Avatar icon={icon} />

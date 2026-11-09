@@ -2,6 +2,7 @@ import { SettingsList } from '@/components/settings/settings-list';
 import { SettingsListItem } from '@/components/settings/settings-list-item';
 import { useToastContext } from '@/components/toast/toast-context';
 import { LEATHER_GUIDES_MOBILE_ANALYTICS } from '@/shared/constants';
+import { SettingsSelectors } from '@/shared/selectors/settings.selectors';
 import { useSettings } from '@/store/settings/settings';
 import { t } from '@lingui/core/macro';
 
@@ -32,6 +33,7 @@ export function AnalyticsSheet({ sheetRef }: AnalyticsSheetProps) {
     <SettingsSheetLayout
       sheetRef={sheetRef}
       title={t`Analytics`}
+      testID={SettingsSelectors.AnalyticsSheet}
       onPressSupport={() => openUrl(LEATHER_GUIDES_MOBILE_ANALYTICS)}
     >
       <SettingsList>

@@ -4,6 +4,7 @@ import { HeaderTitle } from '@/components/screen/screen-header/components/header
 import { Sticker } from '@/components/sticker';
 import { ScreenshotCard } from '@/features/browser/browser/screenshot-card';
 import { useOpenUrl } from '@/features/browser/browser/use-open-url';
+import { BrowserSelectors } from '@/shared/selectors/browser.selectors';
 import { useApps } from '@/store/apps/apps.read';
 import { t } from '@lingui/core/macro';
 
@@ -21,7 +22,11 @@ export default function RecentlyViewedScreen() {
       </Box>
       <Screen.Body width={270} alignSelf="center" justifyContent="center" alignItems="center">
         <Sticker source={flowerImage} />
-        <Text textAlign="center" variant="label01">
+        <Text
+          textAlign="center"
+          variant="label01"
+          testID={BrowserSelectors.RecentlyViewedEmptyState}
+        >
           {t`You will find the apps you recently viewed here`}
         </Text>
       </Screen.Body>

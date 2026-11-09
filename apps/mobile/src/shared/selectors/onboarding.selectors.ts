@@ -1,0 +1,15 @@
+export const OnboardingSelectors = {
+  AddWalletMoreOptionsButton: 'addWalletMoreOptionsButton',
+  CreateNewWalletSheetButton: 'createNewWalletSheetButton',
+  GeneratingWalletScreen: 'generatingWalletScreen',
+  RestoreWalletContinue: 'restoreWalletContinue',
+  RestoreWalletPassphraseCell: 'restoreWalletPassphraseCell',
+  RestoreWalletPassphraseConfirm: 'restoreWalletPassphraseConfirm',
+  RestoreWalletPassphraseInput: 'restoreWalletPassphraseInput',
+  RestoreWalletSheetButton: 'restoreWalletSheetButton',
+  RestoreWalletTextInput: 'restoreWalletTextInput',
+  SecureWalletEnableButton: 'secureWalletEnableButton',
+  SecureWalletSkipButton: 'secureWalletSkipButton',
+  WalletCreationBackedUpButton: 'walletCreationBackedUpButton',
+  WalletCreationTapToReveal: 'walletCreationTapToReveal',
+} as const;

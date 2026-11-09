@@ -1,4 +1,5 @@
 import { BaseStxMessageApproverLayout } from '@/features/approver/layouts/base-stx-message-approver.layout';
+import { RpcStacksSelectors } from '@/shared/selectors/rpc-stacks.selectors';
 import { useAccounts } from '@/store/accounts/accounts.read';
 import { type App } from '@/store/apps/utils';
 import { useStacksSigners } from '@/store/keychains/stacks/stacks-keychains.read';
@@ -57,6 +58,7 @@ export function StxSignMessageApprover({
 
   return (
     <BaseStxMessageApproverLayout
+      testID={RpcStacksSelectors.SignMessageApprover}
       accountId={accountId}
       accounts={accounts}
       messageToSign={request.params}

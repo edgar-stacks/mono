@@ -1,7 +1,8 @@
 import { existsSync } from 'node:fs';
 
 import { compareStrings } from '../utils/compare.js';
-import { toRepoRelative } from './app-config.js';
+import { type FeatureMapAppConfig, toRepoRelative } from './app-config.js';
+import { checkExpoRoutes } from './expo-routes-check.js';
 import { type ParsedFeature, type ResolvedString } from './features-parser.js';
 import {
   type FeatureMapModel,
@@ -30,6 +31,24 @@ function featureLabel(feature: ParsedFeature): string {
 
 function featuresGlob(model: FeatureMapModel): string {
   return `${toRepoRelative(model.config.featuresDir)}/*.features.ts`;
+}
+
+function optionalDir(dir: string | undefined): string {
+  return dir === undefined ? '(not configured)' : toRepoRelative(dir);
+}
+
+function rpcHandlerSource(config: FeatureMapAppConfig): string {
+  if (config.rpcDispatchFiles) {
+    return `a method dispatched in ${config.rpcDispatchFiles.map(toRepoRelative).join(', ')}`;
+  }
+  return `a file in ${optionalDir(config.rpcMethodsDir)}`;
+}
+
+function specLocations(config: FeatureMapAppConfig): string {
+  const specsDir = toRepoRelative(config.specsDir);
+  if (!config.maestro) return `a *.spec.ts under ${specsDir}`;
+  const flowsDirs = config.maestro.flowsDirs.map(toRepoRelative).join(' or ');
+  return `a Maestro flow under ${flowsDirs} or a *.spec.ts under ${specsDir}`;
 }
 
 function sortedEntries<T>(map: ReadonlyMap<string, T>): [string, T][] {
@@ -146,7 +165,7 @@ function checkAnchor(model: FeatureMapModel, feature: ParsedFeature): string[] {
     for (const handler of anchor.handlers) {
       if (model.rpcHandlers.has(handler)) continue;
       errors.push(
-        `${label}: anchor handler '${handler}' is not a file in ${toRepoRelative(model.config.rpcMethodsDir)}. Fix: use one of ${[...model.rpcHandlers.keys()].join(', ')}.`
+        `${label}: anchor handler '${handler}' is not ${rpcHandlerSource(model.config)}. Fix: use one of ${[...model.rpcHandlers.keys()].join(', ')}.`
       );
     }
   }
@@ -183,6 +202,10 @@ function actionError(
   action: string
 ): string | undefined {
   if (model.pageObjectActions.has(action)) return undefined;
+  if (model.config.maestro) {
+    const actionsDir = toRepoRelative(model.config.maestro.actionsDir);
+    return `${featureLabel(feature)}: ${field} '${action}' is not a shared Maestro flow in ${actionsDir}. Fix: use one of ${[...model.pageObjectActions.keys()].join(', ')} or add the flow.`;
+  }
   const [className] = action.split('.');
   const candidates = [...model.pageObjectActions.keys()].filter(name =>
     name.startsWith(`${className}.`)
@@ -190,7 +213,7 @@ function actionError(
   const hint =
     candidates.length > 0
       ? `Methods of ${className}: ${candidates.map(name => name.split('.')[1]).join(', ')}.`
-      : `No page object named ${className} in ${toRepoRelative(model.config.pageObjectsDir)}.`;
+      : `No page object named ${className} in ${optionalDir(model.config.pageObjectsDir)}.`;
   return `${featureLabel(feature)}: ${field} '${action}' is not a public page-object method. ${hint} Fix: use an existing method or add one to the page object.`;
 }
 
@@ -208,8 +231,7 @@ function checkRedundantMocks(model: FeatureMapModel, feature: ParsedFeature): st
 function checkFeatureReferences(model: FeatureMapModel, feature: ParsedFeature): string[] {
   const errors: string[] = [];
   const label = featureLabel(feature);
-  const specsDir = toRepoRelative(model.config.specsDir);
-  const mocksDir = toRepoRelative(model.config.mocksDir);
+  const mocksDir = optionalDir(model.config.mocksDir);
   const rpcDir = toRepoRelative(model.config.rpcEndpointsDir);
 
   errors.push(...checkAnchor(model, feature));
@@ -226,7 +248,7 @@ function checkFeatureReferences(model: FeatureMapModel, feature: ParsedFeature):
   for (const spec of feature.specs) {
     if (model.specs.has(spec) && existsSync(specPathFor(spec))) continue;
     errors.push(
-      `${label}: spec '${spec}' does not exist. Fix: point it at a *.spec.ts under ${specsDir} or remove it.`
+      `${label}: spec '${spec}' does not exist. Fix: point it at ${specLocations(model.config)} or remove it.`
     );
   }
 
@@ -256,8 +278,11 @@ function checkFeatureReferences(model: FeatureMapModel, feature: ParsedFeature):
 
   for (const flag of feature.flags) {
     if (model.flags.includes(flag)) continue;
+    const source = model.config.featureFlagHooks
+      ? `read by ${model.config.featureFlagHooks.join(' or ')}`
+      : `a key of ${model.config.featureFlagsInterfaceName}`;
     errors.push(
-      `${label}: flag '${flag}' is not a key of ${model.config.featureFlagsInterfaceName} in ${toRepoRelative(model.config.featureFlagsFile)}. Fix: use one of ${model.flags.join(', ')}.`
+      `${label}: flag '${flag}' is not ${source} in ${toRepoRelative(model.config.featureFlagsFile)}. Fix: use one of ${model.flags.join(', ')}.`
     );
   }
 
@@ -331,7 +356,11 @@ function checkUnresolvedRouterPaths(model: FeatureMapModel): string[] {
 }
 
 export function checkFeatureMap(model: FeatureMapModel): CheckResult {
-  const errors: string[] = [...model.parseErrors, ...checkUnresolvedRouterPaths(model)];
+  const errors: string[] = [
+    ...model.parseErrors,
+    ...checkUnresolvedRouterPaths(model),
+    ...checkExpoRoutes(model),
+  ];
   const routeClaims = claimsByKey(model);
   const rpcClaims = claimsByRpcHandler(model);
 

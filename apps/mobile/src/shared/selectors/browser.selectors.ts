@@ -1,0 +1,15 @@
+export const BrowserSelectors = {
+  ConnectionCard: 'browserConnectionCard',
+  ConnectionDisconnectButton: 'browserConnectionDisconnectButton',
+  ConnectionsButton: 'browserConnectionsButton',
+  ConnectionsEmptyState: 'browserConnectionsEmptyState',
+  ExploreButton: 'browserExploreButton',
+  NavigationBackButton: 'browserNavigationBackButton',
+  NavigationUrlButton: 'browserNavigationUrlButton',
+  RecentlyViewedCard: 'browserRecentlyViewedCard',
+  RecentlyViewedEmptyState: 'browserRecentlyViewedEmptyState',
+  RecentlyViewedRemoveButton: 'browserRecentlyViewedRemoveButton',
+  RecentsButton: 'browserRecentsButton',
+  SearchInput: 'browserSearchInput',
+  WebView: 'browserWebView',
+} as const;

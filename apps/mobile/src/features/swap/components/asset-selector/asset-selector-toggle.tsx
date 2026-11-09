@@ -13,10 +13,11 @@ import {
 interface AssetPickerTriggerProps {
   asset: SwappableFungibleCryptoAsset | undefined;
   disabled?: boolean;
+  testID?: string;
   onPress(): void;
 }
 
-export function AssetSelectorToggle({ asset, onPress, disabled }: AssetPickerTriggerProps) {
+export function AssetSelectorToggle({ asset, onPress, disabled, testID }: AssetPickerTriggerProps) {
   return (
     <Pressable
       flexDirection="row"
@@ -30,6 +31,7 @@ export function AssetSelectorToggle({ asset, onPress, disabled }: AssetPickerTri
       opacity={disabled ? 0.5 : 1}
       onPress={onPress}
       disabled={disabled}
+      testID={testID}
     >
       {renderAvatar(asset)}
       <Text ml="-0.5" variant="label03">

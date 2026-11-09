@@ -22,6 +22,7 @@
     "src/**/*.tsx",
     "src/scripts/injected-provider.js",
     "src/assets/*.json",
+    "tests/**/*.ts",
     ".expo/types/**/*.ts",
     "expo-env.d.ts",
     "index.d.ts"

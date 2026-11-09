@@ -1,6 +1,7 @@
 import { SettingsList } from '@/components/settings/settings-list';
 import { SettingsListItem } from '@/components/settings/settings-list-item';
 import { SettingsSheetLayout } from '@/features/settings/settings-sheet.layout';
+import { HomeSelectors } from '@/shared/selectors/home.selectors';
 import { useSettings } from '@/store/settings/settings';
 import { type TokenPreset, tokenPresets } from '@/store/settings/utils';
 import { t } from '@lingui/core/macro';
@@ -43,6 +44,7 @@ export function TokenPresetSheet({ sheetRef }: TokenPresetSheetProps) {
               }}
               type="radio"
               isRadioSelected={tokenPreset === preset}
+              testID={`${HomeSelectors.TokenPresetOption}-${preset}`}
             />
           );
         })}

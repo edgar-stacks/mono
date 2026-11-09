@@ -3,6 +3,7 @@ import { Screen } from '@/components/screen/screen';
 import { HeaderTitle } from '@/components/screen/screen-header/components/header-title';
 import { Sticker } from '@/components/sticker';
 import { LinkCard } from '@/features/browser/browser/link-card';
+import { BrowserSelectors } from '@/shared/selectors/browser.selectors';
 import { useApps } from '@/store/apps/apps.read';
 import { t } from '@lingui/core/macro';
 
@@ -19,7 +20,7 @@ export default function ConnectionsScreen() {
       </Box>
       <Screen.Body width={270} alignSelf="center" justifyContent="center" alignItems="center">
         <Sticker source={ufoImage} />
-        <Text textAlign="center" variant="label01">
+        <Text textAlign="center" variant="label01" testID={BrowserSelectors.ConnectionsEmptyState}>
           {t`You will find the apps you are connected to here`}
         </Text>
       </Screen.Body>

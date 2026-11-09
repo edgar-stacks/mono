@@ -12,9 +12,10 @@ interface QrScannerProps<T> {
   parse(data: string): ParserResult<T>;
   onScanned(result: T): void;
   onClose(): void;
+  testID?: string;
 }
 
-export function QrScanner<T>({ onClose, onScanned, parse }: QrScannerProps<T>) {
+export function QrScanner<T>({ onClose, onScanned, parse, testID }: QrScannerProps<T>) {
   const lastSuccessfulScan = useRef(false);
   const { showError, error } = useTransientQrError();
   const triggerHaptics = useHaptics();
@@ -37,7 +38,7 @@ export function QrScanner<T>({ onClose, onScanned, parse }: QrScannerProps<T>) {
 
   return (
     <ThemeProvider theme="dark">
-      <Box bg="ink.background-primary" flex={1}>
+      <Box bg="ink.background-primary" flex={1} testID={testID}>
         <QrScannerCamera onBarcodeScanned={handleBarcodeScanned} />
         <QrScannerChrome onClose={onClose} errorMessage={error} />
       </Box>

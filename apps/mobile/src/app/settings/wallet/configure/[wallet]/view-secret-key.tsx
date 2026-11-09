@@ -1,6 +1,7 @@
 import { Screen } from '@/components/screen/screen';
 import SettingsLayout from '@/features/settings/settings-layout';
 import { MnemonicDisplay } from '@/features/wallet-manager/create-new-wallet/mnemonic-display';
+import { WalletSettingsSelectors } from '@/shared/selectors/wallet-settings.selectors';
 import { useMnemonic } from '@/store/storage-persistors';
 import { t } from '@lingui/core/macro';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -16,7 +17,7 @@ function ViewSecretKey({ fingerprint }: { fingerprint: string }) {
   return (
     <>
       <SettingsLayout title={t`Your Secret Key`}>
-        <Box gap="5" px="5" pb="8">
+        <Box gap="5" px="5" pb="8" testID={WalletSettingsSelectors.ViewSecretKeyContent}>
           <Text variant="label01">
             {t`Your Secret Key grants you access to your wallet and its assets. Store it securely since it can never be recovered if lost or stolen.`}
           </Text>
@@ -25,7 +26,10 @@ function ViewSecretKey({ fingerprint }: { fingerprint: string }) {
         </Box>
       </SettingsLayout>
       <Screen.Footer>
-        <Button onPress={() => router.back()}>{t`Done`}</Button>
+        <Button
+          onPress={() => router.back()}
+          testID={WalletSettingsSelectors.ViewSecretKeyDoneButton}
+        >{t`Done`}</Button>
       </Screen.Footer>
     </>
   );

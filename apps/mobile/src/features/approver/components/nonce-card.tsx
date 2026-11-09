@@ -1,3 +1,4 @@
+import { ApproverSelectors } from '@/shared/selectors/approver.selectors';
 import { t } from '@lingui/core/macro';
 
 import { Avatar, Box, Cell, ChevronRightIcon, NumberedListIcon, Text } from '@leather.io/ui/native';
@@ -10,7 +11,7 @@ interface NonceCardProps {
 
 export function NonceCard({ nonce, onPress, disabled }: NonceCardProps) {
   return (
-    <Box mx="-5">
+    <Box mx="-5" testID={ApproverSelectors.NonceCard}>
       <Cell.Root pressable={!disabled} onPress={onPress} disabled={disabled}>
         <Cell.Icon>
           <Avatar icon={<NumberedListIcon />} />

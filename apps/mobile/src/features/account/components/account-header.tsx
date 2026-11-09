@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 
 import { AccountAvatar } from '@/features/account/components/account-avatar';
+import { HomeSelectors } from '@/shared/selectors/home.selectors';
 import { useAccounts } from '@/store/accounts/accounts.read';
 import { useWalletByFingerprint, useWallets } from '@/store/wallets/wallets.read';
 import { captureMessage } from '@sentry/react-native';
@@ -45,6 +46,7 @@ export function AccountHeader({ account, onPress }: AccountHeaderProps) {
       flexDirection="row"
       alignItems="center"
       gap="3"
+      testID={HomeSelectors.AccountHeader}
     >
       <AccountAvatar size="lg" icon={accountData?.icon ?? 'home'} />
       <Box>

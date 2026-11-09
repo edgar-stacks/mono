@@ -2,6 +2,7 @@ import { useRef, useState } from 'react';
 
 import { AccountSelectorSheet } from '@/features/account/account-selector/account-selector-sheet';
 import { GetAddressesApproverLayout } from '@/features/approver/layouts/get-addresses.layout';
+import { RpcStacksSelectors } from '@/shared/selectors/rpc-stacks.selectors';
 import { useAccounts } from '@/store/accounts/accounts.read';
 import { userConnectsApp } from '@/store/apps/apps.write';
 import { type App } from '@/store/apps/utils';
@@ -76,6 +77,7 @@ export function StxGetAddressesApprover(props: StxGetAddressesApproverProps) {
   return (
     <>
       <GetAddressesApproverLayout
+        testID={RpcStacksSelectors.GetAddressesApprover}
         accounts={accounts}
         isSubmitDisabled={isSubmitDisabled}
         onApprove={onApprove}

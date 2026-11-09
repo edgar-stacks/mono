@@ -1,5 +1,6 @@
 import { ApproverAccountCard } from '@/features/approver/components/approver-account-card';
 import { ApproverPermissions } from '@/features/approver/components/approver-permissions';
+import { ApproverSelectors } from '@/shared/selectors/approver.selectors';
 import { type Account } from '@/store/accounts/accounts';
 import { t } from '@lingui/core/macro';
 
@@ -16,6 +17,7 @@ interface GetAddressesApproverLayoutProps {
   selectedAccountId: string | null;
   accounts: Account[];
   isSubmitDisabled: boolean;
+  testID: string;
 }
 
 export function GetAddressesApproverLayout({
@@ -26,12 +28,13 @@ export function GetAddressesApproverLayout({
   selectedAccountId,
   accounts,
   isSubmitDisabled,
+  testID,
 }: GetAddressesApproverLayoutProps) {
   return (
     <Approver requester={requester}>
       <Approver.Container>
         <Approver.Header showLargeFavicon title={t`Connect`} />
-        <Approver.Section mb="1">
+        <Approver.Section mb="1" testID={testID}>
           {selectedAccountId ? (
             <ApproverAccountCard
               accounts={accounts.filter(
@@ -40,7 +43,11 @@ export function GetAddressesApproverLayout({
               onPress={onOpenAccountSelection}
             />
           ) : (
-            <Cell.Root pressable={true} onPress={onOpenAccountSelection}>
+            <Cell.Root
+              pressable={true}
+              onPress={onOpenAccountSelection}
+              testID={ApproverSelectors.ChooseAccountCell}
+            >
               <Cell.Content>
                 <Cell.Label variant="primary">{t`Choose an account`}</Cell.Label>
               </Cell.Content>

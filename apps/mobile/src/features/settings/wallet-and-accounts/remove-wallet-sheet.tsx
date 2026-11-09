@@ -1,6 +1,7 @@
 import { WarningSheetLayout } from '@/components/sheets/warning-sheet.layout';
 import { useOpenUrl } from '@/features/browser/browser/use-open-url';
 import { LEATHER_GUIDES_MOBILE_REMOVE_WALLET } from '@/shared/constants';
+import { WalletSettingsSelectors } from '@/shared/selectors/wallet-settings.selectors';
 import { t } from '@lingui/core/macro';
 
 import { type SheetRef } from '@leather.io/ui/native';
@@ -17,6 +18,7 @@ export function RemoveWalletSheet({ sheetRef, onSubmit }: RemoveWalletSheetProps
       title={t`Remove wallet`}
       description={t`Proceed with caution since the wallet will be removed entirely from this device and its assets will not be recoverable unless you’ve stored its Secret Key elsewhere securely.`}
       variant="critical"
+      submitTestId={WalletSettingsSelectors.RemoveWalletSheetContinueButton}
       onSubmit={onSubmit}
       onPressSupport={() => openUrl(LEATHER_GUIDES_MOBILE_REMOVE_WALLET)}
     />

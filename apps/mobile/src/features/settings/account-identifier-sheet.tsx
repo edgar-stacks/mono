@@ -6,6 +6,7 @@ import {
   getAccountDisplayPreferencesKeyedByType,
   getChainDisplayLabel,
 } from '@/shared/display-preference';
+import { SettingsSelectors } from '@/shared/selectors/settings.selectors';
 import { useSettings } from '@/store/settings/settings';
 import { t } from '@lingui/core/macro';
 
@@ -35,6 +36,7 @@ export function AccountIdentifierSheet({ sheetRef }: AccountIdentifierSheetProps
     <SettingsSheetLayout
       sheetRef={sheetRef}
       title={t`Account identifier`}
+      testID={SettingsSelectors.AccountIdentifierSheet}
       onPressSupport={() => {
         openUrl(LEATHER_GUIDES_MOBILE_ACCOUNT_IDENTIFIER);
       }}

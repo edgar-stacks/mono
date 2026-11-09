@@ -1,7 +1,7 @@
 import { type ReactNode } from 'react';
 
 import { Loading } from '@/components/loading/loading';
-import { TestId } from '@/shared/test-id';
+import { TokenSelectors } from '@/shared/selectors/token.selectors';
 
 import { Cell, type PressableProps, Text } from '@leather.io/ui/native';
 
@@ -25,7 +25,7 @@ export function TokenCell({
   return (
     <Cell.Root
       pressable={true}
-      testID={`${TestId.tokenBalanceItem}-${rest.ticker}`}
+      testID={`${TokenSelectors.BalanceItem}-${rest.ticker}`}
       disabled={!onPress}
       onPress={onPress}
       {...rest}

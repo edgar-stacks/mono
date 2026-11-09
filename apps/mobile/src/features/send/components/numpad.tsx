@@ -1,4 +1,5 @@
 import { useValidateInputDecimalPlaces } from '@/features/send/hooks/use-validate-input-decimal-places';
+import { SendSelectors } from '@/shared/selectors/send.selectors';
 import { analytics } from '@/utils/analytics';
 import type BigNumber from 'bignumber.js';
 import { funnel } from 'remeda';
@@ -45,7 +46,7 @@ export function Numpad({
   }
 
   return (
-    <Box mx="-5">
+    <Box mx="-5" testID={SendSelectors.Numpad}>
       <RawNumpad onChange={handleChange} allowNextValue={validateInputDecimalPlaces} {...props} />
     </Box>
   );

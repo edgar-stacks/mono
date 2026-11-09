@@ -4,6 +4,7 @@ import { useToastContext } from '@/components/toast/toast-context';
 import { BaseStxTxApproverLayout } from '@/features/approver/layouts/base-stx-tx-approver.layout';
 import { getTxOptions } from '@/features/approver/utils';
 import { useBroadcastStacksTransaction } from '@/queries/stacks/use-broadcast-stacks-transaction';
+import { RpcStacksSelectors } from '@/shared/selectors/rpc-stacks.selectors';
 import { useGetStxNetworkFromRequestParams } from '@/shared/utils';
 import { useAccounts } from '@/store/accounts/accounts.read';
 import { type App } from '@/store/apps/utils';
@@ -89,6 +90,7 @@ export function CallContractApprover({
 
   return (
     <BaseStxTxApproverLayout
+      testID={RpcStacksSelectors.CallContractApprover}
       accountId={accountId}
       accounts={accounts}
       onApprove={onApprove}
