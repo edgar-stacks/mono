@@ -1,28 +1,39 @@
-import { redirect } from 'react-router';
-
-import { cmsClient } from '~/constants/cms-client';
-import { getDeprecationRedirect } from '~/pages/redirects/shared-redirect-logic';
+import { NotFoundErrorBoundary } from '~/pages/error/not-found-error-boundary';
+import { notFoundMeta } from '~/pages/error/not-found-meta';
+import {
+  type CmsGuide,
+  resolveCmsContentSlug,
+  throwForContentResolution,
+} from '~/pages/redirects/content-slug-loader';
+import { getGuidePath } from '~/pages/redirects/content-slug-resolver';
+import { marketingCacheHeaders, marketingMeta } from '~/pages/seo/marketing-meta';
 import { Guide } from '~/pages/support/guide/guide';
-
-import { type HelpCenterGuideBySlugQueryResult, helpCenterGuideBySlugQuery } from '@leather.io/cms';
 
 import { type Route } from './+types/guide.route';
 
-export async function loader({
-  params,
-}: Route.LoaderArgs): Promise<{ guide: NonNullable<HelpCenterGuideBySlugQueryResult> } | Response> {
+export async function loader({ params, request }: Route.LoaderArgs): Promise<{ guide: CmsGuide }> {
   const slug = params.guideSlug;
+  const resolution = await resolveCmsContentSlug(slug);
+  if (resolution.kind === 'guide') return { guide: resolution.guide };
+  return throwForContentResolution(slug, resolution, request);
+}
 
-  const deprecationRedirect = getDeprecationRedirect(slug);
-  if (deprecationRedirect) return deprecationRedirect;
+export function meta({ loaderData }: Route.MetaArgs) {
+  if (!loaderData) return notFoundMeta();
+  const { guide } = loaderData;
+  return marketingMeta({
+    title: guide.title,
+    path: getGuidePath(guide.slug.current),
+    description: guide.summary,
+  });
+}
 
-  const guide = await cmsClient.fetch(helpCenterGuideBySlugQuery, { slug });
+export function headers() {
+  return marketingCacheHeaders;
+}
 
-  if (!guide) {
-    return redirect(`/posts/${slug}`);
-  }
-
-  return { guide };
+export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
+  return <NotFoundErrorBoundary error={error} />;
 }
 
 export default function GuideRoute() {

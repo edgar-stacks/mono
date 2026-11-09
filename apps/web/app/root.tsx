@@ -15,9 +15,10 @@ import { MockLeatherDialog } from './features/mock-dialog/mock-dialog';
 import { ToastsProvider } from './features/toasts/toasts-provider';
 import { Footer } from './layouts/footer/footer';
 import { GlobalLoader } from './layouts/nav/global-loader';
-import { Nav } from './layouts/nav/nav';
+import { LeatherLogoHomeLink, Nav } from './layouts/nav/nav';
 import { NetworkGate } from './layouts/network-gate/network-gate';
 import { ErrorPage } from './layouts/page/error';
+import { useRouteHidesChrome } from './layouts/route-chrome';
 import { isBareCanvasPath } from './pages/playground/playground.constants';
 
 // Polyfill global Buffer
@@ -42,7 +43,8 @@ const maxWidthCss = css({
 
 export function Layout({ children }: HasChildren) {
   const location = useLocation();
-  const bareCanvas = isBareCanvasPath(location.pathname);
+  const routeHidesChrome = useRouteHidesChrome();
+  const bareCanvas = routeHidesChrome || isBareCanvasPath(location.pathname);
 
   return (
     <html lang="en">
@@ -69,6 +71,9 @@ export function Layout({ children }: HasChildren) {
                 minHeight="100vh"
                 px={['space.04', null, 'space.07']}
               >
+                <Box display={['block', 'block', 'none']} pt="space.04" className={maxWidthCss}>
+                  <LeatherLogoHomeLink />
+                </Box>
                 <styled.main
                   flex={1}
                   position="relative"

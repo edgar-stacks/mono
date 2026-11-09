@@ -1,26 +1,39 @@
-import { cmsClient } from '~/constants/cms-client';
+import { NotFoundErrorBoundary } from '~/pages/error/not-found-error-boundary';
+import { notFoundMeta } from '~/pages/error/not-found-meta';
 import { Post } from '~/pages/posts/post';
-import { getDeprecationRedirect } from '~/pages/redirects/shared-redirect-logic';
-
-import { type PostBySlugQueryResult, postBySlugQuery } from '@leather.io/cms';
+import {
+  type CmsPost,
+  resolveCmsContentSlug,
+  throwForContentResolution,
+} from '~/pages/redirects/content-slug-loader';
+import { getPostPath } from '~/pages/redirects/content-slug-resolver';
+import { marketingCacheHeaders, marketingMeta } from '~/pages/seo/marketing-meta';
 
 import { type Route } from './+types/post.route';
 
-export async function loader({
-  params,
-}: Route.LoaderArgs): Promise<{ post: NonNullable<PostBySlugQueryResult> } | Response> {
+export async function loader({ params, request }: Route.LoaderArgs): Promise<{ post: CmsPost }> {
   const slug = params.postSlug;
+  const resolution = await resolveCmsContentSlug(slug);
+  if (resolution.kind === 'post') return { post: resolution.post };
+  return throwForContentResolution(slug, resolution, request);
+}
 
-  const deprecationRedirect = getDeprecationRedirect(slug);
-  if (deprecationRedirect) return deprecationRedirect;
+export function meta({ loaderData }: Route.MetaArgs) {
+  if (!loaderData) return notFoundMeta();
+  const { post } = loaderData;
+  return marketingMeta({
+    title: post.title,
+    path: getPostPath(post.slug.current),
+    description: post.summary,
+  });
+}
 
-  const post = await cmsClient.fetch(postBySlugQuery, { slug });
+export function headers() {
+  return marketingCacheHeaders;
+}
 
-  if (!post) {
-    throw new Error('Post not found', { cause: 404 });
-  }
-
-  return { post };
+export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
+  return <NotFoundErrorBoundary error={error} />;
 }
 
 export default function PostRoute() {

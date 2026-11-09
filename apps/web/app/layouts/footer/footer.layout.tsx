@@ -1,3 +1,5 @@
+import { Link } from 'react-router';
+
 import {
   Box,
   type BoxProps,
@@ -24,6 +26,22 @@ function FooterGrid(props: GridProps) {
       gap={['space.07', 'space.07', 'space.09']}
       gridTemplateColumns={['repeat(2, 1fr)', null, null, 'repeat(3, 1fr)']}
       mt="space.07"
+      {...props}
+    />
+  );
+}
+
+const StyledLink = styled(Link);
+
+function FooterInternalLink(props: HTMLStyledProps<typeof Link>) {
+  return (
+    <StyledLink
+      textStyle="label.02"
+      borderBottom="1px solid"
+      borderColor="ink.border-default"
+      _hover={{ borderColor: 'ink.action-primary-hover' }}
+      _focus={{ borderColor: 'ink.action-primary-hover' }}
+      outline={0}
       {...props}
     />
   );
@@ -76,5 +94,6 @@ function FooterLegalText({ product, copyright, ...props }: FooterLegalTextProps)
 FooterLayout.Grid = FooterGrid;
 FooterLayout.Column = FooterColumn;
 FooterLayout.Link = ExternalLink;
+FooterLayout.InternalLink = FooterInternalLink;
 FooterLayout.LegalText = FooterLegalText;
 FooterLayout.LeatherIcon = FooterLeatherIcon;

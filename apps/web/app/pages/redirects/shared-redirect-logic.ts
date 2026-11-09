@@ -8,10 +8,6 @@ function prefixRedirectLoader(request: Request, from: string, to: string) {
   return redirect(redirectUrl, 301);
 }
 
-export function helpCenterRedirectLoader(request: Request) {
-  return prefixRedirectLoader(request, '/help-center', '/support');
-}
-
 export function stackingRedirectLoader(request: Request) {
   return prefixRedirectLoader(request, '/stacking', '/staking');
 }
@@ -68,6 +64,12 @@ const deprecatedContentRedirects = new Map<string, string>([
   ...ordinalsContentSlugs.map((slug): [string, string] => [slug, ordinalsDeprecationPostSlug]),
 ]);
 
+export const deprecationPostPaths = {
+  ordinals: `/posts/${ordinalsDeprecationPostSlug}`,
+  runes: `/posts/${runesDeprecationPostSlug}`,
+  stamps: `/posts/${stampsDeprecationPostSlug}`,
+};
+
 export const deprecationPostSlugs = [
   ordinalsDeprecationPostSlug,
   stampsDeprecationPostSlug,
@@ -78,8 +80,8 @@ export function isDeprecatedContentSlug(slug: string) {
   return deprecatedContentRedirects.has(slug);
 }
 
-export function getDeprecationRedirect(slug: string) {
+export function getDeprecationTarget(slug: string) {
   const target = deprecatedContentRedirects.get(slug);
   if (!target) return null;
-  return redirect(`/posts/${target}`, 301);
+  return `/posts/${target}`;
 }
