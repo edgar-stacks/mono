@@ -1,7 +1,9 @@
 import { AllBalancesSelectors } from '@tests/selectors/all-balances.selectors';
+import { MoveToFreshAccountSelectors } from '@tests/selectors/move-to-fresh-account.selectors';
 import { OnboardingSelectors } from '@tests/selectors/onboarding.selectors';
 import { SettingsSelectors } from '@tests/selectors/settings.selectors';
 import { SharedComponentsSelectors } from '@tests/selectors/shared-component.selectors';
+import { TokenDetailsSelectors } from '@tests/selectors/token-details.selectors';
 
 import { RouteUrls } from '@shared/route-urls';
 
@@ -266,5 +268,43 @@ export const settingsFeatures = [
     ],
     description:
       'What locking does (useKeyActions.lockWallet in apps/extension/src/app/common/hooks/use-key-actions.ts): clear the wallet session in chrome.storage.session (the encryptionKey), the in-memory key store and the keychain selector caches, broadcast a wallet-lock message, call afterLock (both callers navigate to /unlock with a from route), then reload the window. Other open windows receive the message (useOnWalletLock in features/container/container.tsx), clear their in-memory keys and caches and reload, after which AccountGate shows /unlock; the window stays open (wallet-lock.spec). There is no idle timer: the wallet locks only on this action, on an extension update, or when the browser discards session storage. A locked wallet can still sign out from the settings menu. password-memory-leak.spec checks that the password is not left in the heap after locking.',
+  },
+  {
+    id: 'move-to-fresh-account',
+    anchor: { kind: 'route' },
+    routes: [RouteUrls.MoveToFreshAccount],
+    params: [],
+    entry: [
+      {
+        kind: 'nav',
+        steps: [
+          'Open STX token details (#/token/STX), click the round "..." button (TokenDetailsSelectors.TokenDetailsMoreButton, aria-label "More actions") and choose "Move to a fresh account" (TokenDetailsSelectors.TokenDetailsMoveToFreshAccountItem)',
+        ],
+      },
+      { kind: 'deepLink', steps: ['Open #/move-to-fresh-account while the flag is on'] },
+    ],
+    gate: 'account',
+    flags: ['accountShuffle'],
+    preconditions: {
+      session: 'signed-in',
+      network: 'mainnet',
+      mocks: [...defaultMocks],
+    },
+    selectors: {
+      ready: MoveToFreshAccountSelectors.MoveToFreshAccountPage,
+      others: [
+        TokenDetailsSelectors.TokenDetailsMoreButton,
+        TokenDetailsSelectors.TokenDetailsMoveToFreshAccountItem,
+        MoveToFreshAccountSelectors.FreshAddress,
+        MoveToFreshAccountSelectors.NoFreshAccountWarning,
+        MoveToFreshAccountSelectors.PlanError,
+        MoveToFreshAccountSelectors.SubmitButton,
+        SharedComponentsSelectors.HeaderBackBtn,
+      ],
+    },
+    actions: [],
+    specs: [],
+    description:
+      'Proof of concept that moves every Stacks asset of the current account to a fresh address (pages/move-to-fresh-account). The route and the "..." menu on STX token details exist only while the accountShuffle LaunchDarkly flag is on; the E2E LaunchDarkly mock does not set it, so a spec must enable it with overrideLaunchDarklyFlags before signing in. The fresh account is highest index + 1 for a software wallet and current index + 1 for Ledger (useFreshStacksAccount); it is offered only when its next nonce is 0 and no policy account is active, otherwise the page shows "No fresh account available". The page lists the fresh address, the STX amount, each SIP-10 token and NFT that moves, a "Stays behind" group (BNS-V2 names listed in the market map or in a manager-transferable namespace), the transaction count and the total fee, with a "Move Stacks assets" button. It builds one transaction per token and NFT with sequential nonces and sends the remaining unlocked STX last, signs them all first, then broadcasts them in order and stops at the first failure ("Sent <n> of <total> transactions, then stopped: <error>"). After success a software wallet creates the next account and a Ledger wallet switches to the next index, then it toasts and navigates Home. No spec covers it.',
   },
 ] as const satisfies readonly ExtensionFeatureEntry[];
