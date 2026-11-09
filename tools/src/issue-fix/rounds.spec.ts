@@ -258,6 +258,40 @@ describe('rounds', () => {
     ]);
   });
 
+  test("finishing carries the last review's minor findings into follow-ups", () => {
+    repo.makeFix();
+    repo.writeStatus({
+      ...doneStatus,
+      followUps: ['`apps/extension/fee-row.tsx:1`: name the constant'],
+    });
+    reviewedRound(1, {
+      blocking: [],
+      minor: [
+        { location: 'apps/extension/fee-row.tsx:1', note: 'name the constant' },
+        { location: 'packages/utils/run.sh:1', note: 'quote the\nvariable' },
+      ],
+    });
+    finishRounds(repo.paths);
+    const status = readStatus(repo.paths.statusFile);
+    expect(status.ok && status.status.followUps).toEqual([
+      '`apps/extension/fee-row.tsx:1`: name the constant',
+      '`packages/utils/run.sh:1`: quote the variable',
+    ]);
+  });
+
+  test('finishing caps follow-ups so the status stays valid', () => {
+    repo.makeFix();
+    repo.writeStatus(doneStatus);
+    const minor = Array.from({ length: 30 }, (_, index) => ({
+      location: `apps/extension/fee-row.tsx:${index + 1}`,
+      note: 'tidy',
+    }));
+    reviewedRound(1, { blocking: [], minor });
+    finishRounds(repo.paths);
+    const status = readStatus(repo.paths.statusFile);
+    expect(status.ok && status.status.followUps).toHaveLength(20);
+  });
+
   test('finishing fails when no round ran', () => {
     repo.writeStatus(doneStatus);
     expect(() => finishRounds(repo.paths)).toThrow('no round ran');

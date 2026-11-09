@@ -99,6 +99,13 @@ describe('renderBody', () => {
     );
   });
 
+  test('lists follow-ups after tested and before the screenshots', () => {
+    const followUp = '`packages/ui/src/sheet.tsx`: share the close animation duration';
+    expect(renderBody({ ...doneStatus, followUps: [followUp] }, [12], '| table |')).toBe(
+      `${doneBody}\n## Follow-ups\n\n- ${followUp}\n\n## Screenshots\n\n| table |\n`
+    );
+  });
+
   test('ends with the screenshot table', () => {
     expect(renderBody(doneStatus, [12], '| table |')).toBe(
       `${doneBody}\n## Screenshots\n\n| table |\n`

@@ -9,6 +9,7 @@ const issueNumberPattern = /#\d/;
 const maxSubjectLength = 100;
 const maxScreenshots = 12;
 const maxHandoffs = 20;
+export const maxFollowUps = 20;
 const screenshotIdPattern = /^[a-z0-9][a-z0-9-]{0,62}$/;
 
 const lineSchema = z
@@ -63,6 +64,7 @@ const fixStatusSchema = z
     questions: z.array(lineSchema).default([]),
     screenshots: z.array(screenshotSchema).max(maxScreenshots).default([]),
     handoff: z.array(handoffSchema).max(maxHandoffs).default([]),
+    followUps: z.array(lineSchema).max(maxFollowUps).default([]),
   })
   .superRefine((status, context) => {
     const subject = subjectProblem(status.commit);

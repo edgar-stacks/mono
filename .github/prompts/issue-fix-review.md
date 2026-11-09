@@ -33,6 +33,13 @@ without write access.
    satisfy knip, a constant or rename that slips past a lint rule, an `eslint-disable`, a file moved
    into a package because its real home is off limits, or a copy of a root config inside a package.
    The right change is a `handoff` entry in the status naming that path.
+   A change the issue and the brief do not need is a `blocker` too: a file reformatted or rewritten
+   with no change in behavior (for example a whole JSON, Lottie or SVG asset re-serialized), a
+   drive-by refactor, rename or cleanup of code the fix does not otherwise touch, or a dependency
+   added or bumped without a reason in the issue. Name the file, say what the change did, and say
+   to restore it; the fixer keeps the idea as a follow-up when it is worth its own issue. Lines in
+   `pnpm-lock.yaml` that only re-resolve versions of packages the change did not add are pnpm's
+   doing, not the fixer's: do not report them.
 3. Check the scope. List every behavior the issue and the brief expect: each `Expected` or
    `Agreed behavior` item, each `Settled:` line and each `Done when` box. For each one, find the
    code that delivers it. An item the change leaves out, or delivers only in part, is a `blocker`,
@@ -57,7 +64,9 @@ without write access.
    if it is `critical`, a scope gap or a doubt found by steps 3 to 5, or the fixes since the earlier
    review introduced it; do not move the goalposts on code an earlier review already passed.
 8. Note anything smaller (style, naming, simplification, missing edge-case tests that are not part
-   of the brief) as `minor`. Minor findings are reported but not fixed in this run.
+   of the brief) as `minor`. Minor findings are not fixed in this run; the last round's appear under
+   `## Follow-ups` in the pull request, so write each one as a self-contained line a maintainer can
+   turn into an issue.
 
 - Background commands and sub-agents are fine, but this run is headless: you are never notified
   when one finishes, and the session ends with your turn. Before writing `tmp/issue-fix/review.json`, wait for each

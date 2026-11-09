@@ -6,7 +6,7 @@ import { type CommandRunner, runCommand } from './exec.js';
 import { treeSnapshot } from './git.js';
 import type { IssueFixPaths } from './paths.js';
 import { type Review, readReview } from './review.js';
-import { type FixState, readState, readStatus, writeStatus } from './status.js';
+import { type FixState, maxFollowUps, readState, readStatus, writeStatus } from './status.js';
 import { resetStopGuards } from './stop-guard.js';
 import { verifyFix } from './verify.js';
 
@@ -152,6 +152,18 @@ export function endRound(paths: IssueFixPaths, round: number): RoundEnd {
   return { outcome, clean: outcome === 'clean', continue: outcome === 'failed', summary };
 }
 
+function reviewFollowUps(paths: IssueFixPaths, round: number): string[] {
+  const read = tryReadReview(path.join(roundDir(paths, round), path.basename(paths.reviewFile)));
+  if ('problem' in read) return [];
+  return read.review.minor.map(
+    finding => `\`${finding.location}\`: ${finding.note.replace(/\s+/g, ' ')}`
+  );
+}
+
+function mergeFollowUps(own: readonly string[], fromReview: readonly string[]): string[] {
+  return [...new Set([...own, ...fromReview])].slice(0, maxFollowUps);
+}
+
 export function finishRounds(paths: IssueFixPaths): RoundOutcome {
   const rounds = [...readRunState(paths).rounds].sort((a, b) => a.round - b.round);
   const last = rounds.at(-1);
@@ -163,11 +175,13 @@ export function finishRounds(paths: IssueFixPaths): RoundOutcome {
   const summaries = rounds.map(entry => entry.summary);
   const lastReason = last.summary.replace(/^Round \d+: /, '');
   const unfixed = last.outcome === 'blocked' ? unfixedFindingsQuestion(paths, last.round) : null;
+  const followUps = mergeFollowUps(status.status.followUps, reviewFollowUps(paths, last.round));
   writeStatus(
     paths.statusFile,
     last.outcome === 'failed'
       ? {
           ...status.status,
+          followUps,
           state: 'blocked',
           tested: [...summaries, ...status.status.tested],
           questions: [
@@ -177,6 +191,7 @@ export function finishRounds(paths: IssueFixPaths): RoundOutcome {
         }
       : {
           ...status.status,
+          followUps,
           tested: [...summaries, ...status.status.tested],
           questions: unfixed ? [...status.status.questions, unfixed] : status.status.questions,
         }

@@ -111,6 +111,7 @@ export function renderBody(
     ['Why', status.why],
     ['How', status.how],
     ['Tested', status.tested],
+    ['Follow-ups', status.followUps],
   ]);
   const screenshots = screenshotTable ? [`\n## Screenshots\n\n${screenshotTable}\n`] : [];
   return [closes, ...body, ...screenshots].join('');
@@ -129,6 +130,9 @@ function renderQuestionsComment(status: FixStatus, runUrl: string | null): strin
     parts.push(
       `A maintainer needs to make these changes, outside the paths the run may change:\n\n${bullets(status.handoff.map(renderHandoff))}`
     );
+  }
+  if (status.followUps.length > 0) {
+    parts.push(`Worth a separate issue:\n\n${bullets(status.followUps)}`);
   }
   return `${parts.join('\n\n')}\n`;
 }

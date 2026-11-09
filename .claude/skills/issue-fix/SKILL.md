@@ -228,6 +228,10 @@ opens a pull request, with a `## Questions` section when the fixer left any; `bl
 outside the allowed paths that a maintainer must make) puts a `## Needs a maintainer` section at
 the top of the body and makes the pull request a draft; with no changes at all, the handoffs go
 into the issue comment instead.
+`## Follow-ups` lists what the run deliberately left alone but thinks deserves its own issue: the
+fixer's `followUps` (things it noticed outside the issue, and ideas from changes the review made it
+restore) plus the last review's minor findings. Nothing opens issues automatically; turn the ones
+worth keeping into issues by hand.
 
 **Trust.** The fixer runs with `--permission-mode auto --permission-prompts none`: Claude Code's
 classifier reviews each tool call and refuses the ones that reach beyond the fix, and anything

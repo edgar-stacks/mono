@@ -28,7 +28,9 @@ attribution, no new code comments, and the status file shape.
 1. Fix what the latest round reports, and nothing unrelated. For a failed check, fix the cause, not
    the check: never skip, disable or loosen a lint rule, type or test to make it pass.
 2. For a review finding that can be shown with a test, add or extend one that fails without the fix.
-3. A finding that turns out wrong is not fixed: add `"Not fixed: <finding> — <reason>"` to `tested`.
+3. A finding that says a change is not needed by the issue is fixed by restoring that file. When the
+   restored change was still worth doing, keep the idea as a `followUps` entry in the status.
+   A finding that turns out wrong is not fixed: add `"Not fixed: <finding> — <reason>"` to `tested`.
    A finding that needs a product decision stops the run: set `"state": "blocked"` with a question
    in `questions`.
 4. Run the verification list from `CLAUDE.md` and the unit tests of the packages you changed again;

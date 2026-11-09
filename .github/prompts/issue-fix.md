@@ -65,6 +65,12 @@ to write in the status file.
   to change, saying exactly what a maintainer has to change there. Checks that fail only because a
   handoff is not done yet go under `tested` as `Not verified: <check> — waits on the handoff to
   <path>`.
+- Change only what the issue needs. Never reformat or re-serialize a file you are not otherwise
+  changing (assets such as `.lottie.json` or SVGs included), and leave drive-by refactors, renames
+  and cleanups for another issue; the review treats them as defects. When you notice something
+  worth fixing outside the issue, write it under `followUps` instead of changing it. Run formatters
+  only through `pnpm format`. If `pnpm-lock.yaml` changes lines for packages you did not add, leave them: that
+  is pnpm re-resolving peers, and hand-editing the lockfile breaks installs.
 - Never commit, push, stage, or create branches. The workflow commits for you.
 - No Claude or Claude Code attribution anywhere: not in code, tests, the status file or anything
   that becomes the commit or the pull request.
@@ -112,7 +118,8 @@ Write `tmp/issue-fix/status.json` last, as JSON in exactly this shape, and stop:
     "Not verified: <a Verify line that could not run, and why>"
   ],
   "screenshots": [{ "id": "<id>", "caption": "<caption>" }],
-  "handoff": [{ "path": "<repo-relative path outside the allowed ones>", "change": "<the exact change a maintainer must make there>" }]
+  "handoff": [{ "path": "<repo-relative path outside the allowed ones>", "change": "<the exact change a maintainer must make there>" }],
+  "followUps": ["<path>: <something worth its own issue, one line>"]
 }
 ```
 
@@ -135,4 +142,10 @@ Write `tmp/issue-fix/status.json` last, as JSON in exactly this shape, and stop:
   They appear under `## Needs a maintainer` and make the pull request a draft until a maintainer
   makes them. Leave `handoff` out when there are none. When the whole issue lives outside the
   allowed paths, change nothing, write `"state": "blocked"` and list every change under `handoff`.
+- `followUps` lists things worth their own issue that this fix deliberately leaves alone: a bug or
+  smell you noticed nearby, a cleanup, a missing test outside the brief. One line each, starting
+  with the path, for example
+  `"apps/extension/src/app/features/ledger/flow.ts: the device-busy copy is duplicated in three steps"`.
+  They appear under `## Follow-ups` in the pull request, next to the review's minor notes, so a
+  maintainer can open issues for them. Leave `followUps` out when there are none.
 - `pnpm lt issue-fix verify` checks the file and the change the same way the workflow does.
