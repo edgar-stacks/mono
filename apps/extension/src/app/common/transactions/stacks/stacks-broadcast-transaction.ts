@@ -1,5 +1,6 @@
 import type { StacksNetwork } from '@stacks/network';
 import {
+  AuthType,
   type StacksTransactionWire,
   type TxBroadcastResultRejected,
   broadcastTransaction,
@@ -20,6 +21,13 @@ interface StacksBroadcastTransactionArgs {
   onError(error: Error | string, reason?: TxBroadcastResultRejected['reason']): void;
 }
 
+export const sponsoredTransactionBroadcastErrorMessage =
+  'Sponsored transactions are submitted through the sponsor and cannot be broadcast by the wallet';
+
+export function isSponsoredStacksTransaction(tx: StacksTransactionWire) {
+  return tx.auth.authType === AuthType.Sponsored;
+}
+
 function runSuccessHandler(handleSuccess: () => void) {
   try {
     handleSuccess();
@@ -34,6 +42,11 @@ export async function stacksBroadcastTransaction({
   onSuccess,
   onError,
 }: StacksBroadcastTransactionArgs) {
+  if (isSponsoredStacksTransaction(signedTx)) {
+    logger.error(sponsoredTransactionBroadcastErrorMessage);
+    onError(new Error(sponsoredTransactionBroadcastErrorMessage));
+    return;
+  }
   const attemptId = crypto.randomUUID();
   try {
     analytics.untypedTrack('stacks_transaction_broadcast_initiated', {

@@ -1,5 +1,6 @@
 import { type StacksTransactionWire, isTokenTransferPayload } from '@stacks/transactions';
 
+import { getSbtcSponsoredTransferDetails } from '@leather.io/stacks';
 import { baseCurrencyAmountInQuote, createMoney, isNumber, sumMoney } from '@leather.io/utils';
 
 import { formatCurrency } from '@app/common/currency-formatter';
@@ -28,6 +29,7 @@ interface StacksChainSummaryProps {
   txid: string;
   symbol: string;
   tx: StacksTransactionWire;
+  decimals?: number;
 }
 export function StxSentSummary({ txid, tx }: StacksChainSummaryProps) {
   const tokenMarketData = useCryptoCurrencyMarketData('STX');
@@ -90,6 +92,41 @@ export function Sip10SentSummary({ txid, symbol, tx }: StacksChainSummaryProps) 
         ['Status', <TxStatusBadge key={txid} txid={txid} />],
         ['Fee', formatCurrency(fee)],
         ['Memo', memo],
+        ['Nonce', getNonceFromStacksTransaction(tx)],
+      ]}
+    />
+  );
+}
+
+export function SbtcSponsoredSentSummary({ txid, symbol, tx, decimals }: StacksChainSummaryProps) {
+  const details = getSbtcSponsoredTransferDetails(tx);
+  if (!details) throw new Error('Impossible state, not a sponsored sBTC transfer');
+
+  const { data: tokenMetadata } = useGetFungibleTokenMetadataQuery(details.contractId);
+  const metadataDecimals =
+    tokenMetadata && 'decimals' in tokenMetadata && isNumber(tokenMetadata.decimals)
+      ? tokenMetadata.decimals
+      : undefined;
+  const tokenDecimals = decimals ?? metadataDecimals;
+
+  if (!isNumber(tokenDecimals)) return <StacksChainTxSummaryLoading txid={txid} />;
+
+  const token = symbol.toUpperCase();
+  const amount = createMoney(details.amount, token, tokenDecimals);
+  const fee = createMoney(details.fee, token, tokenDecimals);
+
+  return (
+    <StacksChainTxSummaryLayout
+      token={symbol}
+      txid={txid}
+      value={amount}
+      recipient={details.recipient}
+      metadata={[
+        ['Status', <TxStatusBadge key={txid} txid={txid} />],
+        ['Total spend', formatCurrency(sumMoney([amount, fee]))],
+        ['Sending', formatCurrency(amount)],
+        ['Fee', formatCurrency(fee)],
+        ['Memo', details.memo || '—'],
         ['Nonce', getNonceFromStacksTransaction(tx)],
       ]}
     />

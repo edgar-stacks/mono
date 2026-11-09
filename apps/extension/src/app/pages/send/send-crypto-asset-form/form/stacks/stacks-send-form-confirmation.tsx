@@ -4,7 +4,12 @@ import { deserializeTransaction, isTokenTransferPayload } from '@stacks/transact
 import { Box, Stack } from 'leather-styles/jsx';
 
 import { BasicTooltip, InfoCircleIcon } from '@leather.io/ui';
-import { baseCurrencyAmountInQuote, convertAmountToBaseUnit, sumMoney } from '@leather.io/utils';
+import {
+  baseCurrencyAmountInQuote,
+  convertAmountToBaseUnit,
+  isNumber,
+  sumMoney,
+} from '@leather.io/utils';
 
 import { formatCurrency } from '@app/common/currency-formatter';
 import { useRouteState } from '@app/common/hooks/use-route-state';
@@ -27,9 +32,42 @@ import { useCryptoCurrencyMarketData } from '@app/query/common/market-data/marke
 import type { ProposalSentSummaryState } from '../../../sent-summary/proposal-sent-summary';
 import { stacksConfirmationRouteStateSchema } from '../../hooks/use-send-form-navigate';
 import { SendFormConfirmationLayout } from '../send-form-confirmation.layout';
+import { SbtcSponsoredSendFormConfirmation } from '../sip10/sbtc-sponsored-send-form-confirmation';
 import { useProposeStacksSendTransaction } from './use-propose-stacks-send-transaction';
 
 export function StacksSendFormConfirmation() {
+  const {
+    tx: txHex,
+    decimals,
+    token,
+    sbtcSponsorship,
+    isSbtcSponsorshipQuoteUpdated = false,
+  } = useRouteState(stacksConfirmationRouteStateSchema);
+  const { symbol = 'STX' } = useParams();
+
+  if (sbtcSponsorship && isNumber(decimals)) {
+    return (
+      <>
+        <PageHeader title="Review" />
+        <Content>
+          <Page>
+            <SbtcSponsoredSendFormConfirmation
+              txHex={txHex}
+              symbol={symbol.toUpperCase()}
+              token={token ?? symbol}
+              decimals={decimals}
+              sbtcSponsorship={sbtcSponsorship}
+              isQuoteUpdated={isSbtcSponsorshipQuoteUpdated}
+            />
+          </Page>
+        </Content>
+      </>
+    );
+  }
+  return <StacksTransactionConfirmation />;
+}
+
+function StacksTransactionConfirmation() {
   const {
     tx: txHex,
     decimals,

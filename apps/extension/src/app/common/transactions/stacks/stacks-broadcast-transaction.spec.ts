@@ -7,7 +7,10 @@ import type * as LeatherUtils from '@leather.io/utils';
 
 import { analytics } from '@shared/utils/analytics';
 
-import { stacksBroadcastTransaction } from './stacks-broadcast-transaction';
+import {
+  sponsoredTransactionBroadcastErrorMessage,
+  stacksBroadcastTransaction,
+} from './stacks-broadcast-transaction';
 
 interface HoistedMocks {
   broadcastTransaction: Mock<() => Promise<unknown>>;
@@ -93,5 +96,25 @@ describe(stacksBroadcastTransaction.name, () => {
 
     expect(onSuccess).not.toHaveBeenCalled();
     expect(onError).toHaveBeenCalledOnce();
+  });
+
+  test('refuses to broadcast a sponsored transaction', async () => {
+    const sponsoredTx = await makeUnsignedSTXTokenTransfer({
+      recipient: 'ST000000000000000000002AMW42H',
+      amount: 1n,
+      fee: 0,
+      nonce: 0,
+      publicKey: '0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798',
+      network: 'testnet',
+      sponsored: true,
+    });
+    const onError = vi.fn();
+    const onSuccess = vi.fn();
+
+    await stacksBroadcastTransaction({ network, signedTx: sponsoredTx, onSuccess, onError });
+
+    expect(h.broadcastTransaction).not.toHaveBeenCalled();
+    expect(onSuccess).not.toHaveBeenCalled();
+    expect(onError).toHaveBeenCalledWith(new Error(sponsoredTransactionBroadcastErrorMessage));
   });
 });

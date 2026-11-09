@@ -41,17 +41,22 @@ export interface Sip10TransferDetails {
   memo?: string;
 }
 
-function getMemoString(arg: ClarityValue | undefined): string | undefined {
+export function getMemoString(arg: ClarityValue | undefined): string | undefined {
   if (!arg || arg.type !== ClarityType.OptionalSome) return undefined;
   if (arg.value.type !== ClarityType.Buffer) return undefined;
   return bytesToUtf8(hexToBytes(cleanHex(arg.value.value)));
 }
 
-export function getVerifiedSip10TransferDetails(
-  tx: StacksTransactionWire
-): Sip10TransferDetails | null {
-  if (!isSip10TransferContactCall(tx)) return null;
-  if (tx.payload.payloadType !== PayloadType.ContractCall) return null;
+interface ExpectedFungiblePostCondition {
+  contractId: string;
+  sender: string;
+  amount: bigint;
+}
+
+export function getVerifiedSingleFungiblePostCondition(
+  tx: StacksTransactionWire,
+  { contractId, sender, amount }: ExpectedFungiblePostCondition
+) {
   if (tx.postConditionMode !== PostConditionMode.Deny) return null;
   if (tx.postConditions.values.length !== 1) return null;
 
@@ -59,6 +64,21 @@ export function getVerifiedSip10TransferDetails(
   if (postCondition.conditionType !== PostConditionType.Fungible) return null;
   if (postCondition.conditionCode !== FungibleConditionCode.Equal) return null;
   if (postCondition.principal.prefix !== PostConditionPrincipalId.Standard) return null;
+  if (postCondition.amount !== amount) return null;
+
+  const postConditionContractId = `${addressToString(postCondition.asset.address)}.${postCondition.asset.contractName.content}`;
+  if (postConditionContractId !== contractId) return null;
+
+  if (addressToString(postCondition.principal.address) !== sender) return null;
+
+  return postCondition;
+}
+
+export function getVerifiedSip10TransferDetails(
+  tx: StacksTransactionWire
+): Sip10TransferDetails | null {
+  if (!isSip10TransferContactCall(tx)) return null;
+  if (tx.payload.payloadType !== PayloadType.ContractCall) return null;
 
   const [amountArg, senderArg, recipientArg, memoArg] = tx.payload.functionArgs;
   if (amountArg.type !== ClarityType.UInt) return null;
@@ -66,13 +86,14 @@ export function getVerifiedSip10TransferDetails(
   if (recipientArg.type !== ClarityType.PrincipalStandard) return null;
 
   const amount = BigInt(amountArg.value);
-  if (postCondition.amount !== amount) return null;
-
   const contractId = `${addressToString(tx.payload.contractAddress)}.${tx.payload.contractName.content}`;
-  const postConditionContractId = `${addressToString(postCondition.asset.address)}.${postCondition.asset.contractName.content}`;
-  if (postConditionContractId !== contractId) return null;
 
-  if (addressToString(postCondition.principal.address) !== senderArg.value) return null;
+  const postCondition = getVerifiedSingleFungiblePostCondition(tx, {
+    contractId,
+    sender: senderArg.value,
+    amount,
+  });
+  if (!postCondition) return null;
 
   return {
     contractId,

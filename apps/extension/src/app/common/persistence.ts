@@ -1,5 +1,10 @@
 import { createAsyncStoragePersister } from '@tanstack/query-async-storage-persister';
-import { QueryCache, QueryClient } from '@tanstack/react-query';
+import {
+  type Query,
+  QueryCache,
+  QueryClient,
+  defaultShouldDehydrateQuery,
+} from '@tanstack/react-query';
 import { persistQueryClient } from '@tanstack/react-query-persist-client';
 import { HttpStatusCode, isAxiosError } from 'axios';
 import { BigNumber } from 'bignumber.js';
@@ -93,12 +98,17 @@ export const queryClient = new QueryClient({
   },
 });
 
+function shouldPersistQuery(query: Query) {
+  return query.meta?.persist !== false && defaultShouldDehydrateQuery(query);
+}
+
 export function persistAndRenderApp(renderApp: () => Promise<void>) {
   if (!IS_TEST_ENV) {
     void persistQueryClient({
       queryClient,
       persister: chromeStorageLocalPersister,
       buster: VERSION,
+      dehydrateOptions: { shouldDehydrateQuery: shouldPersistQuery },
     });
   }
   void renderApp();

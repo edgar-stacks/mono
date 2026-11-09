@@ -1,11 +1,14 @@
 import type { CryptoAssetBalance, MarketData, Sip10Asset } from '@leather.io/models';
 import { AssetAvatarIcon, StxAvatarIcon } from '@leather.io/ui';
 
+import { SbtcSponsoredFeesRow } from '@app/features/sbtc-sponsorship/components/sbtc-sponsored-fees-row';
+
 import { AmountField } from '../../components/amount-field';
 import { SelectedAssetField } from '../../components/selected-asset-field';
 import { SendFiatValue } from '../../components/send-fiat-value';
 import { SendMaxButton } from '../../components/send-max-button';
 import { StacksCommonSendForm } from '../stacks/stacks-common-send-form';
+import { SbtcSponsoredSendMaxButton } from './sbtc-sponsored-send-max-button';
 import { useSip10SendForm } from './use-sip10-send-form';
 
 interface Sip10TokenSendFormContainerProps {
@@ -24,6 +27,7 @@ export function Sip10TokenSendFormContainer({
     previewTransaction,
     sendMaxBalance,
     stacksFtFees: fees,
+    sbtcSponsorship,
     validationSchema,
     avatar,
     decimals,
@@ -34,7 +38,14 @@ export function Sip10TokenSendFormContainer({
     <AmountField
       balance={availableTokenBalance}
       bottomInputOverlay={
-        <SendMaxButton balance={availableTokenBalance} sendMaxBalance={sendMaxBalance.toString()} />
+        sbtcSponsorship?.fees ? (
+          <SbtcSponsoredSendMaxButton balance={availableTokenBalance} fees={sbtcSponsorship.fees} />
+        ) : (
+          <SendMaxButton
+            balance={availableTokenBalance}
+            sendMaxBalance={sendMaxBalance.toString()}
+          />
+        )
       }
       tokenSymbol={symbol}
       autoComplete="off"
@@ -75,6 +86,7 @@ export function Sip10TokenSendFormContainer({
       amountField={amountField}
       selectedAssetField={selectedAssetField}
       fees={fees}
+      feesRow={sbtcSponsorship ? <SbtcSponsoredFeesRow fees={sbtcSponsorship.fees} /> : undefined}
       availableTokenBalance={availableTokenBalance}
     />
   );

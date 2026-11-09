@@ -8,6 +8,10 @@ import { logger } from '@shared/logger';
 import { analytics } from '@shared/utils/analytics';
 
 import { useRefreshAllAccountData } from '@app/common/hooks/account/use-refresh-all-account-data';
+import {
+  isSponsoredStacksTransaction,
+  sponsoredTransactionBroadcastErrorMessage,
+} from '@app/common/transactions/stacks/stacks-broadcast-transaction';
 import { hiroFetchWrapper } from '@app/query/stacks/stacks-client';
 import { useCurrentStacksNetworkState } from '@app/store/networks/networks.hooks';
 import { useLoading } from '@app/store/ui/ui.hooks';
@@ -30,6 +34,11 @@ export function useSubmitTransactionCallback({ loadingKey }: UseSubmitTransactio
   return useCallback(
     ({ onSuccess, onError }: UseSubmitTransactionCallbackArgs) =>
       async (transaction: StacksTransactionWire) => {
+        if (isSponsoredStacksTransaction(transaction)) {
+          logger.error(sponsoredTransactionBroadcastErrorMessage);
+          onError(new Error(sponsoredTransactionBroadcastErrorMessage));
+          return;
+        }
         setIsLoading();
         try {
           const response = await broadcastTransaction({

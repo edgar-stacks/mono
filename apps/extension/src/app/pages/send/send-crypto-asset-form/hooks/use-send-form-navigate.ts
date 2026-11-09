@@ -63,14 +63,37 @@ export type BtcProposalConfirmationRouteState = z.infer<
   typeof btcProposalConfirmationRouteStateSchema
 >;
 
+const sbtcSponsorshipRouteStateSchema = z.object({
+  quoteId: z.string(),
+  stxFeeMicro: z.string(),
+  expiresAt: z.string(),
+  assetId: z.string(),
+  values: z.object({
+    amount: z.union([z.number(), z.string()]),
+    recipient: z.string(),
+    memo: z.string(),
+  }),
+});
+
+export type SbtcSponsorshipRouteState = z.infer<typeof sbtcSponsorshipRouteStateSchema>;
+
 export const stacksConfirmationRouteStateSchema = z.object({
   tx: z.string(),
   decimals: z.number().optional(),
   token: z.string().optional(),
   showFeeChangeWarning: z.boolean().optional(),
+  sbtcSponsorship: sbtcSponsorshipRouteStateSchema.optional(),
+  isSbtcSponsorshipQuoteUpdated: z.boolean().optional(),
 });
 
 type StacksConfirmationRouteState = z.infer<typeof stacksConfirmationRouteStateSchema>;
+
+interface ConfirmationRouteSbtcSponsoredArgs {
+  decimals: number;
+  name: string;
+  tx: StacksTransactionWire;
+  sbtcSponsorship: SbtcSponsorshipRouteState;
+}
 
 export function useSendFormNavigate() {
   const navigate = useNavigate();
@@ -119,6 +142,38 @@ export function useSendFormNavigate() {
             decimals,
             token: name,
             tx: tx.serialize(),
+          } satisfies StacksConfirmationRouteState,
+        });
+      },
+      toConfirmSbtcSponsoredTransaction({
+        decimals,
+        name,
+        tx,
+        sbtcSponsorship,
+      }: ConfirmationRouteSbtcSponsoredArgs) {
+        return navigate(`${location.pathname}/confirm`, {
+          state: {
+            decimals,
+            token: name,
+            tx: tx.serialize(),
+            sbtcSponsorship,
+          } satisfies StacksConfirmationRouteState,
+        });
+      },
+      toUpdatedSbtcSponsoredConfirmation({
+        decimals,
+        name,
+        tx,
+        sbtcSponsorship,
+      }: ConfirmationRouteSbtcSponsoredArgs) {
+        return navigate(location.pathname, {
+          replace: true,
+          state: {
+            decimals,
+            token: name,
+            tx: tx.serialize(),
+            sbtcSponsorship,
+            isSbtcSponsorshipQuoteUpdated: true,
           } satisfies StacksConfirmationRouteState,
         });
       },

@@ -58,6 +58,7 @@ export const querySettingsDepsRegistry = {
   'activity-service--get-sip10-total-activity-by-asset-id': ['network'],
   // compliance
   'compliance-service--check-address-compliance': ['network'],
+  'leather-sponsorship-api--get-sbtc-quote': ['network'],
   // asset list
   'asset-list-service--get-asset-list': ['currency', 'network', 'assetVisibility'],
   // fees
