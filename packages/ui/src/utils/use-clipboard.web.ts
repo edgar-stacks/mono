@@ -1,27 +1,53 @@
 import { useEffect, useRef, useState } from 'react';
 
+const copiedResetMs = 1250;
+
 interface UiClipboard {
   value: string;
-  onCopy(): void;
+  onCopy(): Promise<boolean | undefined>;
   hasCopied: boolean;
+  hasCopyFailed: boolean;
 }
 
-function copyToClipboard(value: string) {
-  if (!navigator.clipboard) return;
-  void navigator.clipboard.writeText(value);
+async function copyToClipboard(value: string) {
+  if (!navigator.clipboard) return false;
+  try {
+    await navigator.clipboard.writeText(value);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 export function useClipboard(value: string): UiClipboard {
   const [hasCopied, setHasCopied] = useState(false);
-  const timers = useRef<number[]>([]);
+  const [hasCopyFailed, setHasCopyFailed] = useState(false);
+  const timer = useRef<number | undefined>(undefined);
+  const latestRequest = useRef(0);
+  const isMounted = useRef(true);
 
-  function onCopy() {
-    copyToClipboard(value);
-    setHasCopied(true);
-    timers.current.push(window.setTimeout(() => setHasCopied(false), 1250));
+  useEffect(() => {
+    isMounted.current = true;
+    return () => {
+      isMounted.current = false;
+      window.clearTimeout(timer.current);
+    };
+  }, []);
+
+  async function onCopy() {
+    latestRequest.current += 1;
+    const request = latestRequest.current;
+    const hasSucceeded = await copyToClipboard(value);
+    if (!isMounted.current || request !== latestRequest.current) return undefined;
+
+    window.clearTimeout(timer.current);
+    setHasCopied(hasSucceeded);
+    setHasCopyFailed(!hasSucceeded);
+    if (hasSucceeded) {
+      timer.current = window.setTimeout(() => setHasCopied(false), copiedResetMs);
+    }
+    return hasSucceeded;
   }
 
-  useEffect(() => () => timers.current.forEach(timer => clearTimeout(timer)), []);
-
-  return { value, onCopy, hasCopied };
+  return { value, onCopy, hasCopied, hasCopyFailed };
 }

@@ -99,9 +99,29 @@ function PendingStatus() {
   );
 }
 
+interface CopyResultMessages {
+  success: string;
+  failure: string;
+}
+
+function useCopyResultToast({ success, failure }: CopyResultMessages) {
+  const toast = useToast();
+  return (hasCopied: boolean | undefined) => {
+    if (hasCopied === true) toast.success(success);
+    if (hasCopied === false) toast.error(failure);
+  };
+}
+
 function CopyMessageButton({ message }: { message: string }) {
-  const { success: showToast } = useToast();
   const { onCopy } = useClipboard(message);
+  const showCopyResult = useCopyResultToast({
+    success: 'Invite message copied',
+    failure: 'Unable to copy invite message. Try again.',
+  });
+
+  async function copyMessage() {
+    showCopyResult(await onCopy());
+  }
   return (
     <BasicTooltip
       asChild
@@ -114,10 +134,7 @@ function CopyMessageButton({ message }: { message: string }) {
           height="30px"
           px="space.03"
           textStyle="label.03"
-          onClick={() => {
-            onCopy();
-            showToast('Invite message copied');
-          }}
+          onClick={() => void copyMessage()}
         >
           <Flex alignItems="center" gap="space.01">
             <CopyIcon variant="small" />
@@ -130,8 +147,15 @@ function CopyMessageButton({ message }: { message: string }) {
 }
 
 function CopyLinkButton({ link }: { link: string }) {
-  const { success: showToast } = useToast();
   const { onCopy } = useClipboard(link);
+  const showCopyResult = useCopyResultToast({
+    success: 'Invite link copied',
+    failure: 'Unable to copy invite link. Try again.',
+  });
+
+  async function copyLink() {
+    showCopyResult(await onCopy());
+  }
   return (
     <Button
       variant="solid"
@@ -140,10 +164,7 @@ function CopyLinkButton({ link }: { link: string }) {
       px="space.03"
       textStyle="label.03"
       flexShrink={0}
-      onClick={() => {
-        onCopy();
-        showToast('Invite link copied');
-      }}
+      onClick={() => void copyLink()}
     >
       <Flex alignItems="center" gap="space.01" color="ink.background-primary">
         <LinkIcon />

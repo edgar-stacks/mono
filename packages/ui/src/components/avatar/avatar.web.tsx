@@ -143,9 +143,9 @@ interface AvatarIconProps {
 
 function AvatarIcon({ icon, avatarSize }: AvatarIconProps) {
   if (icon) {
-    const iconProps = icon.props.variant
-      ? { variant: icon.props.variant }
-      : iconSizeMap[avatarSize];
+    const { variant, width, height } = icon.props;
+    if (isDefined(width) || isDefined(height)) return icon;
+    const iconProps = variant ? { variant } : iconSizeMap[avatarSize];
     return cloneElement<IconProps>(icon, iconProps);
   }
 
