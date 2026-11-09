@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 
-import { compileWshDescriptor, findAccountDescriptorKey } from '@leather.io/bitcoin';
+import { compileWshDescriptor, findPolicyMemberAccountKey } from '@leather.io/bitcoin';
 import { ACCOUNT_MAX_NAME_LENGTH } from '@leather.io/constants';
 import {
   RpcErrorCode,
@@ -17,6 +17,7 @@ import { sendMessageToOriginatingFrame } from '@shared/messaging/send-message-to
 import { focusTabAndWindow } from '@app/common/focus-tab';
 import { useRpcRequestParams } from '@app/common/hooks/use-rpc-request-params';
 import { initialSearchParams } from '@app/common/initial-search-params';
+import { isLedgerDisplayableDescriptor } from '@app/features/ledger/utils/ledger-descriptor-address';
 import { useCurrentNativeSegwitAccount } from '@app/store/accounts/blockchain/bitcoin/native-segwit-account.hooks';
 import { useActiveWalletType } from '@app/store/common/wallet-type.selectors';
 import { useNetworks } from '@app/store/networks/networks.selectors';
@@ -24,10 +25,11 @@ import { useNetworks } from '@app/store/networks/networks.selectors';
 import {
   type PolicyApprovalMode,
   type PolicyMatchStatus,
-  getPolicyApprovalMode,
+  getBtcAddAccountApprovalMode,
 } from '../policy-match';
 import { deriveBtcPolicyAddress } from './btc-policy-registration';
 import { useRegisterBtcPolicy } from './register-btc-policy';
+import { matchTimelockedDescriptor } from './timelocked-descriptor';
 
 const { decode } = createRequestEncoder(btcAddAccount.request);
 
@@ -45,25 +47,48 @@ export function useBtcAddAccount() {
   const networks = useNetworks();
   const walletType = useActiveWalletType();
 
+  const timelocked = useMemo(
+    () => matchTimelockedDescriptor(request.params.descriptor),
+    [request.params.descriptor]
+  );
+
   // Whitelisted origins may register the policy; any other origin may only let
   // the user verify the derived address (nothing is written to the extension).
-  const mode: PolicyApprovalMode = getPolicyApprovalMode(origin, topOrigin);
+  const mode: PolicyApprovalMode = getBtcAddAccountApprovalMode(
+    origin,
+    topOrigin,
+    timelocked ? 'timelocked' : 'multisig'
+  );
 
   // The active account must be one of the descriptor's cosigners before the user
   // can confirm. We only consider the native segwit account's xpub or its 0/0
   // public key: `findAccountDescriptorKey` matches the account xpub, or the raw
   // 0/0 public key, against the compiled descriptor — the same check signPsbt uses.
-  const matchStatus: PolicyMatchStatus = useMemo(() => {
-    if (!nativeSegwitAccount) return 'no-active-account';
+  const { matchStatus, isLedgerDisplayable } = useMemo((): {
+    matchStatus: PolicyMatchStatus;
+    isLedgerDisplayable: boolean;
+  } => {
+    if (!nativeSegwitAccount)
+      return { matchStatus: 'no-active-account', isLedgerDisplayable: false };
     try {
       const compiled = compileWshDescriptor(request.params.descriptor);
-      return findAccountDescriptorKey(compiled, nativeSegwitAccount.keychain)
-        ? 'match'
-        : 'mismatch';
+      const accountKey = findPolicyMemberAccountKey(
+        request.params.descriptor,
+        compiled,
+        nativeSegwitAccount.keychain
+      );
+      if (!accountKey) return { matchStatus: 'mismatch', isLedgerDisplayable: false };
+      return {
+        matchStatus: 'match',
+        isLedgerDisplayable: isLedgerDisplayableDescriptor(compiled, accountKey.key),
+      };
     } catch {
-      return 'mismatch';
+      return { matchStatus: 'mismatch', isLedgerDisplayable: false };
     }
   }, [nativeSegwitAccount, request.params.descriptor]);
+
+  const isLedgerUnsupported =
+    walletType === 'ledger' && matchStatus === 'match' && !isLedgerDisplayable;
 
   // Derived locally and identically to registration, so what the user verifies
   // (in the approver and on a Ledger) equals what is stored / returned. Null on
@@ -115,6 +140,10 @@ export function useBtcAddAccount() {
       sendError('Failed to derive policy address');
       return;
     }
+    if (isLedgerUnsupported) {
+      logger.error('Cannot complete add account: Ledger cannot display this descriptor');
+      return;
+    }
 
     if (mode === 'add') {
       const result = await registerBtcPolicy(request.params);
@@ -141,8 +170,10 @@ export function useBtcAddAccount() {
     address,
     matchStatus,
     mode,
+    timelocked,
+    isLedgerUnsupported,
     walletType,
-    canApprove: matchStatus === 'match' && address !== null,
+    canApprove: matchStatus === 'match' && address !== null && !isLedgerUnsupported,
     focusInitiatingTab,
     finalize,
   };

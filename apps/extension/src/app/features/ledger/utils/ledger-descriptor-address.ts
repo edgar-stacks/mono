@@ -14,9 +14,18 @@ export function isLedgerOnDeviceAddressConfirmed(
   return toLedgerDisplayedAddress(onDeviceAddress) === toLedgerDisplayedAddress(expectedAddress);
 }
 
-export function descriptorHasNonAccountRawKey(
+export const ledgerRawKeyUnsupportedMessage =
+  'Ledger cannot display this address. Every other key must be an extended public key (xpub), and a raw public key for your account only works when the extended keys use the 0/0 path.';
+
+export function isLedgerDisplayableDescriptor(
   compiled: CompiledWshDescriptor,
   accountKey: WshDescriptorKey
 ): boolean {
-  return compiled.keys.some(key => key !== accountKey && !key.bip32);
+  const hasOtherRawKey = compiled.keys.some(
+    key => key.keyExpression !== accountKey.keyExpression && !key.bip32
+  );
+  if (hasOtherRawKey) return false;
+  if (accountKey.bip32) return true;
+  const { changeIndex, addressIndex } = compiled.keyPathIndexes;
+  return changeIndex === 0 && addressIndex === 0;
 }

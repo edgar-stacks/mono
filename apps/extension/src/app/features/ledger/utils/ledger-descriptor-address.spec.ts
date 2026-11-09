@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest';
 import { compileWshDescriptor, findAccountDescriptorKey } from '@leather.io/bitcoin';
 
 import {
-  descriptorHasNonAccountRawKey,
+  isLedgerDisplayableDescriptor,
   isLedgerOnDeviceAddressConfirmed,
   toLedgerDisplayedAddress,
 } from './ledger-descriptor-address';
@@ -102,24 +102,24 @@ describe('toLedgerDisplayedAddress', () => {
   });
 });
 
-describe('descriptorHasNonAccountRawKey', () => {
+describe('isLedgerDisplayableDescriptor', () => {
   const accountKeychain = makeNativeSegwitAccountKeychain(1);
 
-  it('returns false for a multisig of only extended keys', () => {
+  it('returns true for a multisig of only extended keys', () => {
     const compiled = compileWshDescriptor(`wsh(sortedmulti(2,${xpubA}/0/0,${xpubB}/0/0))`);
     const accountKey = requireDefined(findAccountDescriptorKey(compiled, accountKeychain));
 
-    expect(descriptorHasNonAccountRawKey(compiled, accountKey.key)).toBe(false);
+    expect(isLedgerDisplayableDescriptor(compiled, accountKey.key)).toBe(true);
   });
 
-  it('returns false for a single extended-key descriptor', () => {
+  it('returns true for a single extended-key descriptor', () => {
     const compiled = compileWshDescriptor(`wsh(pk(${xpubA}/0/0))`);
     const accountKey = requireDefined(findAccountDescriptorKey(compiled, accountKeychain));
 
-    expect(descriptorHasNonAccountRawKey(compiled, accountKey.key)).toBe(false);
+    expect(isLedgerDisplayableDescriptor(compiled, accountKey.key)).toBe(true);
   });
 
-  it('returns true when a co-signer is supplied as a raw public key', () => {
+  it('returns false when a co-signer is supplied as a raw public key', () => {
     const cosignerRawPubkey = makeNativeSegwitAddressPubkey(2);
     const compiled = compileWshDescriptor(
       `wsh(multi(2,${bytesToHex(cosignerRawPubkey)},${xpubA}/0/7))`
@@ -127,10 +127,10 @@ describe('descriptorHasNonAccountRawKey', () => {
     const accountKey = requireDefined(findAccountDescriptorKey(compiled, accountKeychain));
 
     expect(accountKey.key.bip32).toBeDefined();
-    expect(descriptorHasNonAccountRawKey(compiled, accountKey.key)).toBe(true);
+    expect(isLedgerDisplayableDescriptor(compiled, accountKey.key)).toBe(false);
   });
 
-  it('does not flag the account key itself when it is a raw public key', () => {
+  it('accepts the account key as a raw public key when the extended keys use 0/0', () => {
     const accountRawPubkey = makeNativeSegwitAddressPubkey(1);
     const compiled = compileWshDescriptor(
       `wsh(multi(2,${bytesToHex(accountRawPubkey)},${xpubB}/0/0))`
@@ -138,6 +138,25 @@ describe('descriptorHasNonAccountRawKey', () => {
     const accountKey = requireDefined(findAccountDescriptorKey(compiled, accountKeychain));
 
     expect(accountKey.key.bip32).toBeUndefined();
-    expect(descriptorHasNonAccountRawKey(compiled, accountKey.key)).toBe(false);
+    expect(isLedgerDisplayableDescriptor(compiled, accountKey.key)).toBe(true);
+  });
+
+  it('rejects the account key as a raw public key when the extended keys are off 0/0', () => {
+    const accountRawPubkey = makeNativeSegwitAddressPubkey(1);
+    const compiled = compileWshDescriptor(
+      `wsh(multi(2,${bytesToHex(accountRawPubkey)},${xpubB}/0/7))`
+    );
+    const accountKey = requireDefined(findAccountDescriptorKey(compiled, accountKeychain));
+
+    expect(accountKey.key.bip32).toBeUndefined();
+    expect(isLedgerDisplayableDescriptor(compiled, accountKey.key)).toBe(false);
+  });
+
+  it('accepts a descriptor whose only key is the raw account key', () => {
+    const accountRawPubkey = makeNativeSegwitAddressPubkey(1);
+    const compiled = compileWshDescriptor(`wsh(pk(${bytesToHex(accountRawPubkey)}))`);
+    const accountKey = requireDefined(findAccountDescriptorKey(compiled, accountKeychain));
+
+    expect(isLedgerDisplayableDescriptor(compiled, accountKey.key)).toBe(true);
   });
 });

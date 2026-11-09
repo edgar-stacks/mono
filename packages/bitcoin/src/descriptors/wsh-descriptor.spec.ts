@@ -26,8 +26,11 @@ import {
   getWshDescriptorNetwork,
   getWshDescriptorThreshold,
   isExtendedPublicKeyExpression,
+  isValidMultisigThreshold,
   isWshDescriptor,
+  isWshMultisigDescriptor,
   makeWshDescriptorInstance,
+  maxMultisigKeys,
   toLedgerSignableDescriptor,
 } from './wsh-descriptor';
 
@@ -1259,5 +1262,94 @@ describe('getWshDescriptorThreshold', () => {
     expect(() => getWshDescriptorThreshold(descriptor)).toThrow(
       'does not start with a multisig threshold opcode'
     );
+  });
+});
+
+describe('isValidMultisigThreshold', () => {
+  it('accepts thresholds from 1 to the key count', () => {
+    expect(isValidMultisigThreshold(1, 1)).toBe(true);
+    expect(isValidMultisigThreshold(2, 3)).toBe(true);
+    expect(isValidMultisigThreshold(3, 3)).toBe(true);
+  });
+
+  it('caps the threshold at 16 even with more keys', () => {
+    expect(isValidMultisigThreshold(16, 20)).toBe(true);
+    expect(isValidMultisigThreshold(17, 20)).toBe(false);
+  });
+
+  it('rejects zero, fractional and over-count thresholds', () => {
+    expect(isValidMultisigThreshold(0, 3)).toBe(false);
+    expect(isValidMultisigThreshold(1.5, 3)).toBe(false);
+    expect(isValidMultisigThreshold(4, 3)).toBe(false);
+  });
+});
+
+describe('isWshMultisigDescriptor', () => {
+  const multiKeys = [`${xpubA}/0/0`, `${xpubB}/0/0`];
+
+  it('accepts multi and sortedmulti descriptors', () => {
+    expect(isWshMultisigDescriptor(`wsh(multi(2,${multiKeys.join(',')}))`)).toBe(true);
+    expect(isWshMultisigDescriptor(`wsh(sortedmulti(1,${multiKeys.join(',')}))`)).toBe(true);
+  });
+
+  it('tolerates a checksum and whitespace', () => {
+    const plain = `wsh(sortedmulti(2,${multiKeys.join(',')}))`;
+    expect(isWshMultisigDescriptor(`${plain}#${checksum(plain)}`)).toBe(true);
+    expect(isWshMultisigDescriptor(` wsh(sortedmulti(2, ${multiKeys.join(', ')}))`)).toBe(true);
+  });
+
+  it('accepts origin-prefixed keys and raw public keys', () => {
+    const rawPubkey = bytesToHex(pubkeyA);
+    expect(
+      isWshMultisigDescriptor(`wsh(multi(2,[aabbccdd/48'/0'/0'/2']${xpubA}/0/0,${rawPubkey}))`)
+    ).toBe(true);
+  });
+
+  it('rejects miniscript that wraps a multi leaf', () => {
+    expect(
+      isWshMultisigDescriptor(`wsh(and_v(v:pk(${xpubA}/0/0),multi(1,${xpubB}/0/0,${xpubA}/0/1)))`)
+    ).toBe(false);
+    expect(isWshMultisigDescriptor(`wsh(or_d(multi(1,${multiKeys.join(',')}),older(10)))`)).toBe(
+      false
+    );
+    expect(isWshMultisigDescriptor(descriptor)).toBe(false);
+  });
+
+  it('rejects non-wsh and single-key descriptors', () => {
+    expect(isWshMultisigDescriptor(`sh(multi(2,${multiKeys.join(',')}))`)).toBe(false);
+    expect(isWshMultisigDescriptor(`wsh(pk(${xpubA}/0/0))`)).toBe(false);
+  });
+
+  it('rejects ranged keys', () => {
+    expect(isWshMultisigDescriptor(`wsh(sortedmulti(2,${xpubA}/0/*,${xpubB}/0/*))`)).toBe(false);
+  });
+
+  it('rejects invalid thresholds', () => {
+    expect(isWshMultisigDescriptor(`wsh(multi(0,${multiKeys.join(',')}))`)).toBe(false);
+    expect(isWshMultisigDescriptor(`wsh(multi(3,${multiKeys.join(',')}))`)).toBe(false);
+    expect(isWshMultisigDescriptor(`wsh(multi(x,${multiKeys.join(',')}))`)).toBe(false);
+  });
+
+  it('limits multisig to 20 keys and the threshold to 16', () => {
+    function keys(count: number) {
+      return Array.from({ length: count }, (_, i) => `${makeNativeSegwitAccountXpub(i + 1)}/0/0`);
+    }
+    expect(isWshMultisigDescriptor(`wsh(multi(16,${keys(maxMultisigKeys).join(',')}))`)).toBe(true);
+    expect(isWshMultisigDescriptor(`wsh(multi(17,${keys(maxMultisigKeys).join(',')}))`)).toBe(
+      false
+    );
+    expect(isWshMultisigDescriptor(`wsh(multi(2,${keys(maxMultisigKeys + 1).join(',')}))`)).toBe(
+      false
+    );
+  });
+
+  it('rejects key expressions longer than 256 characters', () => {
+    const longKey = `[aabbccdd${"/1'".repeat(80)}]${xpubA}/0/0`;
+    expect(longKey.length).toBeGreaterThan(256);
+    expect(isWshMultisigDescriptor(`wsh(multi(1,${longKey},${xpubB}/0/0))`)).toBe(false);
+  });
+
+  it('rejects empty key slots', () => {
+    expect(isWshMultisigDescriptor(`wsh(multi(1,${xpubA}/0/0,))`)).toBe(false);
   });
 });

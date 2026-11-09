@@ -296,6 +296,57 @@ export function stripDescriptorChecksum(descriptor: string): string {
   return separatorIndex === -1 ? descriptor : descriptor.slice(0, separatorIndex);
 }
 
+export function compactDescriptor(descriptor: string): string {
+  return stripDescriptorChecksum(descriptor).replace(/\s/g, '');
+}
+
+export const maxMultisigKeys = 20;
+const maxMultisigThreshold = 16;
+const maxMultisigKeyExpressionLength = 256;
+const multisigLeafPattern = /^(?:sorted)?multi\(([^()]+)\)$/;
+const multisigThresholdPattern = /^\d{1,2}$/;
+
+export function isValidMultisigThreshold(threshold: number, keyCount: number): boolean {
+  return (
+    Number.isInteger(threshold) &&
+    threshold >= 1 &&
+    threshold <= Math.min(keyCount, maxMultisigThreshold)
+  );
+}
+
+function isMultisigKeyExpressionShape(keyExpression: string): boolean {
+  return (
+    keyExpression.length > 0 &&
+    keyExpression.length <= maxMultisigKeyExpressionLength &&
+    !keyExpression.includes('*')
+  );
+}
+
+export interface MultisigLeaf {
+  threshold: number;
+  keyExpressions: string[];
+}
+
+export function parseMultisigLeaf(expression: string): MultisigLeaf | null {
+  const args = multisigLeafPattern.exec(expression)?.[1];
+  if (!args) return null;
+
+  const [rawThreshold, ...keyExpressions] = args.split(',');
+  if (!rawThreshold || !multisigThresholdPattern.test(rawThreshold)) return null;
+  if (!keyExpressions.length || keyExpressions.length > maxMultisigKeys) return null;
+  if (!keyExpressions.every(isMultisigKeyExpressionShape)) return null;
+
+  const threshold = Number(rawThreshold);
+  if (!isValidMultisigThreshold(threshold, keyExpressions.length)) return null;
+  return { threshold, keyExpressions };
+}
+
+export function isWshMultisigDescriptor(descriptor: string): boolean {
+  const compact = compactDescriptor(descriptor);
+  if (!compact.startsWith(wshDescriptorPrefix) || !compact.endsWith(')')) return false;
+  return parseMultisigLeaf(compact.slice(wshDescriptorPrefix.length, -1)) !== null;
+}
+
 // Rewrites the account's key in the descriptor into a Ledger-signable key
 // expression. Ledger can only sign through a wallet policy whose keys are
 // `[fingerprint/path]xpub` (it derives + matches by origin), so:
