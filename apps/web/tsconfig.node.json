@@ -10,7 +10,7 @@
   "compilerOptions": {
     "composite": true,
     "strict": true,
-    "types": ["node", "vitest/globals"],
+    "types": ["node"],
     "lib": ["ES2022"],
     "target": "ES2022",
     "module": "esnext",

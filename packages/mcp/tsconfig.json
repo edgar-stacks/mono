@@ -1,0 +1,9 @@
+{
+  "extends": ["@leather.io/tsconfig-config/tsconfig.base.json"],
+  "compilerOptions": {
+    "types": ["vitest/globals", "node"],
+    "outDir": "./dist",
+    "rootDir": "./src"
+  },
+  "include": ["src/**/*"]
+}
