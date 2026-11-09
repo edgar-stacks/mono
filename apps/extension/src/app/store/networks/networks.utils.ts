@@ -4,6 +4,7 @@ import {
   type NetworkConfiguration,
   bitcoinNetworkToNetworkMode,
   bitcoinNetworks,
+  defaultCurrentNetwork,
 } from '@leather.io/models';
 import { stacksChainIdToCoreNetworkMode } from '@leather.io/stacks';
 
@@ -71,4 +72,11 @@ export function transformNetworkStateToMultichainStucture(
       ];
     })
   );
+}
+
+export function resolveCurrentNetworkId(
+  networks: Record<string, NetworkConfiguration>,
+  currentNetworkId: string
+) {
+  return networks[currentNetworkId] ? currentNetworkId : defaultCurrentNetwork.id;
 }

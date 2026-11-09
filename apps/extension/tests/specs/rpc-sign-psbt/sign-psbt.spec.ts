@@ -173,7 +173,7 @@ test.describe('Sign PSBT', () => {
     );
     const [result] = await Promise.all([
       initiatePsbtSigning(page)({
-        network: 'testnet',
+        network: 'testnet3',
         hex: bytesToHex(psbt.toPSBT()),
         broadcast: true,
       }),
@@ -195,7 +195,7 @@ test.describe('Sign PSBT', () => {
     const psbt = createTestPsbt();
     const [result] = await Promise.all([
       initiatePsbtSigning(page)({
-        network: 'testnet',
+        network: 'testnet3',
         hex: bytesToHex(psbt.toPSBT()),
         signAtIndex: 0,
         broadcast: false,
@@ -220,7 +220,7 @@ test.describe('Sign PSBT', () => {
 
     const [result] = await Promise.all([
       initiatePsbtSigning(page)({
-        network: 'testnet',
+        network: 'testnet3',
         hex: bytesToHex(psbt.toPSBT()),
         broadcast: true,
       }),
@@ -257,7 +257,7 @@ test.describe('Sign PSBT', () => {
     const psbt = createTestPsbt();
     const [result] = await Promise.all([
       initiatePsbtSigning(page)({
-        network: 'testnet',
+        network: 'testnet3',
         hex: bytesToHex(psbt.toPSBT()),
         broadcast: false,
       }),
@@ -277,7 +277,7 @@ test.describe('Sign PSBT', () => {
 
     const [result] = await Promise.all([
       initiatePsbtSigning(page)({
-        network: 'testnet',
+        network: 'testnet3',
         hex: bytesToHex(psbt.toPSBT()),
         signAtIndex: 4,
         broadcast: false,
@@ -299,7 +299,7 @@ test.describe('Sign PSBT', () => {
 
     const [result] = await Promise.all([
       initiatePsbtSigning(page)({
-        network: 'testnet',
+        network: 'testnet3',
         hex: bytesToHex(psbt.toPSBT()),
         broadcast: true,
       }),
@@ -385,7 +385,7 @@ test.describe('Sign PSBT', () => {
       );
       const [result] = await Promise.all([
         initiatePsbtSigning(page)({
-          network: 'testnet',
+          network: 'testnet3',
           hex: bytesToHex(psbt.toPSBT()),
           broadcast: true,
         }),
@@ -410,7 +410,7 @@ test.describe('Sign PSBT', () => {
       const psbt = createTaprootTestPsbt();
       const [result] = await Promise.all([
         initiatePsbtSigning(page)({
-          network: 'testnet',
+          network: 'testnet3',
           hex: bytesToHex(psbt.toPSBT()),
           signAtIndex: 0,
           broadcast: false,
@@ -441,7 +441,7 @@ test.describe('Sign PSBT', () => {
       );
       const [result] = await Promise.all([
         initiatePsbtSigning(page)({
-          network: 'testnet',
+          network: 'testnet3',
           hex: bytesToHex(psbt.toPSBT()),
           broadcast: true,
         }),
@@ -462,7 +462,7 @@ test.describe('Sign PSBT', () => {
       const psbt = createTaprootTestPsbt();
       const [result] = await Promise.all([
         initiatePsbtSigning(page)({
-          network: 'testnet',
+          network: 'testnet3',
           hex: bytesToHex(psbt.toPSBT()),
           broadcast: false,
         }),
@@ -516,7 +516,7 @@ test.describe('Sign PSBT', () => {
       );
       const [result] = await Promise.all([
         initiatePsbtSigning(page)({
-          network: 'testnet',
+          network: 'testnet3',
           hex: bytesToHex(psbt.toPSBT()),
           broadcast: true,
         }),
@@ -541,7 +541,7 @@ test.describe('Sign PSBT', () => {
       const psbt = createMixedTestPsbt();
       const [result] = await Promise.all([
         initiatePsbtSigning(page)({
-          network: 'testnet',
+          network: 'testnet3',
           hex: bytesToHex(psbt.toPSBT()),
           signAtIndex: 1,
           broadcast: false,
@@ -581,7 +581,7 @@ test.describe('Sign PSBT', () => {
 
       const [result] = await Promise.all([
         initiatePsbtSigning(page)({
-          network: 'testnet',
+          network: 'testnet3',
           hex: bytesToHex(psbt.toPSBT()),
           broadcast: false,
         }),
@@ -628,7 +628,7 @@ test.describe('Sign PSBT', () => {
       const psbt = createDescriptorTestPsbt();
       const [result] = await Promise.all([
         initiatePsbtSigning(page)({
-          network: 'testnet',
+          network: 'testnet3',
           hex: bytesToHex(psbt.toPSBT()),
           descriptor,
         }),
@@ -665,7 +665,7 @@ test.describe('Sign PSBT', () => {
 
       const [result] = await Promise.all([
         initiatePsbtSigning(page)({
-          network: 'testnet',
+          network: 'testnet3',
           hex: bytesToHex(psbt.toPSBT()),
           descriptor: rawPubkeyDescriptor,
         }),
@@ -704,7 +704,7 @@ test.describe('Sign PSBT', () => {
 
       const [result] = await Promise.all([
         initiatePsbtSigning(page)({
-          network: 'testnet',
+          network: 'testnet3',
           hex: bytesToHex(psbt.toPSBT()),
           descriptor: vaultDescriptor,
         }),
@@ -748,7 +748,7 @@ test.describe('Sign PSBT', () => {
 
       const [result] = await Promise.all([
         initiatePsbtSigning(page)({
-          network: 'testnet',
+          network: 'testnet3',
           hex: bytesToHex(psbt.toPSBT()),
           descriptor: singleKeyDescriptor,
           broadcast: true,
@@ -797,7 +797,7 @@ test.describe('Sign PSBT', () => {
 
       const [result] = await Promise.all([
         initiatePsbtSigning(page)({
-          network: 'testnet',
+          network: 'testnet3',
           hex: bytesToHex(psbt.toPSBT()),
           descriptor,
           broadcast: true,
@@ -832,7 +832,7 @@ test.describe('Sign PSBT', () => {
 
       const [result] = await Promise.all([
         initiatePsbtSigning(page)({
-          network: 'testnet',
+          network: 'testnet3',
           hex: bytesToHex(psbt.toPSBT()),
           descriptor: singleKeyDescriptor,
           broadcast: true,
@@ -864,7 +864,7 @@ test.describe('Sign PSBT', () => {
       const psbt = createDescriptorTestPsbt();
       const [result] = await Promise.all([
         initiatePsbtSigning(page)({
-          network: 'testnet',
+          network: 'testnet3',
           hex: bytesToHex(psbt.toPSBT()),
           descriptor: foreignDescriptor,
         }),
@@ -882,7 +882,7 @@ test.describe('Sign PSBT', () => {
     test('that a non-wsh descriptor is rejected with invalid params', async ({ page }) => {
       const psbt = createDescriptorTestPsbt();
       const result = await initiatePsbtSigning(page)({
-        network: 'testnet',
+        network: 'testnet3',
         hex: bytesToHex(psbt.toPSBT()),
         descriptor: `wpkh(${nativeSegwitAccountXpub}/0/*)`,
       });

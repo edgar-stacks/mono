@@ -22,6 +22,7 @@ import { useNetworkBadgeAlwaysOn } from '@app/store/settings/settings.selectors'
 
 import { NetworkListItem } from './components/network-list-item';
 import { NetworkListSwitch } from './components/network-list-switch';
+import { sortNetworkListIds } from './network-list-order';
 
 const defaultNetworkIds: string[] = Object.values(WalletDefaultNetworkConfigurationIds);
 
@@ -68,7 +69,7 @@ export function SelectNetwork() {
               Network
             </styled.h1>
             <Flex direction="column" gap="space.01">
-              {Object.keys(networks).map(id => (
+              {sortNetworkListIds(Object.keys(networks)).map(id => (
                 <NetworkListItem
                   key={id}
                   networkId={id}

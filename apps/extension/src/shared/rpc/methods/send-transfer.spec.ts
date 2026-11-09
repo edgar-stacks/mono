@@ -156,11 +156,39 @@ describe('`sendTransfer` method', () => {
 
   test('that it supports regtest addresses', () => {
     const result = rpcSendTransferParamsSchema.safeParse({
-      network: 'sbtcTestnet',
+      network: 'testnet',
       account: 0,
       recipients: [
         {
           address: 'bcrt1pzxz00vdnc8j4rz6u9axp6jmh60f8v7t8zkmwzm4x3899fvvl78nseyz7r2',
+          amount: '100',
+        },
+      ],
+    });
+    expect(result.success).toEqual(true);
+  });
+
+  test('that it rejects testnet3 addresses on the primary hiro testnet', () => {
+    const result = rpcSendTransferParamsSchema.safeParse({
+      network: 'testnet',
+      account: 0,
+      recipients: [
+        {
+          address: 'tb1pjqhc5xw5xuhhg3zvk5p545q055e4farx37pvwnj2plt9t8lezvys0n58yz',
+          amount: '100',
+        },
+      ],
+    });
+    expect(result.success).toEqual(false);
+  });
+
+  test('that it supports testnet addresses on testnet3', () => {
+    const result = rpcSendTransferParamsSchema.safeParse({
+      network: 'testnet3',
+      account: 0,
+      recipients: [
+        {
+          address: 'tb1pjqhc5xw5xuhhg3zvk5p545q055e4farx37pvwnj2plt9t8lezvys0n58yz',
           amount: '100',
         },
       ],

@@ -162,7 +162,7 @@ getAddressesMethods.forEach(method => {
             context,
           }) => {
             await page.goto('localhost:3000');
-            const getAddressesPromise = initiateGetAddresses(page, method, { network: 'testnet' });
+            const getAddressesPromise = initiateGetAddresses(page, method, { network: 'testnet3' });
             const popup = await interceptRequestPopup(context);
             await clickConnectLeatherButton(popup);
 

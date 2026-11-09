@@ -12,7 +12,10 @@ import { initialSearchParams } from '@app/common/initial-search-params';
 import { type RootState } from '@app/store/store';
 
 import { networksAdapter } from './networks.slice';
-import { transformNetworkStateToMultichainStucture } from './networks.utils';
+import {
+  resolveCurrentNetworkId,
+  transformNetworkStateToMultichainStucture,
+} from './networks.utils';
 
 function selectNetworksSlice(state: RootState) {
   return state.networks;
@@ -28,7 +31,11 @@ const selectNetworks = createSelector(
   })
 );
 
-const selectCurrentNetworkId = createSelector(selectNetworksSlice, state => state.currentNetworkId);
+const selectCurrentNetworkId = createSelector(
+  selectNetworks,
+  selectNetworksSlice,
+  (networks, state) => resolveCurrentNetworkId(networks, state.currentNetworkId)
+);
 
 const selectAppRequestedNetworkId = createSelector(selectNetworks, networks => {
   // `network` param is a more generic network selector that doesn't deal with

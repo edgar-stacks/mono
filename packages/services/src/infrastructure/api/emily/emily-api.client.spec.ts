@@ -27,7 +27,7 @@ const sbtcLimits = {
 
 const networksByBitcoinMode = {
   mainnet: defaultNetworksKeyedById[WalletDefaultNetworkConfigurationIds.mainnet],
-  testnet: defaultNetworksKeyedById[WalletDefaultNetworkConfigurationIds.testnet],
+  testnet: defaultNetworksKeyedById[WalletDefaultNetworkConfigurationIds.testnet3],
 };
 
 const fetchWithCache = vi.fn<(key: HttpCacheKeyArray, fetchFn: () => Promise<unknown>) => void>();
