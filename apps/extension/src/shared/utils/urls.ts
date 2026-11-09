@@ -1,13 +1,13 @@
 import { isWebUri } from 'valid-url';
 
+const webProtocols = ['http:', 'https:'];
+
 export function isValidUrl(str: string) {
   return !!isWebUri(str);
 }
 
-export function getHostnameFromUrl(origin: string) {
-  const url = new URL(origin);
-  const hostname = url.hostname;
-  if (!hostname) throw new Error('Invalid URL: ' + origin);
-  if (hostname === 'localhost') return `${hostname}:${url.port}`;
-  return hostname;
+export function getOriginFromUrl(url: string) {
+  const { origin, protocol } = new URL(url);
+  if (!webProtocols.includes(protocol)) throw new Error('Invalid web URL: ' + url);
+  return origin;
 }

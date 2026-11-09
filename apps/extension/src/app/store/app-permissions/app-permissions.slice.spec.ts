@@ -104,4 +104,19 @@ describe('appPermissionsSlice', () => {
     expect(result.entities['app-b.com']?.policyId).toBe(otherPolicyId);
     expect(result.entities['app-c.com']).toEqual(createPermission('app-c.com', fingerprintA));
   });
+
+  test('keeps separate entries for the http and https origins of one hostname', () => {
+    const httpsOrigin = 'https://app.example.com';
+    const httpOrigin = 'http://app.example.com';
+    const state = createState([createPermission(httpsOrigin, fingerprintA)]);
+
+    const result = appPermissionsSlice.reducer(
+      state,
+      appPermissionsSlice.actions.updatePermission(createPermission(httpOrigin, fingerprintB))
+    );
+
+    expect(result.ids).toEqual([httpsOrigin, httpOrigin]);
+    expect(result.entities[httpsOrigin]).toEqual(createPermission(httpsOrigin, fingerprintA));
+    expect(result.entities[httpOrigin]).toEqual(createPermission(httpOrigin, fingerprintB));
+  });
 });
