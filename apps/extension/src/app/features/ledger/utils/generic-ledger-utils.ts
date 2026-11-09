@@ -2,6 +2,7 @@ import { useState } from 'react';
 
 import { UserInteractionRequired } from '@ledgerhq/device-management-kit';
 
+import type { BitcoinNetworkModes, SupportedBlockchains } from '@leather.io/models';
 import { delay } from '@leather.io/utils';
 
 import type { LedgerDeviceLockState } from '../dmk/ledger-dmk-errors';
@@ -14,6 +15,12 @@ export const LEDGER_APPS_MAP = {
   BITCOIN_TESTNET: 'Bitcoin Test',
   MAIN_MENU: 'BOLOS',
 } as const;
+
+export function ledgerAppNameForChain(chain: SupportedBlockchains, network: BitcoinNetworkModes) {
+  if (chain === 'stacks') return LEDGER_APPS_MAP.STACKS;
+  if (network === 'mainnet') return LEDGER_APPS_MAP.BITCOIN_MAINNET;
+  return LEDGER_APPS_MAP.BITCOIN_TESTNET;
+}
 
 export const LEDGER_LIVE_MANAGER_URL = 'ledgerlive://manager';
 
