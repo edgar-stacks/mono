@@ -1,6 +1,13 @@
-import type { OnChainActivityStatus, StacksProtocolAction } from '@leather.io/models';
+import type { Money, OnChainActivityStatus, StacksProtocolAction } from '@leather.io/models';
+import { minusSign } from '@leather.io/utils';
 
-import type { BlockchainActivityTranslate } from './blockchain-activity-view.types';
+import { addOperator } from './activity-balance';
+import type {
+  BlockchainActivityAmountCaption,
+  BlockchainActivityHeroLines,
+  BlockchainActivityTranslate,
+  BlockchainActivityView,
+} from './blockchain-activity-view.types';
 
 export function interpolateActivityTemplate(
   template: string,
@@ -155,6 +162,29 @@ export function buildBlockchainActivityActionTitle(
   return title ? t(title) : undefined;
 }
 
+const transferHeroTitles: Partial<Record<StacksProtocolAction, string>> = {
+  send: 'Send {asset}',
+  receive: 'Receive {asset}',
+};
+
+export function buildBlockchainActivityHeroLines(
+  view: Pick<BlockchainActivityView, 'action' | 'title' | 'subtitle' | 'protocolName'>,
+  t: BlockchainActivityTranslate = interpolateActivityTemplate
+): BlockchainActivityHeroLines {
+  const actionTitle = buildBlockchainActivityActionTitle(view.action, t);
+  if (actionTitle) {
+    return {
+      title: actionTitle,
+      ...(view.protocolName
+        ? { subtitle: t('via {protocol}', { protocol: view.protocolName }) }
+        : {}),
+    };
+  }
+  const transferTitle = transferHeroTitles[view.action];
+  if (transferTitle && view.title) return { title: t(transferTitle, { asset: view.title }) };
+  return { title: view.title || '—', subtitle: view.subtitle };
+}
+
 interface SubtitleParams {
   action: StacksProtocolAction;
   status: OnChainActivityStatus;
@@ -198,4 +228,16 @@ export function buildBlockchainActivityDeployTitle(
   t: BlockchainActivityTranslate
 ): string {
   return t(deployTitles[status]);
+}
+
+export function formatBlockchainActivityAmountCaption(
+  caption: BlockchainActivityAmountCaption,
+  formatMoney: (money: Money) => string,
+  t: BlockchainActivityTranslate = interpolateActivityTemplate
+): string {
+  if (caption.kind === 'more') return t('+{count} more', { count: String(caption.count) });
+  return addOperator(
+    formatMoney(caption.crypto),
+    caption.direction === 'received' ? '+' : minusSign
+  );
 }

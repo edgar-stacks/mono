@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { GroupedVirtuoso } from 'react-virtuoso';
 
 import { groupActivityByDate } from '@leather.io/features';
@@ -6,6 +6,12 @@ import { groupActivityByDate } from '@leather.io/features';
 import { useBlockchainActivityFeed } from '@app/query/activity/blockchain-activity.query';
 import { useCurrentAccountAddresses } from '@app/services/accounts/use-account-addresses';
 
+import {
+  clearActivityListScroll,
+  getActivityListScroll,
+  restoreWindowScroll,
+  saveActivityListScroll,
+} from './activity-list-scroll';
 import { mergeSbtcDepositItems } from './activity-list.utils';
 import { ActivityGroupHeader } from './components/activity-group-header';
 import { ActivityListLayout } from './components/activity-list.layout';
@@ -42,6 +48,19 @@ export function ActivityList() {
     [activityItems]
   );
 
+  const restoreScrollTop = useRef(getActivityListScroll());
+  const hasActivity = activityItems.length > 0;
+
+  useEffect(() => {
+    const top = restoreScrollTop.current;
+    if (top === undefined || !hasActivity) return;
+    restoreScrollTop.current = undefined;
+    clearActivityListScroll();
+    restoreWindowScroll(top);
+  }, [hasActivity]);
+
+  const onOpenDetails = useCallback(() => saveActivityListScroll(window.scrollY), []);
+
   const groupCounts = useMemo(() => groups.map(group => group.items.length), [groups]);
   const flatItems = useMemo(() => groups.flatMap(group => group.items), [groups]);
 
@@ -55,9 +74,15 @@ export function ActivityList() {
   const itemContent = useCallback(
     (index: number) => {
       const item = flatItems[index];
-      return <ActivityRow item={item} sbtcOverlay={sbtcOverlays.get(item.view.txid)} />;
+      return (
+        <ActivityRow
+          item={item}
+          sbtcOverlay={sbtcOverlays.get(item.view.txid)}
+          onOpenDetails={onOpenDetails}
+        />
+      );
     },
-    [flatItems, sbtcOverlays]
+    [flatItems, sbtcOverlays, onOpenDetails]
   );
 
   const endReached = useCallback(() => {
@@ -80,7 +105,7 @@ export function ActivityList() {
       isLoading={isLoading}
       isError={isError}
       isRefetchError={isRefetchError}
-      hasActivity={activityItems.length > 0}
+      hasActivity={hasActivity}
       onRetry={refetch}
     >
       <GroupedVirtuoso

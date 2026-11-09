@@ -1,5 +1,5 @@
 import { Suspense } from 'react';
-import { useLocation, useNavigate } from 'react-router';
+import { useLocation } from 'react-router';
 
 import { ActivitySelectors } from '@tests/selectors/activity.selectors';
 import { Formik } from 'formik';
@@ -20,6 +20,7 @@ import { useCurrentBtcBalanceWithFallback } from '@app/query/bitcoin/balance/btc
 import { TransactionActions } from './components/transaction-actions';
 import { useBtcIncreaseFee } from './hooks/use-btc-increase-fee';
 import { increaseBtcFeeRouteStateSchema } from './increase-btc-fee-route-state';
+import { useCloseTransactionAction } from './use-close-transaction-action';
 
 export function IncreaseBtcFeeSheet() {
   const tx = useRouteState(increaseBtcFeeRouteStateSchema)?.btcTx;
@@ -28,11 +29,7 @@ export function IncreaseBtcFeeSheet() {
 }
 
 function IncreaseBtcFeeUnsupportedSheet() {
-  const navigate = useNavigate();
-
-  function onClose() {
-    void navigate(RouteUrls.Home);
-  }
+  const onClose = useCloseTransactionAction();
 
   return (
     <Sheet isShowing onClose={onClose} header={<SheetHeader title="Increase fee" />}>
@@ -48,8 +45,8 @@ interface IncreaseBtcFeeSheetContentProps {
 }
 
 function IncreaseBtcFeeSheetContent({ tx }: IncreaseBtcFeeSheetContentProps) {
-  const navigate = useNavigate();
   const location = useLocation();
+  const onClose = useCloseTransactionAction();
 
   const btcTx = tx;
   const { btc: balance } = useCurrentBtcBalanceWithFallback();
@@ -57,10 +54,6 @@ function IncreaseBtcFeeSheetContent({ tx }: IncreaseBtcFeeSheetContentProps) {
     useBtcIncreaseFee(btcTx);
 
   const btcBalance = formatCurrency(sumMoney([balance.availableBalance, balance.outboundBalance]));
-
-  function onClose() {
-    void navigate(RouteUrls.Home);
-  }
 
   const initialFeeRate = `${(tx.fee / sizeInfo.txVBytes).toFixed(0)}`;
 
@@ -85,7 +78,7 @@ function IncreaseBtcFeeSheetContent({ tx }: IncreaseBtcFeeSheetContentProps) {
                   isDisabled={isBroadcasting}
                   isBroadcasting={isBroadcasting}
                   onSubmit={() => void submitForm()}
-                  onCancel={() => void navigate(RouteUrls.Home)}
+                  onCancel={onClose}
                 />
               }
             >

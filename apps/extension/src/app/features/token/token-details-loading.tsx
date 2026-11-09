@@ -1,11 +1,17 @@
+import { useNavigate } from 'react-router';
+
+import { TokenDetailsSelectors } from '@tests/selectors/token-details.selectors';
 import { Box, Circle, Flex, Stack } from 'leather-styles/jsx';
 
 import { historicalPeriods } from '@leather.io/models';
 import { SkeletonLoader } from '@leather.io/ui';
 
+import { RouteUrls } from '@shared/route-urls';
+
+import { DetailsHeader } from '@app/components/details/details-header';
+import { DetailsSection } from '@app/components/details/details-section';
+
 import { TokenActivityLoading } from './components/token-activity-loading';
-import { TokenDetailsHeader } from './components/token-details-header';
-import { TokenDetailsSection } from './components/token-details-section';
 
 function LoadingRow() {
   return (
@@ -74,30 +80,36 @@ function LoadingDescription() {
 }
 
 export function TokenDetailsLoading({ title = 'Loading...' }: { title?: string }) {
+  const navigate = useNavigate();
   return (
     <Stack width="100%" gap="space.00" data-testid="token-details-loading">
-      <TokenDetailsHeader title={title} />
+      <DetailsHeader
+        title={title}
+        onBack={() => void navigate(RouteUrls.Home)}
+        backTestId={TokenDetailsSelectors.TokenDetailsBackButton}
+        titleTestId={TokenDetailsSelectors.TokenDetailsTitle}
+      />
       <Box width="100%" maxWidth={['100%', null, '780px']} margin="0 auto">
         <Stack bg="ink.background-secondary" borderRadius={['0', null, 'md']} overflow="hidden">
           <LoadingOverview />
 
-          <TokenDetailsSection title="Price">
+          <DetailsSection title="Price">
             <LoadingPrice />
-          </TokenDetailsSection>
+          </DetailsSection>
 
-          <TokenDetailsSection title="Description">
+          <DetailsSection title="Description">
             <LoadingDescription />
-          </TokenDetailsSection>
+          </DetailsSection>
 
-          <TokenDetailsSection title="Token details">
+          <DetailsSection title="Token details">
             <LoadingRow />
             <LoadingRow />
             <LoadingRow />
-          </TokenDetailsSection>
+          </DetailsSection>
 
-          <TokenDetailsSection title="Activity">
+          <DetailsSection title="Activity">
             <TokenActivityLoading />
-          </TokenDetailsSection>
+          </DetailsSection>
         </Stack>
       </Box>
     </Stack>

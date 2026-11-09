@@ -1,13 +1,15 @@
 import { useNavigate } from 'react-router';
 
 import LostInStackImg from '@assets/images/lost-in-stack.png';
+import { TokenDetailsSelectors } from '@tests/selectors/token-details.selectors';
 import { Box, Flex, Stack, styled } from 'leather-styles/jsx';
 
 import { Button } from '@leather.io/ui';
 
-import { Content } from '@app/components/layout';
+import { RouteUrls } from '@shared/route-urls';
 
-import { TokenDetailsHeader } from './components/token-details-header';
+import { DetailsHeader } from '@app/components/details/details-header';
+import { Content } from '@app/components/layout';
 
 interface TokenDetailsErrorProps {
   title?: string;
@@ -20,7 +22,12 @@ export function TokenDetailsError({ title = 'Token', onRetry }: TokenDetailsErro
   return (
     <Content>
       <Stack width="100%" gap="space.00" data-testid="token-details-error">
-        <TokenDetailsHeader title={title} />
+        <DetailsHeader
+          title={title}
+          onBack={() => void navigate(RouteUrls.Home)}
+          backTestId={TokenDetailsSelectors.TokenDetailsBackButton}
+          titleTestId={TokenDetailsSelectors.TokenDetailsTitle}
+        />
         <Box width="100%" maxWidth={['100%', null, '780px']} margin="0 auto">
           <Stack bg="ink.background-secondary" borderRadius={['0', null, 'md']} overflow="hidden">
             <Flex

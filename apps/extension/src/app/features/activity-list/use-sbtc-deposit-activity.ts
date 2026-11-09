@@ -25,17 +25,26 @@ function combineFundingTxs(results: UseQueryResult<BitcoinTransaction | null>[])
   return { fundingTxs: results.map(result => result.data ?? null) };
 }
 
-export function useSbtcDepositActivity(feedTxids: ReadonlySet<string>): SbtcDepositActivity {
+function useSbtcDeposits() {
   const stxAddress = useCurrentStacksAccountAddress();
-  const settings = useUserSettings();
   const { pendingSbtcDeposits } = useSbtcPendingDeposits(stxAddress);
   const { failedSbtcDeposits } = useSbtcFailedDeposits(stxAddress);
-  const btcMarketData = useMarketData(btcAsset);
 
-  const deposits = useMemo(
+  return useMemo(
     () => [...pendingSbtcDeposits, ...failedSbtcDeposits],
     [pendingSbtcDeposits, failedSbtcDeposits]
   );
+}
+
+function useBtcMarketDataValue() {
+  const btcMarketData = useMarketData(btcAsset);
+  return btcMarketData.state === 'success' ? btcMarketData.value : undefined;
+}
+
+export function useSbtcDepositActivity(feedTxids: ReadonlySet<string>): SbtcDepositActivity {
+  const settings = useUserSettings();
+  const deposits = useSbtcDeposits();
+  const marketData = useBtcMarketDataValue();
 
   const unmatchedDeposits = useMemo(
     () => deposits.filter(deposit => !feedTxids.has(deposit.bitcoinTxid)),
@@ -48,8 +57,6 @@ export function useSbtcDepositActivity(feedTxids: ReadonlySet<string>): SbtcDepo
     ),
     combine: combineFundingTxs,
   });
-
-  const marketData = btcMarketData.state === 'success' ? btcMarketData.value : undefined;
 
   const overlays = useMemo(() => {
     const map = new Map<string, SbtcDepositOverlay>();
@@ -76,4 +83,43 @@ export function useSbtcDepositActivity(feedTxids: ReadonlySet<string>): SbtcDepo
   );
 
   return { overlays, standaloneItems };
+}
+
+interface SbtcDepositByTxid {
+  overlay?: SbtcDepositOverlay;
+  item?: BlockchainActivityItem;
+}
+
+export function useSbtcDepositByTxid(bitcoinTxid: string | undefined): SbtcDepositByTxid {
+  const settings = useUserSettings();
+  const deposits = useSbtcDeposits();
+  const marketData = useBtcMarketDataValue();
+  const matchingDeposits = useMemo(
+    () => deposits.filter(candidate => candidate.bitcoinTxid === bitcoinTxid).slice(0, 1),
+    [deposits, bitcoinTxid]
+  );
+  const [deposit] = matchingDeposits;
+
+  const {
+    fundingTxs: [fundingTx],
+  } = useQueries({
+    queries: matchingDeposits.map(match =>
+      createBitcoinTransactionByTxIdQueryConfig(match.bitcoinTxid, settings)
+    ),
+    combine: combineFundingTxs,
+  });
+
+  if (!deposit) return {};
+  const overlay = createSbtcDepositOverlay(deposit.status);
+  return {
+    ...(overlay ? { overlay } : {}),
+    ...(fundingTx
+      ? {
+          item: createBlockchainActivityItem(
+            createSbtcDepositActivity(deposit, fundingTx, marketData),
+            activityViewDeps
+          ),
+        }
+      : {}),
+  };
 }

@@ -3,10 +3,10 @@ import type { ReactNode } from 'react';
 import { styled } from 'leather-styles/jsx';
 import { CopyAddress } from '~/components/copy-address';
 import { ExternalLink } from '~/components/external-link';
-import { getActivityActionLine } from '~/features/multisig/activity/activity-action-line';
 
 import {
   type BlockchainActivityView,
+  buildBlockchainActivityHeroLines,
   getBitcoinExplorerLink,
   getStacksExplorerApiUrl,
   getStacksExplorerLink,
@@ -18,7 +18,6 @@ import type {
   MultisigTransactionStatus,
   NetworkConfiguration,
   OnChainActivityStatus,
-  StacksProtocolAction,
 } from '@leather.io/models';
 import { truncateMiddle } from '@leather.io/utils';
 
@@ -67,19 +66,6 @@ function explorerLink(
   });
 }
 
-const transferHeroVerbs: Partial<Record<StacksProtocolAction, string>> = {
-  send: 'Send',
-  receive: 'Receive',
-};
-
-function heroLines(view: BlockchainActivityView): { title: string; subtitle?: string } {
-  const actionLine = getActivityActionLine(view);
-  if (actionLine) return { title: actionLine.actionTitle, subtitle: actionLine.viaProtocol };
-  const transferVerb = transferHeroVerbs[view.action];
-  if (transferVerb && view.title) return { title: `${transferVerb} ${view.title}` };
-  return { title: view.title || '—', subtitle: view.subtitle };
-}
-
 interface VaultActivityDetailItem {
   view: BlockchainActivityView;
   activity?: BlockchainActivity;
@@ -116,7 +102,7 @@ export function VaultActivityDetail({
   proposal,
 }: VaultActivityDetailProps) {
   const { view, activity } = item;
-  const hero = heroLines(view);
+  const hero = buildBlockchainActivityHeroLines(view);
   const status = proposal
     ? transactionStatusBadge(proposal.status)
     : onChainStatusDisplay[view.status];

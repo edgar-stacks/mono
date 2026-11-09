@@ -654,6 +654,10 @@ describe(BlockchainActivityService.name, () => {
       id: { fingerprint: 'fp', accountIndex: 0 },
       stacks: { stxAddress: 'SP1' },
     };
+    const hdAccount: AccountAddresses = {
+      id: { fingerprint: 'fp', accountIndex: 0 },
+      bitcoin: { type: 'hd', nativeSegwitDescriptor: 'wpkh(xpub)', taprootDescriptor: 'tr(xpub)' },
+    };
 
     it('marks bitcoin ownership by the account address, not the fetched owned flags', async () => {
       getTransactionByTxId.mockResolvedValue(
@@ -663,7 +667,7 @@ describe(BlockchainActivityService.name, () => {
           vout: [{ owned: false, value: '900', address: 'bc1qmine', n: 0 }],
         })
       );
-      const result = await service.getActivityByTxId(btcAccount, 'btc-rx');
+      const result = await service.getActivityByTxId(btcAccount, 'bitcoin', 'btc-rx');
       expect(result?.chain).toBe('bitcoin');
       expect(result?.action).toBe('receive');
       expect(result?.txid).toBe('btc-rx');
@@ -691,7 +695,7 @@ describe(BlockchainActivityService.name, () => {
         type: 'token_transfer',
         token_transfer: { recipient: 'SP1', amount: '5000', memo: null },
       });
-      const result = await service.getActivityByTxId(stxAccount, '0xrx');
+      const result = await service.getActivityByTxId(stxAccount, 'stacks', '0xrx');
       expect(result?.action).toBe('receive');
       expect(result?.counterparty).toBe('SP2');
       expect(result?.balanceChanges[0].amount.crypto.amount.toString()).toBe('5000');
@@ -732,7 +736,7 @@ describe(BlockchainActivityService.name, () => {
           },
         ],
       });
-      const result = await service.getActivityByTxId(stxAccount, '0xcall');
+      const result = await service.getActivityByTxId(stxAccount, 'stacks', '0xcall');
       expect(mockHiro.getPrincipalBalanceChanges).toHaveBeenCalled();
       expect(result?.action).toBe('receive');
       expect(result?.counterparty).toBe('SP2');
@@ -742,8 +746,49 @@ describe(BlockchainActivityService.name, () => {
     });
 
     it('returns null when the transaction is not found', async () => {
-      const result = await service.getActivityByTxId(stxAccount, '0xmissing');
+      const result = await service.getActivityByTxId(stxAccount, 'stacks', '0xmissing');
       expect(result).toBeNull();
+    });
+
+    it('resolves a bitcoin txid for an HD account from its account transactions', async () => {
+      getAccountTransactions.mockResolvedValue([
+        btcTx({ txid: 'btc-other' }),
+        btcTx({
+          txid: 'btc-hd-send',
+          vin: [{ owned: true, value: '1000', address: 'mine', n: 0 }],
+          vout: [{ owned: false, value: '900', address: 'ext', n: 0 }],
+        }),
+      ]);
+      const result = await service.getActivityByTxId(hdAccount, 'bitcoin', 'btc-hd-send');
+      expect(result?.chain).toBe('bitcoin');
+      expect(result?.txid).toBe('btc-hd-send');
+      expect(result?.action).toBe('send');
+      expect(mockBtcTx.getTransactionByTxId).not.toHaveBeenCalled();
+    });
+
+    it('returns null for an HD account when the txid is not in its transactions', async () => {
+      getAccountTransactions.mockResolvedValue([btcTx({ txid: 'btc-other' })]);
+      const result = await service.getActivityByTxId(hdAccount, 'bitcoin', 'btc-missing');
+      expect(result).toBeNull();
+    });
+
+    it('looks up the requested chain even when the account has both', async () => {
+      getTransactionByTxId.mockResolvedValue(
+        btcTx({
+          txid: 'btc-rx',
+          vin: [{ owned: false, value: '1000', address: 'ext', n: 0 }],
+          vout: [{ owned: false, value: '900', address: 'bc1qmine', n: 0 }],
+        })
+      );
+      const result = await service.getActivityByTxId(account, 'bitcoin', 'btc-rx');
+      expect(result?.chain).toBe('bitcoin');
+      expect(mockStacksTx.getTransactionById).not.toHaveBeenCalled();
+    });
+
+    it('returns null for a stacks txid when the account has no stacks address', async () => {
+      const result = await service.getActivityByTxId(btcAccount, 'stacks', '0xrx');
+      expect(result).toBeNull();
+      expect(mockStacksTx.getTransactionById).not.toHaveBeenCalled();
     });
   });
 });

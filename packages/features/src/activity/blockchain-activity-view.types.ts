@@ -26,10 +26,16 @@ export type BlockchainActivityAvatar =
     }
   | { kind: 'icon'; icon: 'contract-call' | 'contract-deploy' };
 
+export type BlockchainActivityAmountCaption =
+  | { kind: 'change'; direction: BlockchainActivityDirection; crypto: Money }
+  | { kind: 'more'; count: number };
+
 export interface BlockchainActivityAmount {
   direction: BlockchainActivityDirection;
   quote: Money;
   crypto?: Money;
+  showSymbol?: boolean;
+  caption?: BlockchainActivityAmountCaption;
 }
 
 export interface BlockchainActivityView {
@@ -45,6 +51,11 @@ export interface BlockchainActivityView {
   subtitle: string;
   protocolName?: string;
   amount?: BlockchainActivityAmount;
+}
+
+export interface BlockchainActivityHeroLines {
+  title: string;
+  subtitle?: string;
 }
 
 export type BlockchainActivityTranslate = (

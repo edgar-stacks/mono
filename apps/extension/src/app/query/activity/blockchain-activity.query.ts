@@ -3,14 +3,26 @@ import { type InfiniteData, useInfiniteQuery, useQuery } from '@tanstack/react-q
 import {
   type BlockchainActivityItem,
   type BlockchainActivityViewDeps,
+  createBlockchainActivityItem,
   createBlockchainActivityItems,
 } from '@leather.io/features';
-import type { AccountAddresses, BlockchainActivity, CryptoAsset, Money } from '@leather.io/models';
+import type {
+  AccountAddresses,
+  BlockchainActivity,
+  CryptoAsset,
+  CryptoAssetChain,
+  Money,
+} from '@leather.io/models';
 import {
   createBlockchainActivityByAssetIdQueryConfig,
+  createBlockchainActivityByTxIdQueryConfig,
   createBlockchainActivityInfiniteQueryConfig,
 } from '@leather.io/queries';
-import { type ActivityResponse, getHttpCacheService } from '@leather.io/services';
+import {
+  type ActivityResponse,
+  type UserSettings,
+  getHttpCacheService,
+} from '@leather.io/services';
 import { type FormatAmountOptions, getAssetId } from '@leather.io/utils';
 
 import { formatCurrency } from '@app/common/currency-formatter';
@@ -20,6 +32,8 @@ import { useUserSettings } from '@app/hooks/use-user-settings';
 const feedPageSize = 25;
 const feedRefetchInterval = 15_000;
 const feedRefetchMaxPages = 2;
+const activityByTxIdRefetchInterval = 10_000;
+const unresolvedTxIdMaxRefetches = 4;
 
 const activityQueryPrefixes = [
   'blockchain-activity-service--get-activity',
@@ -54,6 +68,29 @@ function selectBlockchainActivityItems(activities: BlockchainActivity[]) {
   return createBlockchainActivityItems(activities, activityViewDeps);
 }
 
+function selectBlockchainActivityItem(activity: BlockchainActivity | null) {
+  return activity === null ? null : createBlockchainActivityItem(activity, activityViewDeps);
+}
+
+function createFeedQueryConfig(account: AccountAddresses, settings: UserSettings) {
+  return createBlockchainActivityInfiniteQueryConfig({ account, limit: feedPageSize }, settings);
+}
+
+function findFeedActivity(
+  account: AccountAddresses,
+  chain: CryptoAssetChain,
+  txid: string,
+  settings: UserSettings
+) {
+  const { queryKey } = createFeedQueryConfig(account, settings);
+  const feed = queryClient.getQueryData<InfiniteData<ActivityResponse>>(queryKey);
+  const activity = feed?.pages
+    .flatMap(page => page.items)
+    .find(item => item.chain === chain && item.txid === txid);
+  if (!activity) return undefined;
+  return { activity, dataUpdatedAt: queryClient.getQueryState(queryKey)?.dataUpdatedAt };
+}
+
 export function useBlockchainActivityByAssetId(account: AccountAddresses, asset: CryptoAsset) {
   const settings = useUserSettings();
 
@@ -61,6 +98,39 @@ export function useBlockchainActivityByAssetId(account: AccountAddresses, asset:
     ...createBlockchainActivityByAssetIdQueryConfig(account, getAssetId(asset), settings),
     select: selectBlockchainActivityItems,
   });
+}
+
+interface BlockchainActivityByTxId {
+  item: BlockchainActivityItem | null;
+  isLoading: boolean;
+}
+
+export function useBlockchainActivityByTxId(
+  account: AccountAddresses,
+  chain: CryptoAssetChain,
+  txid: string
+): BlockchainActivityByTxId {
+  const settings = useUserSettings();
+  const feedActivity = findFeedActivity(account, chain, txid, settings);
+
+  const byTxIdQuery = useQuery({
+    ...createBlockchainActivityByTxIdQueryConfig(account, chain, txid, settings),
+    initialData: feedActivity?.activity,
+    initialDataUpdatedAt: feedActivity?.dataUpdatedAt,
+    refetchInterval(query) {
+      const { data, dataUpdateCount } = query.state;
+      if (data === null) {
+        return dataUpdateCount <= unresolvedTxIdMaxRefetches
+          ? activityByTxIdRefetchInterval
+          : false;
+      }
+      return data?.status === 'pending' ? activityByTxIdRefetchInterval : false;
+    },
+    select: selectBlockchainActivityItem,
+  });
+
+  const feedItem = feedActivity ? selectBlockchainActivityItem(feedActivity.activity) : null;
+  return { item: byTxIdQuery.data ?? feedItem, isLoading: byTxIdQuery.isLoading };
 }
 
 interface BlockchainActivityFeed {
@@ -87,7 +157,7 @@ export function useBlockchainActivityFeed(
   const settings = useUserSettings();
 
   const feedQuery = useInfiniteQuery({
-    ...createBlockchainActivityInfiniteQueryConfig({ account, limit: feedPageSize }, settings),
+    ...createFeedQueryConfig(account, settings),
     refetchInterval(query) {
       if (!poll) return false;
       const pageCount = query.state.data?.pages.length ?? 1;

@@ -10,6 +10,7 @@ import {
   type BlockchainActivityDirection,
   type BlockchainActivityIndicator,
   addOperator,
+  formatBlockchainActivityAmountCaption,
 } from '@leather.io/features';
 import {
   BlockchainActivityAvatarIcon,
@@ -137,7 +138,9 @@ export function VaultActivityRow({
       trailingCaption={
         !needsAttention && amount?.crypto ? (
           <styled.span textStyle="caption.01" color="ink.text-subdued" whiteSpace="nowrap">
-            {formatCurrency(amount.quote)}
+            {amount.caption
+              ? formatBlockchainActivityAmountCaption(amount.caption, formatCryptoGlanceable)
+              : formatCurrency(amount.quote)}
           </styled.span>
         ) : undefined
       }
