@@ -27,13 +27,16 @@ import { useCryptoCurrencyMarketData } from '@app/query/common/market-data/marke
 import type { ProposalSentSummaryState } from '../../../sent-summary/proposal-sent-summary';
 import { stacksConfirmationRouteStateSchema } from '../../hooks/use-send-form-navigate';
 import { SendFormConfirmationLayout } from '../send-form-confirmation.layout';
+import { SendAndRotateDetails } from './send-and-rotate-details';
 import { useProposeStacksSendTransaction } from './use-propose-stacks-send-transaction';
+import { useStxSendAndRotate } from './use-stx-send-and-rotate';
 
 export function StacksSendFormConfirmation() {
   const {
     tx: txHex,
     decimals,
     showFeeChangeWarning = false,
+    rotationTx: rotationTxHex,
   } = useRouteState(stacksConfirmationRouteStateSchema);
   const tokenMarketData = useCryptoCurrencyMarketData('STX');
 
@@ -44,10 +47,12 @@ export function StacksSendFormConfirmation() {
     redirectToSuccessPage: true,
   });
   const { proposeSendTransaction, isProposing } = useProposeStacksSendTransaction();
+  const { sendAndRotate, isSendingAndRotating } = useStxSendAndRotate();
 
   const tx = deserializeTransaction(txHex);
   const sip10Payload = getSip10TransferPayload(tx);
   const isMultisigProposal = isNonSequentialMultisigTransaction(tx);
+  const rotationTx = rotationTxHex ? deserializeTransaction(rotationTxHex) : undefined;
 
   const feeWarningTooltip = showFeeChangeWarning ? (
     <BasicTooltip
@@ -97,6 +102,7 @@ export function StacksSendFormConfirmation() {
         throw new Error('Unsupported payload for a multisig transaction proposal');
       return proposeSendTransaction(tx, proposalSummary);
     }
+    if (rotationTx) return sendAndRotate(tx, rotationTx);
     return stacksBroadcastTransaction(tx);
   }
 
@@ -106,7 +112,7 @@ export function StacksSendFormConfirmation() {
     recipient: getRecipientFromStacksTransaction(tx),
     fee: getStacksTransactionFee(tx),
     nonce: isMultisigProposal ? undefined : getNonceFromStacksTransaction(tx).toString(),
-    isLoading: isBroadcasting || isProposing,
+    isLoading: isBroadcasting || isProposing || isSendingAndRotating,
     feeWarningTooltip,
     confirmButtonLabel: isMultisigProposal ? 'Propose transaction' : undefined,
   } as const;
@@ -128,6 +134,7 @@ export function StacksSendFormConfirmation() {
               )}
               sendingValue={formatCurrency(getTokenTransferAmount(tx.payload))}
               memoDisplayText={getTokenTransferMemoDisplayText(tx.payload) || 'No memo'}
+              additionalContent={rotationTx && <SendAndRotateDetails rotationTx={rotationTx} />}
               {...sharedProps}
             />
           )}

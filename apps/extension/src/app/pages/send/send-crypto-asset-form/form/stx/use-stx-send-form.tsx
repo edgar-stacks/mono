@@ -1,14 +1,20 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 
 import { type FormikHelpers } from 'formik';
 import { z } from 'zod';
 
 import { STX_DECIMALS } from '@leather.io/constants';
-import { convertAmountToBaseUnit, createMoney } from '@leather.io/utils';
+import {
+  convertAmountToBaseUnit,
+  createMoney,
+  microStxToStx,
+  stxToMicroStx,
+} from '@leather.io/utils';
 
 import { logger } from '@shared/logger';
 import { type StacksSendFormValues } from '@shared/models/form.model';
 
+import { getNonceFromStacksTransaction } from '@app/common/transactions/stacks/transaction.utils';
 import { createFormikValidationSchema } from '@app/common/validation/formik-validation-schema';
 import {
   stxAmountValidator,
@@ -16,9 +22,13 @@ import {
 } from '@app/common/validation/forms/amount-validators';
 import { stxFeeValidator } from '@app/common/validation/forms/fee-validators';
 import { useUpdatePersistedSendFormValues } from '@app/features/popup-send-form-restoration/use-update-persisted-send-form-values';
+import { useToast } from '@app/features/toasts/use-toast';
 import { useStxAccountBalanceByAddresses } from '@app/query/stacks/balance/stx-balance.hooks';
 import { useStacksTransactionFees } from '@app/query/stacks/fees/stacks-transaction-fees.hooks';
-import { useStacksValidateFeeByNonce } from '@app/query/stacks/mempool/mempool.hooks';
+import {
+  useStacksPendingTransactions,
+  useStacksValidateFeeByNonce,
+} from '@app/query/stacks/mempool/mempool.hooks';
 import { useCurrentAccountAddresses } from '@app/services/accounts/use-account-addresses';
 import { useCurrentStacksAccountAddress } from '@app/store/accounts/blockchain/stacks/stacks-account.hooks';
 import { useCurrentPolicy } from '@app/store/policy/policy.selectors';
@@ -29,6 +39,8 @@ import {
 
 import { useStacksCommonSendForm } from '../../family/stacks/use-stacks-common-send-form';
 import { useSendFormNavigate } from '../../hooks/use-send-form-navigate';
+import { calculateRotationAmount, hasPendingTransactionAtNonce } from './send-and-rotate.utils';
+import { useSendAndRotateTarget } from './use-send-and-rotate-target';
 
 export function useStxSendForm() {
   const policy = useCurrentPolicy();
@@ -43,6 +55,11 @@ export function useStxSendForm() {
   const sendFormNavigate = useSendFormNavigate();
   const address = useCurrentStacksAccountAddress();
   const { changeFeeByNonce } = useStacksValidateFeeByNonce(address);
+  const { transactions: pendingTransactions } = useStacksPendingTransactions(address);
+  const toast = useToast();
+  const rotationTarget = useSendAndRotateTarget();
+  const [isRotationChecked, setIsRotationChecked] = useState(false);
+  const isRotating = !!rotationTarget && isRotationChecked;
 
   // get stx balance
   const balance = useStxAccountBalanceByAddresses(useCurrentAccountAddresses());
@@ -81,6 +98,9 @@ export function useStxSendForm() {
     sendMaxBalance,
     stxFees,
     validationSchema,
+    canRotate: !!rotationTarget,
+    isRotationChecked,
+    setIsRotationChecked,
 
     async previewTransaction(
       values: StacksSendFormValues,
@@ -97,6 +117,11 @@ export function useStxSendForm() {
         return void sendFormNavigate.toConfirmAndSignStxTransaction(multisigTx, false);
       }
 
+      if (isRotating && hasPendingTransactionAtNonce(pendingTransactions, Number(values.nonce))) {
+        toast.error('Cannot move remaining STX while replacing a pending transaction');
+        return;
+      }
+
       const initialFee = values.fee;
       values.fee = changeFeeByNonce({
         nonce: Number(values.nonce),
@@ -105,6 +130,29 @@ export function useStxSendForm() {
 
       // if fee has changed, show info message
       const showFeeChangeWarning = initialFee !== values.fee;
+
+      if (isRotating) {
+        const rotationAmount = calculateRotationAmount({
+          available: availableBalance.amount,
+          amount: stxToMicroStx(values.amount),
+          feePerTransfer: stxToMicroStx(values.fee),
+        });
+        if (!rotationAmount.isGreaterThan(0))
+          return formikHelpers.setFieldError('amount', 'No STX left to move to a fresh address');
+
+        const sendTx = await generateTx(values);
+        if (!sendTx) return logger.error('Attempted to generate unsigned tx, but tx is undefined');
+        const rotationTx = await generateTx({
+          ...values,
+          recipient: rotationTarget.address,
+          amount: microStxToStx(rotationAmount).toString(),
+          memo: '',
+          nonce: getNonceFromStacksTransaction(sendTx) + 1,
+        });
+        if (!rotationTx)
+          return logger.error('Attempted to generate unsigned rotation tx, but tx is undefined');
+        return void sendFormNavigate.toConfirmAndSignStxRotation(sendTx, rotationTx);
+      }
 
       const tx = await generateTx(values);
       if (!tx) return logger.error('Attempted to generate unsigned tx, but tx is undefined');
