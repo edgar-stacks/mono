@@ -8,6 +8,7 @@ import { ensurePostConditionWireFormat } from '@leather.io/stacks';
 import { Approver } from '@leather.io/ui';
 
 import { NoPostConditions } from './no-post-conditions';
+import { OriginatorModeNotice } from './originator-mode-notice';
 import { PostConditionList } from './post-condition-list';
 import { PostConditionModeWarning } from './post-condition-mode-warning';
 
@@ -22,6 +23,9 @@ export function PostConditionsDetailsLayout({
   if (postConditionMode === PostConditionMode.Allow || postConditionMode === 'allow')
     return <PostConditionModeWarning />;
 
+  const isOriginatorMode =
+    postConditionMode === PostConditionMode.Originator || postConditionMode === 'originator';
+
   return (
     <Approver.Section>
       <Approver.Subheader>Post conditions</Approver.Subheader>
@@ -32,6 +36,7 @@ export function PostConditionsDetailsLayout({
       ) : (
         <NoPostConditions />
       )}
+      {isOriginatorMode && <OriginatorModeNotice />}
     </Approver.Section>
   );
 }

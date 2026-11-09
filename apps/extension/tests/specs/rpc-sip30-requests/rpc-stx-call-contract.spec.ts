@@ -24,6 +24,8 @@ test.describe('RPC: stx_callContract', () => {
     await page.goto('localhost:3000');
   });
 
+  const originatorModeNoticeTitle = 'Only your account is protected';
+
   function checkVisibleContentWithNoPostConditions(context: BrowserContext) {
     return async (buttonToPress: 'Cancel' | 'Confirm') => {
       const popup = await context.waitForEvent('page');
@@ -42,6 +44,7 @@ test.describe('RPC: stx_callContract', () => {
           )
         )
         .toBeVisible();
+      await test.expect(popup.getByText(originatorModeNoticeTitle, { exact: true })).toBeHidden();
       await test.expect(popup.getByText('bns', { exact: true })).toBeVisible();
       await test.expect(popup.getByText('name-transfer', { exact: true })).toBeVisible();
       await test.expect(popup.getByText('0x6964', { exact: true })).toBeVisible();
@@ -89,6 +92,28 @@ test.describe('RPC: stx_callContract', () => {
           popup.getByText('This transaction can transfer any of your assets', { exact: true })
         )
         .toBeVisible();
+      const btn = popup.getByText('Confirm', { exact: true });
+
+      if (buttonToPress === 'Confirm') {
+        await btn.click();
+      } else {
+        await popup.close();
+      }
+    };
+  }
+
+  function checkVisibleOriginatorModeNotice(context: BrowserContext) {
+    return async (buttonToPress: 'Cancel' | 'Confirm') => {
+      const popup = await context.waitForEvent('page');
+      await test
+        .expect(
+          popup.getByText(
+            'Only fees will be transferred from your account or the transaction will abort.',
+            { exact: true }
+          )
+        )
+        .toBeVisible();
+      await test.expect(popup.getByText(originatorModeNoticeTitle, { exact: true })).toBeVisible();
       const btn = popup.getByText('Confirm', { exact: true });
 
       if (buttonToPress === 'Confirm') {
@@ -165,6 +190,39 @@ test.describe('RPC: stx_callContract', () => {
         postConditionMode: 'allow',
       }),
       checkVisiblePostConditionModeWarning(context)('Cancel'),
+    ]);
+
+    delete result.id;
+
+    test.expect(result).toEqual({
+      jsonrpc: '2.0',
+      error: {
+        code: 4001,
+        message: RpcErrorMessage.UserRejectedOperation,
+      },
+    });
+  });
+
+  test('call contract shows notice for originator post condition mode', async ({
+    page,
+    context,
+  }) => {
+    const args: ClarityValue[] = [
+      bufferCVFromString('id'),
+      bufferCVFromString('test'),
+      standardPrincipalCV(TEST_ACCOUNT_2_STX_ADDRESS),
+      noneCV(),
+    ];
+
+    const [result] = await Promise.all([
+      initiateSip30RpcCallContract(page)({
+        contract: 'SP000000000000000000002Q6VF78.bns',
+        functionName: 'name-transfer',
+        functionArgs: args.map(arg => serializeCV(arg)),
+        postConditions: [],
+        postConditionMode: 'originator',
+      }),
+      checkVisibleOriginatorModeNotice(context)('Cancel'),
     ]);
 
     delete result.id;
