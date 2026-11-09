@@ -105,6 +105,11 @@ export class HomePage {
     await this.page.getByTestId(HomePageSelectors.ActivityTabBtn).click();
   }
 
+  async openCopyAddressMenu() {
+    await this.page.getByTestId(HomePageSelectors.CopyAddressMenuBtn).click();
+    await this.page.getByTestId(HomePageSelectors.CopyAddressMenuTitle).waitFor();
+  }
+
   async clickSettingsButton() {
     await this.settingsButton.click();
   }
