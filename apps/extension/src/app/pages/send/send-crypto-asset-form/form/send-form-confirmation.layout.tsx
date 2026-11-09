@@ -28,6 +28,7 @@ interface SendFormConfirmationLayoutProps {
   isLoading: boolean;
   feeWarningTooltip?: React.ReactNode;
   confirmButtonLabel?: string;
+  callout?: React.ReactNode;
   onBroadcastTransaction(): void;
 }
 export function SendFormConfirmationLayout({
@@ -45,6 +46,7 @@ export function SendFormConfirmationLayout({
   symbol,
   feeWarningTooltip,
   confirmButtonLabel,
+  callout,
 }: SendFormConfirmationLayoutProps) {
   const principalType = recipient ? inferPrincipalTypeFromAddress(recipient) : 'invalid';
 
@@ -74,6 +76,7 @@ export function SendFormConfirmationLayout({
         value={txValue}
       />
 
+      {callout}
       {principalType === 'standard' && (
         <Callout variant="info" title="Sending to an exchange?" px="space.03" mb="space.05">
           {`Make sure you include the memo so the exchange can credit the ${symbol} to your account`}

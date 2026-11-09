@@ -74,4 +74,5 @@ export const querySettingsDepsRegistry = {
   'mempool-api-client--fetch-address-bitcoin-txs': ['network'],
   'alex-sdk-client--fetch-swappable-currency': [],
   'alex-sdk-client--get-latest-prices': [],
+  'leather-sponsorship-api-client--get-sbtc-sponsorship-quote': ['network'],
 } as const satisfies Record<string, readonly QuerySettingsDep[]>;

@@ -14,6 +14,7 @@ const sendBtcMixedUtxosSpec = 'apps/extension/tests/specs/send/send-btc-mixed-ut
 const sendBtcSpendSourcesSpec = 'apps/extension/tests/specs/send/send-btc-spend-sources.spec.ts';
 const sendStxSpec = 'apps/extension/tests/specs/send/send-stx.spec.ts';
 const sendSip10Spec = 'apps/extension/tests/specs/send/send-sip10.spec.ts';
+const sendSbtcSponsoredSpec = 'apps/extension/tests/specs/send/send-sbtc-sponsored.spec.ts';
 const sendRecipientAccountsSpec = 'apps/extension/tests/specs/send/send-recipient-accounts.spec.ts';
 const sendStxPolicyProposeSpec = 'apps/extension/tests/specs/send/send-stx-policy-propose.spec.ts';
 const rbfBtcSpec = 'apps/extension/tests/specs/manage-transaction/rbf-btc.spec.ts';
@@ -347,14 +348,15 @@ export const sendFeatures = [
         SendCryptoAssetSelectors.ConfirmationDetailsRecipient,
         SendCryptoAssetSelectors.ConfirmationDetailsFee,
         SendCryptoAssetSelectors.ConfirmationDetailsMemo,
+        SendCryptoAssetSelectors.SbtcFeeRequoteCallout,
         SharedComponentsSelectors.InfoCardAssetValue,
         SharedComponentsSelectors.InfoCardRowValue,
       ],
     },
     actions: ['SendPage.confirmSendTransaction'],
-    specs: [sendStxSpec, sendSip10Spec, sendStxPolicyProposeSpec],
+    specs: [sendStxSpec, sendSip10Spec, sendStxPolicyProposeSpec, sendSbtcSponsoredSpec],
     description:
-      'Review screen for STX and SIP-10 sends: asset value, recipient, total spend, sending, fee, memo ("No memo" when empty) and nonce (not shown for a policy proposal). A "Sending to an exchange?" memo callout shows for standard recipient addresses and "Sending to a smart contract" for contract principals (send-form-confirmation.layout.tsx). The same component is mounted at the literal /send/:symbol/:contractId/confirm route for SIP-10 tokens. "Confirm and send transaction" broadcasts and goes to /sent/:symbol/:txid; for a Stacks multisig policy account the button reads "Propose transaction" and the app goes to /sent/proposal. A failed broadcast or proposal navigates to <form path>/confirm/broadcast-error, the sheet nested under the form route (use-stacks-broadcast-transaction.tsx, use-propose-stacks-send-transaction.ts). send-stx.spec.ts reaches it on testnet4 and never confirms; send-sip10.spec.ts and send-stx-policy-propose.spec.ts run on mainnet. send-sip10.spec.ts registers mockStacksBroadcastTransaction (it routes the mainnet api.hiro.so host) so confirming succeeds; send-stx-policy-propose.spec.ts registers mockProposeMultisigTransaction(context) so the proposal is accepted and mockFundedStacksAddress(context, policy.address) so the policy has a balance and the form validates.',
+      'Review screen for STX and SIP-10 sends: asset value, recipient, total spend, sending, fee, memo ("No memo" when empty) and nonce (not shown for a policy proposal). A "Sending to an exchange?" memo callout shows for standard recipient addresses and "Sending to a smart contract" for contract principals (send-form-confirmation.layout.tsx). The same component is mounted at the literal /send/:symbol/:contractId/confirm route for SIP-10 tokens. "Confirm and send transaction" broadcasts and goes to /sent/:symbol/:txid; for a Stacks multisig policy account the button reads "Propose transaction" and the app goes to /sent/proposal. A failed broadcast or proposal navigates to <form path>/confirm/broadcast-error, the sheet nested under the form route (use-stacks-broadcast-transaction.tsx, use-propose-stacks-send-transaction.ts). send-stx.spec.ts reaches it on testnet4 and never confirms; send-sip10.spec.ts and send-stx-policy-propose.spec.ts run on mainnet. send-sip10.spec.ts registers mockStacksBroadcastTransaction (it routes the mainnet api.hiro.so host) so confirming succeeds; send-stx-policy-propose.spec.ts registers mockProposeMultisigTransaction(context) so the proposal is accepted and mockFundedStacksAddress(context, policy.address) so the policy has a balance and the form validates. An sBTC send whose fee is paid in sBTC (send-sip10-form) reaches the same route with a sponsorship route state: it shows Total spend, Sending, Fee and Memo in sBTC, signs the sponsored transfer-many and posts { quoteId, transaction } to the sponsor\'s /v1/sponsorship/submit instead of broadcasting to Hiro (sbtc-sponsored-send-form-confirmation.tsx). An expired quote, or a quote_expired / stale_nonce error from submit, fetches a new quote and a fresh nonce, replaces the route state and shows the "Fee quote updated" callout (SendCryptoAssetSelectors.SbtcFeeRequoteCallout) so the user confirms again; other sponsor errors open the broadcast-error sheet with the mapped copy (sbtc-sponsorship.utils.ts). send-sbtc-sponsored.spec.ts drives both re-quote paths with mockSbtcSponsorshipQuote and mockSbtcSponsorshipSubmit(page, { errorCodes }).',
   },
   {
     id: 'send-sip10-form',
@@ -395,12 +397,13 @@ export const sendFeatures = [
         SendCryptoAssetSelectors.RecipientFieldInput,
         SendCryptoAssetSelectors.MemoFieldInput,
         SendCryptoAssetSelectors.PreviewSendTxBtn,
+        SendCryptoAssetSelectors.SponsoredFeeBadge,
       ],
     },
     actions: ['SendPage.selectSip10AndGoToSendForm'],
-    specs: [sendSip10Spec],
+    specs: [sendSip10Spec, sendSbtcSponsoredSpec],
     description:
-      'Send form for a SIP-10 fungible token at /send/<assetName>/<contractAddress.contractName>. Shares the Stacks form: the recipient-accounts and edit-tx-nonce sheets and the confirm/broadcast-error sheet nest under this route too. SendPage.selectSip10AndGoToSendForm clicks the chooser row whose test id is <contractId>::<assetName>; with no argument it clicks the longcoin row (MockedTokensSelectors.Sip10TokenTestId), while send-sip10.spec.ts passes \'SP000000000000000000002Q6VF78.leather-integration-tests::leather-test-token\', which matches the params example. When the account does not hold the token the page toasts "Token not found" and navigates back to /send (sip10-token-send-form.tsx). "Continue" goes to the literal /send/:symbol/:contractId/confirm review; send-sip10.spec.ts registers mockStacksBroadcastTransaction so confirming there succeeds.',
+      'Send form for a SIP-10 fungible token at /send/<assetName>/<contractAddress.contractName>. Shares the Stacks form: the recipient-accounts and edit-tx-nonce sheets and the confirm/broadcast-error sheet nest under this route too. SendPage.selectSip10AndGoToSendForm clicks the chooser row whose test id is <contractId>::<assetName>; with no argument it clicks the longcoin row (MockedTokensSelectors.Sip10TokenTestId), while send-sip10.spec.ts passes \'SP000000000000000000002Q6VF78.leather-integration-tests::leather-test-token\', which matches the params example. When the account does not hold the token the page toasts "Token not found" and navigates back to /send (sip10-token-send-form.tsx). "Continue" goes to the literal /send/:symbol/:contractId/confirm review; send-sip10.spec.ts registers mockStacksBroadcastTransaction so confirming there succeeds. For sBTC on a software account that is not a Stacks policy account, when the STX balance is below the lowest STX fee estimate the form fetches a quote from the Leather sponsorship API (/v1/sponsorship/quote) and the fee row shows Low, Standard and High in sBTC with a "Sponsored" badge (SendCryptoAssetSelectors.SponsoredFeeBadge) and no Custom item; the amount validator and Send max use the sBTC balance minus the selected sBTC fee (use-sbtc-sponsorship-fees.ts). With enough STX, and for every other token, the fee stays in STX. send-sbtc-sponsored.spec.ts registers mockZeroStxBalanceV2Request(page) before signing in to reach the sBTC fee; mockMainnetTestAccountSbtcDepositRequests serves a default quote and submit.',
   },
   {
     id: 'sent-stx-summary',
@@ -446,9 +449,9 @@ export const sendFeatures = [
       ],
     },
     actions: ['SendPage.confirmSendTransaction'],
-    specs: [sendSip10Spec],
+    specs: [sendSip10Spec, sendSbtcSponsoredSpec],
     description:
-      'Post-broadcast summary titled "Sent" with the amount, recipient and a copyable transaction ID. STX rows: Status, Total spend, Sending, Fee, Memo, Nonce; SIP-10 rows: Status, Fee, Memo, Nonce (stacks-chain-tx-summary.tsx). An empty memo shows "—". The send-sip10 spec asserts the "Sent" title after confirming. mockStacksRawTx and mockStacksPendingTransaction serve the params example txid for the deep link.',
+      'Post-broadcast summary titled "Sent" with the amount, recipient and a copyable transaction ID. STX rows: Status, Total spend, Sending, Fee, Memo, Nonce; SIP-10 rows: Status, Fee, Memo, Nonce; a sponsored sBTC transfer (rendered from the hex the sponsor returns) shows Status, Total spend, Sending, Fee and Memo in sBTC, and Nonce (stacks-chain-tx-summary.tsx). An empty memo shows "—". The send-sip10 spec asserts the "Sent" title after confirming. mockStacksRawTx and mockStacksPendingTransaction serve the params example txid for the deep link.',
   },
   {
     id: 'sent-proposal-summary',

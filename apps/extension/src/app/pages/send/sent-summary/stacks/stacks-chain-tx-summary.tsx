@@ -1,5 +1,7 @@
 import { type StacksTransactionWire, isTokenTransferPayload } from '@stacks/transactions';
+import BigNumber from 'bignumber.js';
 
+import type { SbtcSponsoredTransferDetails } from '@leather.io/stacks';
 import { baseCurrencyAmountInQuote, createMoney, isNumber, sumMoney } from '@leather.io/utils';
 
 import { formatCurrency } from '@app/common/currency-formatter';
@@ -15,6 +17,7 @@ import {
   getTokenTransferMemoDisplayText,
   safeAddressToString,
 } from '@app/common/transactions/stacks/transaction.utils';
+import { sbtcFeeSymbol } from '@app/features/sbtc-sponsorship/sbtc-sponsorship.utils';
 import { TxStatusBadge } from '@app/features/tx-status-badge/tx-status-badge';
 import { useCryptoCurrencyMarketData } from '@app/query/common/market-data/market-data.hooks';
 import { useGetFungibleTokenMetadataQuery } from '@app/query/stacks/token-metadata/fungible-tokens/fungible-token-metadata.query';
@@ -90,6 +93,41 @@ export function Sip10SentSummary({ txid, symbol, tx }: StacksChainSummaryProps) 
         ['Status', <TxStatusBadge key={txid} txid={txid} />],
         ['Fee', formatCurrency(fee)],
         ['Memo', memo],
+        ['Nonce', getNonceFromStacksTransaction(tx)],
+      ]}
+    />
+  );
+}
+
+interface SbtcSponsoredSentSummaryProps {
+  txid: string;
+  tx: StacksTransactionWire;
+  details: SbtcSponsoredTransferDetails;
+}
+export function SbtcSponsoredSentSummary({ txid, tx, details }: SbtcSponsoredSentSummaryProps) {
+  const { data: tokenMetadata } = useGetFungibleTokenMetadataQuery(details.contractId);
+
+  if (!tokenMetadata || !('decimals' in tokenMetadata))
+    return <StacksChainTxSummaryLoading txid={txid} />;
+
+  const decimals = isNumber(tokenMetadata.decimals) ? tokenMetadata.decimals : 0;
+  function toSbtcMoney(value: bigint) {
+    return createMoney(new BigNumber(value.toString()), sbtcFeeSymbol, decimals);
+  }
+  const amount = toSbtcMoney(details.amount);
+
+  return (
+    <StacksChainTxSummaryLayout
+      token={sbtcFeeSymbol}
+      txid={txid}
+      value={amount}
+      recipient={details.recipient}
+      metadata={[
+        ['Status', <TxStatusBadge key={txid} txid={txid} />],
+        ['Total spend', formatCurrency(toSbtcMoney(details.total))],
+        ['Sending', formatCurrency(amount)],
+        ['Fee', formatCurrency(toSbtcMoney(details.fee))],
+        ['Memo', details.memo || '—'],
         ['Nonce', getNonceFromStacksTransaction(tx)],
       ]}
     />

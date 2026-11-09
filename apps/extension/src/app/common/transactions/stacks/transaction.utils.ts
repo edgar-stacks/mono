@@ -1,6 +1,7 @@
 import type { StacksNetwork } from '@stacks/network';
 import {
   AddressHashMode,
+  AuthType,
   ClarityType,
   type ContractCallPayload,
   type StacksTransactionWire,
@@ -118,6 +119,13 @@ export function isNonSequentialMultisigTransaction(tx: StacksTransactionWire) {
     hashMode === AddressHashMode.P2SHNonSequential ||
     hashMode === AddressHashMode.P2WSHNonSequential
   );
+}
+
+export const sponsoredTransactionBroadcastErrorMessage =
+  'Sponsored transactions are submitted through the sponsor and cannot be broadcast by the wallet';
+
+export function isSponsoredStacksTransaction(tx: StacksTransactionWire) {
+  return tx.auth.authType === AuthType.Sponsored;
 }
 
 export function isPendingTx(tx: StacksTransaction) {

@@ -11,13 +11,14 @@ const feesInfo =
 const url = 'https://leather.gitbook.io/guides/transactions/fees';
 
 interface FeesRowLayoutProps extends HstackProps {
+  feeBadge?: React.ReactNode;
   feeField: React.JSX.Element;
   fieldWarning?: string;
   isSponsored: boolean;
   selectInput: React.JSX.Element;
 }
 export function FeesRowLayout(props: FeesRowLayoutProps) {
-  const { feeField, fieldWarning, isSponsored, selectInput, ...rest } = props;
+  const { feeBadge, feeField, fieldWarning, isSponsored, selectInput, ...rest } = props;
   const [_, meta] = useField('fee');
 
   return (
@@ -37,6 +38,7 @@ export function FeesRowLayout(props: FeesRowLayoutProps) {
             </HStack>
           </BasicTooltip>
           {!isSponsored ? selectInput : null}
+          {feeBadge}
         </HStack>
         {feeField}
       </HStack>

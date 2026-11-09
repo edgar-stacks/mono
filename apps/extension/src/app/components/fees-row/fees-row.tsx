@@ -9,6 +9,7 @@ import { STX_DECIMALS } from '@leather.io/constants';
 import {
   type CryptoCurrency,
   FeeTypes,
+  type Money,
   type StacksFeeEstimate,
   type StacksTransactionFees,
 } from '@leather.io/models';
@@ -48,6 +49,8 @@ interface FeeRowProps {
   isSponsored: boolean;
   defaultFeeValue?: number;
   disableFeeSelection?: boolean;
+  feeBadge?: React.ReactNode;
+  feeFiatValue?: Money | null;
 }
 export function FeesRow({
   fees,
@@ -55,6 +58,8 @@ export function FeesRow({
   allowCustom = true,
   defaultFeeValue,
   disableFeeSelection,
+  feeBadge,
+  feeFiatValue,
 }: FeeRowProps) {
   const [feeField, _, feeHelper] = useField<unknown>('fee');
   const [feeCurrencyField] = useField<CryptoCurrency>('feeCurrency');
@@ -72,10 +77,11 @@ export function FeesRow({
   const convertCryptoCurrencyToUsd = useConvertCryptoCurrencyToFiatAmount(feeCurrencySymbol);
 
   const feeInUsd = useMemo(() => {
+    if (feeFiatValue !== undefined) return feeFiatValue;
     if ((!isNumber(feeField.value) && !isString(feeField.value)) || !feeCurrencySymbol) return null;
     const feeAsMoney = createMoney(new BigNumber(feeField.value), feeCurrencySymbol);
     return convertCryptoCurrencyToUsd(feeAsMoney);
-  }, [convertCryptoCurrencyToUsd, feeCurrencySymbol, feeField.value]);
+  }, [convertCryptoCurrencyToUsd, feeCurrencySymbol, feeField.value, feeFiatValue]);
 
   useEffect(() => {
     if (defaultFeeValue) {
@@ -93,7 +99,7 @@ export function FeesRow({
     }
 
     if (!defaultFeeValue && hasFeeEstimates && !feeField.value && !isCustom) {
-      void feeHelper.setValue(convertAmountToBaseUnit(estimates[FeeTypes.Middle].fee).toString());
+      void feeHelper.setValue(convertAmountToBaseUnit(estimates[FeeTypes.Middle].fee).toFixed());
       void feeTypeHelper.setValue(FeeTypes[FeeTypes.Middle]);
       return;
     }
@@ -121,7 +127,7 @@ export function FeesRow({
             : ''
         );
       else if (estimates.length > 0)
-        void feeHelper.setValue(convertAmountToBaseUnit(estimates[index].fee).toString());
+        void feeHelper.setValue(convertAmountToBaseUnit(estimates[index].fee).toFixed());
       setFieldWarning('');
       setIsSelectVisible(false);
     },
@@ -143,7 +149,9 @@ export function FeesRow({
           />
         ) : (
           <Box
-            onClick={() => handleSelectFeeEstimateOrCustomField(FeeTypes.Custom)}
+            onClick={() => {
+              if (allowCustom) handleSelectFeeEstimateOrCustomField(FeeTypes.Custom);
+            }}
             textAlign="right"
             width="100%"
           >
@@ -155,6 +163,7 @@ export function FeesRow({
           </Box>
         )
       }
+      feeBadge={feeBadge}
       fieldWarning={fieldWarning}
       isSponsored={isSponsored}
       selectInput={

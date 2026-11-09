@@ -12,7 +12,16 @@ import { type StacksSendFormValues } from '@shared/models/form.model';
 import { getSafeImageCanonicalUri } from '@app/common/stacks-utils';
 import { createFormikValidationSchema } from '@app/common/validation/formik-validation-schema';
 import { stacksFungibleTokenAmountValidator } from '@app/common/validation/forms/amount-validators';
+import {
+  convertStxFeeToSbtcFee,
+  getBalanceAfterSbtcFee,
+  getSbtcSponsorshipFeeTier,
+} from '@app/features/sbtc-sponsorship/sbtc-sponsorship.utils';
+import { useGenerateSbtcSponsoredTransferUnsignedTx } from '@app/features/sbtc-sponsorship/use-generate-sbtc-sponsored-transfer';
+import { useSbtcSponsorshipFees } from '@app/features/sbtc-sponsorship/use-sbtc-sponsorship-fees';
 import { useStacksTransactionFees } from '@app/query/stacks/fees/stacks-transaction-fees.hooks';
+import { useNextNonce } from '@app/query/stacks/nonce/account-nonces.hooks';
+import { useCurrentStacksAccountAddress } from '@app/store/accounts/blockchain/stacks/stacks-account.hooks';
 import { useCurrentPolicy } from '@app/store/policy/policy.selectors';
 import {
   useFtTokenTransferUnsignedTx,
@@ -21,6 +30,8 @@ import {
 
 import { useStacksCommonSendForm } from '../../family/stacks/use-stacks-common-send-form';
 import { useSendFormNavigate } from '../../hooks/use-send-form-navigate';
+
+const feeFormValueSchema = z.object({ fee: z.union([z.string(), z.number()]).optional() });
 
 interface UseSip10SendFormArgs {
   balance: CryptoAssetBalance;
@@ -38,11 +49,21 @@ export function useSip10SendForm({ balance, info }: UseSip10SendFormArgs) {
     policy?.chain === 'stacks' ? policy.publicKeys.length : undefined
   );
 
+  const generateSponsoredTx = useGenerateSbtcSponsoredTransferUnsignedTx();
+  const stxAddress = useCurrentStacksAccountAddress();
+  const { data: nextNonce } = useNextNonce(stxAddress);
+  const sponsorship = useSbtcSponsorshipFees({ asset: info, stxFees: stacksFtFees });
+
   const availableTokenBalance = balance.availableBalance;
   const sendMaxBalance = useMemo(
     () => convertAmountToBaseUnit(availableTokenBalance),
     [availableTokenBalance]
   );
+
+  function getFees() {
+    if (sponsorship.isResolving) return undefined;
+    return sponsorship.sbtcFees ?? stacksFtFees;
+  }
 
   const { initialValues, checkFormValidation, recipient, memo, nonce } = useStacksCommonSendForm({
     symbol: info.symbol,
@@ -60,13 +81,21 @@ export function useSip10SendForm({ balance, info }: UseSip10SendFormArgs) {
     availableTokenBalance,
     initialValues,
     sendMaxBalance,
-    stacksFtFees,
+    stacksFtFees: getFees(),
+    isSbtcFeeSponsored: !!sponsorship.sbtcFees,
     symbol: info.symbol,
     decimals: info.decimals,
     avatar: createFtAvatar(),
-    validationSchema: createFormikValidationSchema(
+    validationSchema: createFormikValidationSchema(values =>
       z.object({
-        amount: stacksFungibleTokenAmountValidator(availableTokenBalance),
+        amount: stacksFungibleTokenAmountValidator(
+          sponsorship.sbtcFees
+            ? getBalanceAfterSbtcFee(
+                availableTokenBalance,
+                feeFormValueSchema.safeParse(values).data?.fee
+              )
+            : availableTokenBalance
+        ),
         recipient,
         memo,
         nonce,
@@ -79,6 +108,43 @@ export function useSip10SendForm({ balance, info }: UseSip10SendFormArgs) {
     ) {
       const isFormValid = await checkFormValidation(values, formikHelpers);
       if (!isFormValid) return;
+
+      if (sponsorship.quote && stacksFtFees) {
+        const { quote } = sponsorship;
+        const stxFeeMicro =
+          stacksFtFees.options[getSbtcSponsorshipFeeTier(values.feeType)].value.amount;
+        const txNonce = values.nonce ?? nextNonce?.nonce;
+        if (txNonce === undefined || txNonce === '')
+          return logger.error('Attempted to generate sponsored tx without a nonce');
+
+        const sponsoredTx = await generateSponsoredTx({
+          assetId: info.assetId,
+          decimals: info.decimals,
+          values,
+          feeRecipient: quote.feeRecipientPrincipal,
+          sbtcFee: convertStxFeeToSbtcFee(stxFeeMicro, quote),
+          stxFeeMicro,
+          nonce: txNonce,
+        });
+        if (!sponsoredTx) return logger.error('Unable to generate the sponsored sBTC transfer');
+
+        return void sendFormNavigate.toConfirmAndSignStacksSip10Transaction({
+          decimals: info.decimals,
+          name: info.name,
+          tx: sponsoredTx,
+          sponsorship: {
+            quoteId: quote.quoteId,
+            stxFeeMicro: stxFeeMicro.toString(10),
+            expiresAt: quote.expiresAt,
+            assetId: info.assetId,
+            formValues: {
+              amount: values.amount,
+              recipient: values.recipient,
+              memo: values.memo,
+            },
+          },
+        });
+      }
 
       const tx = await generateTx(values);
       if (!tx) return logger.error('Attempted to generate unsigned tx, but tx is undefined');

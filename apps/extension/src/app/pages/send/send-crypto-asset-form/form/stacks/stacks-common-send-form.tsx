@@ -17,6 +17,7 @@ import { FeesRow } from '@app/components/fees-row/fees-row';
 import { AvailableBalance, ButtonRow, Card, Page } from '@app/components/layout';
 import { NonceSetter } from '@app/components/nonce-setter';
 import { useUpdatePersistedSendFormValues } from '@app/features/popup-send-form-restoration/use-update-persisted-send-form-values';
+import { SyncFeeCurrency } from '@app/features/sbtc-sponsorship/components/sync-fee-currency';
 import { HighFeeSheet } from '@app/features/stacks-high-fee-warning/stacks-high-fee-dialog';
 import { useCurrentPolicy } from '@app/store/policy/policy.selectors';
 import { useIsPrivateMode } from '@app/store/settings/settings.selectors';
@@ -36,6 +37,7 @@ interface StacksCommonSendFormProps {
   selectedAssetField: React.JSX.Element;
   availableTokenBalance: Money;
   fees?: StacksTransactionFees;
+  feesRow?: React.ReactNode;
 }
 
 export function StacksCommonSendForm({
@@ -45,6 +47,7 @@ export function StacksCommonSendForm({
   amountField,
   selectedAssetField,
   fees,
+  feesRow,
   availableTokenBalance,
 }: StacksCommonSendFormProps) {
   const navigate = useNavigate();
@@ -95,7 +98,12 @@ export function StacksCommonSendForm({
                     <StacksRecipientField />
                     <MemoField />
                     <Box mt="space.04" width="100%">
-                      <FeesRow fees={fees} isSponsored={false} />
+                      {feesRow ?? (
+                        <>
+                          <SyncFeeCurrency currency="STX" />
+                          <FeesRow fees={fees} isSponsored={false} />
+                        </>
+                      )}
                     </Box>
                     {!isStacksPolicy && (
                       <Link

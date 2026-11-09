@@ -1,12 +1,18 @@
 import { Navigate, useParams } from 'react-router';
 
-import { deserializeTransaction } from '@stacks/transactions';
+import { type StacksTransactionWire, deserializeTransaction } from '@stacks/transactions';
 import z from 'zod';
+
+import { getSbtcSponsoredTransferDetails } from '@leather.io/stacks';
 
 import { useRouteState } from '@app/common/hooks/use-route-state';
 import { StacksChainTxSummaryLoader } from '@app/pages/send/sent-summary/stacks/stacks-chain-tx-summary.loader';
 
-import { Sip10SentSummary, StxSentSummary } from './stacks-chain-tx-summary';
+import {
+  SbtcSponsoredSentSummary,
+  Sip10SentSummary,
+  StxSentSummary,
+} from './stacks-chain-tx-summary';
 import { StacksChainTxSummaryLoading } from './stacks-chain-tx-summary.layout';
 
 const routeParamsSchema = z.object({
@@ -19,14 +25,24 @@ const stacksChainTxSummaryRouteStateSchema = z
   .nullish()
   .catch(null);
 
+interface StacksSentSummaryProps {
+  symbol: string;
+  txid: string;
+  tx: StacksTransactionWire;
+}
+function StacksSentSummary({ symbol, txid, tx }: StacksSentSummaryProps) {
+  if (symbol.toUpperCase() === 'STX') return <StxSentSummary symbol={symbol} txid={txid} tx={tx} />;
+  const sbtcSponsoredDetails = getSbtcSponsoredTransferDetails(tx);
+  if (sbtcSponsoredDetails)
+    return <SbtcSponsoredSentSummary txid={txid} tx={tx} details={sbtcSponsoredDetails} />;
+  return <Sip10SentSummary symbol={symbol} txid={txid} tx={tx} />;
+}
+
 export function StacksChainTxSummaryRoute() {
   const { data: params } = routeParamsSchema.safeParse(useParams());
   const tx = useRouteState(stacksChainTxSummaryRouteStateSchema)?.tx;
 
   if (!params) return <Navigate to="/" replace />;
-
-  const SummaryComponent =
-    params.symbol.toUpperCase() === 'STX' ? StxSentSummary : Sip10SentSummary;
 
   if (!tx) {
     return (
@@ -34,10 +50,10 @@ export function StacksChainTxSummaryRoute() {
         txid={params.txid}
         fallback={<StacksChainTxSummaryLoading txid={params.txid} />}
       >
-        {({ rawTx }) => <SummaryComponent {...params} tx={deserializeTransaction(rawTx)} />}
+        {({ rawTx }) => <StacksSentSummary {...params} tx={deserializeTransaction(rawTx)} />}
       </StacksChainTxSummaryLoader>
     );
   }
 
-  return <SummaryComponent {...params} tx={deserializeTransaction(tx)} />;
+  return <StacksSentSummary {...params} tx={deserializeTransaction(tx)} />;
 }

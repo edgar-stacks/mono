@@ -11,6 +11,7 @@ interface ConfirmationRouteStacksSip10Args {
   decimals?: number;
   name?: string;
   tx: StacksTransactionWire;
+  sponsorship?: SbtcSponsorshipRouteState;
 }
 
 const ownedUtxoSchema = z.object({
@@ -63,11 +64,27 @@ export type BtcProposalConfirmationRouteState = z.infer<
   typeof btcProposalConfirmationRouteStateSchema
 >;
 
+const sbtcSponsorshipRouteStateSchema = z.object({
+  quoteId: z.string(),
+  stxFeeMicro: z.string(),
+  expiresAt: z.string(),
+  assetId: z.string(),
+  formValues: z.object({
+    amount: z.union([z.number(), z.string()]),
+    recipient: z.string(),
+    memo: z.string().optional(),
+  }),
+});
+
+export type SbtcSponsorshipRouteState = z.infer<typeof sbtcSponsorshipRouteStateSchema>;
+
 export const stacksConfirmationRouteStateSchema = z.object({
   tx: z.string(),
   decimals: z.number().optional(),
   token: z.string().optional(),
   showFeeChangeWarning: z.boolean().optional(),
+  sponsorship: sbtcSponsorshipRouteStateSchema.optional(),
+  showRequoteCallout: z.boolean().optional(),
 });
 
 type StacksConfirmationRouteState = z.infer<typeof stacksConfirmationRouteStateSchema>;
@@ -113,12 +130,31 @@ export function useSendFormNavigate() {
         decimals,
         name,
         tx,
+        sponsorship,
       }: ConfirmationRouteStacksSip10Args) {
         return navigate(`${location.pathname}/confirm`, {
           state: {
             decimals,
             token: name,
             tx: tx.serialize(),
+            sponsorship,
+          } satisfies StacksConfirmationRouteState,
+        });
+      },
+      toRequotedStacksSip10Confirmation({
+        decimals,
+        name,
+        tx,
+        sponsorship,
+      }: ConfirmationRouteStacksSip10Args) {
+        return navigate(location.pathname, {
+          replace: true,
+          state: {
+            decimals,
+            token: name,
+            tx: tx.serialize(),
+            sponsorship,
+            showRequoteCallout: true,
           } satisfies StacksConfirmationRouteState,
         });
       },

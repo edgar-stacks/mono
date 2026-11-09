@@ -103,7 +103,10 @@ export class SendPage {
 
   async selectSip10AndGoToSendForm(tokenTestId: string = MockedTokensSelectors.Sip10TokenTestId) {
     await this.page.waitForURL('**' + RouteUrls.SendCryptoAsset);
-    await this.page.getByTestId(tokenTestId).click();
+    await this.page
+      .getByTestId(SendCryptoAssetSelectors.ChooseAssetToSendPage)
+      .getByTestId(tokenTestId)
+      .click();
     await this.page.getByTestId(SendCryptoAssetSelectors.SendForm).waitFor();
     await this.waitForFeeEstimate();
   }
