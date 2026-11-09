@@ -23,6 +23,7 @@ export interface RoutedRoute {
   readonly flags: readonly string[];
   readonly parentKeys: readonly string[];
   readonly isIndex: boolean;
+  readonly module?: string;
 }
 
 export interface RouteReference {
@@ -605,7 +606,7 @@ export function createImportResolver(
   };
 }
 
-function readFromDisk(file: string): string | undefined {
+export function readFromDisk(file: string): string | undefined {
   return existsSync(file) ? readFileSync(file, 'utf8') : undefined;
 }
 

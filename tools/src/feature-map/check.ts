@@ -10,12 +10,15 @@ import {
   derivedGate,
   featureRouteInstances,
   firstReference,
+  hasRpcHandlers,
   isNestedOnly,
   keyForRoute,
   routeRef,
   routedKeys,
   routesForKey,
   selectorObjectOf,
+  unkeyedRoutes,
+  unroutedKeys,
 } from './model.js';
 import { distinctMountedPaths } from './routers-parser.js';
 import { specPathFor } from './test-assets.js';
@@ -30,6 +33,10 @@ function featureLabel(feature: ParsedFeature): string {
 
 function featuresGlob(model: FeatureMapModel): string {
   return `${toRepoRelative(model.config.featuresDir)}/*.features.ts`;
+}
+
+function optionalDir(dir: string | undefined): string {
+  return dir === undefined ? 'no configured directory' : toRepoRelative(dir);
 }
 
 function sortedEntries<T>(map: ReadonlyMap<string, T>): [string, T][] {
@@ -139,14 +146,19 @@ function checkAnchor(model: FeatureMapModel, feature: ParsedFeature): string[] {
       );
     }
   }
-  if (anchor.kind === 'rpc') {
+  if (anchor.kind === 'rpc' && !hasRpcHandlers(model)) {
+    errors.push(
+      `${label}: ${model.config.app} has no rpc handlers; use a route, selectors or behavior anchor.`
+    );
+  }
+  if (anchor.kind === 'rpc' && hasRpcHandlers(model)) {
     if (anchor.handlers.length === 0) {
       errors.push(`${label}: an rpc anchor needs at least one handler file name.`);
     }
     for (const handler of anchor.handlers) {
       if (model.rpcHandlers.has(handler)) continue;
       errors.push(
-        `${label}: anchor handler '${handler}' is not a file in ${toRepoRelative(model.config.rpcMethodsDir)}. Fix: use one of ${[...model.rpcHandlers.keys()].join(', ')}.`
+        `${label}: anchor handler '${handler}' is not a file in ${optionalDir(model.config.rpcMethodsDir)}. Fix: use one of ${[...model.rpcHandlers.keys()].join(', ')}.`
       );
     }
   }
@@ -155,11 +167,10 @@ function checkAnchor(model: FeatureMapModel, feature: ParsedFeature): string[] {
       `${label}: startRoute '${feature.startRoute.value}' is not a ${routeUrls} value. Fix: use ${routeUrls}.<Key>.`
     );
   }
-  if (
-    anchor.kind !== 'behavior' &&
-    anchor.kind !== 'rpc' &&
-    feature.selectors.ready === undefined
-  ) {
+  const readyRequired =
+    anchor.kind === 'selectors' ||
+    (anchor.kind === 'route' && model.config.readySelectorRequired !== false);
+  if (readyRequired && feature.selectors.ready === undefined) {
     errors.push(
       `${label}: selectors.ready is required for a ${anchor.kind} anchor; name the element whose presence means the screen is usable.`
     );
@@ -190,7 +201,7 @@ function actionError(
   const hint =
     candidates.length > 0
       ? `Methods of ${className}: ${candidates.map(name => name.split('.')[1]).join(', ')}.`
-      : `No page object named ${className} in ${toRepoRelative(model.config.pageObjectsDir)}.`;
+      : `No page object named ${className} in ${optionalDir(model.config.pageObjectsDir)}.`;
   return `${featureLabel(feature)}: ${field} '${action}' is not a public page-object method. ${hint} Fix: use an existing method or add one to the page object.`;
 }
 
@@ -209,8 +220,8 @@ function checkFeatureReferences(model: FeatureMapModel, feature: ParsedFeature):
   const errors: string[] = [];
   const label = featureLabel(feature);
   const specsDir = toRepoRelative(model.config.specsDir);
-  const mocksDir = toRepoRelative(model.config.mocksDir);
-  const rpcDir = toRepoRelative(model.config.rpcEndpointsDir);
+  const mocksDir = optionalDir(model.config.mocksDir);
+  const rpcDir = optionalDir(model.config.rpcEndpointsDir);
 
   errors.push(...checkAnchor(model, feature));
 
@@ -256,8 +267,12 @@ function checkFeatureReferences(model: FeatureMapModel, feature: ParsedFeature):
 
   for (const flag of feature.flags) {
     if (model.flags.includes(flag)) continue;
+    const source =
+      model.config.featureFlagsInterfaceName === undefined
+        ? `a ${model.config.app} feature flag`
+        : `a key of ${model.config.featureFlagsInterfaceName} in ${optionalDir(model.config.featureFlagsFile)}`;
     errors.push(
-      `${label}: flag '${flag}' is not a key of ${model.config.featureFlagsInterfaceName} in ${toRepoRelative(model.config.featureFlagsFile)}. Fix: use one of ${model.flags.join(', ')}.`
+      `${label}: flag '${flag}' is not ${source}. Fix: use one of ${model.flags.join(', ')}.`
     );
   }
 
@@ -295,7 +310,7 @@ function checkGates(model: FeatureMapModel, feature: ParsedFeature): string[] {
       continue;
     }
     for (const instance of instances) {
-      const gate = derivedGate(instance);
+      const gate = derivedGate(model, instance);
       if (gate === feature.gate || reported.has(gate)) continue;
       reported.add(gate);
       const label = key ? routeRef(model, key) : `'${instance.mountedPath}'`;
@@ -330,11 +345,27 @@ function checkUnresolvedRouterPaths(model: FeatureMapModel): string[] {
   );
 }
 
+function checkRouteKeys(model: FeatureMapModel): string[] {
+  if (!model.config.routeKeysRequired) return [];
+  const ref = model.config.routeUrlsObjectName;
+  const file = toRepoRelative(model.config.routeUrlsFile);
+  const unkeyed = unkeyedRoutes(model).map(route => {
+    const module = route.module ? ` (${toRepoRelative(route.module)})` : '';
+    return `route '${route.mountedPath}'${module} is mounted at ${toRepoRelative(route.file)}:${route.line} but no ${ref} key has that value. Fix: add a key for '${route.mountedPath}' to ${ref} in ${file}.`;
+  });
+  const unrouted = unroutedKeys(model).map(
+    key =>
+      `${routeRef(model, key)} ('${model.routeUrls.get(key) ?? ''}') in ${file} matches no mounted route. Fix: correct its value or remove the key.`
+  );
+  return [...unkeyed, ...unrouted];
+}
+
 export function checkFeatureMap(model: FeatureMapModel): CheckResult {
   const errors: string[] = [...model.parseErrors, ...checkUnresolvedRouterPaths(model)];
   const routeClaims = claimsByKey(model);
   const rpcClaims = claimsByRpcHandler(model);
 
+  errors.push(...checkRouteKeys(model));
   errors.push(...checkDuplicateIds(model));
   for (const feature of model.features) {
     errors.push(...checkFeatureReferences(model, feature));

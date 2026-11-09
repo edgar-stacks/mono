@@ -1,0 +1,261 @@
+import { ConnectSelectors } from '@tests/selectors/connect.selectors';
+import { MultisigSelectors } from '@tests/selectors/multisig.selectors';
+import { RouteUrls } from '~/route-urls';
+
+import type { WebFeatureEntry } from './web-feature-entry';
+
+export const multisigFeatures = [
+  {
+    id: 'multisig-dashboard',
+    anchor: { kind: 'route' },
+    routes: [RouteUrls.Multisig],
+    params: [],
+    entry: [
+      { kind: 'nav', steps: ['Click Multisig in the site navigation'] },
+      { kind: 'deepLink', steps: ['Open /multisig, optionally with ?invite=<vaultId>'] },
+    ],
+    gate: 'multisigLayout',
+    flags: [],
+    preconditions: {
+      session: 'mock-installed',
+      network: 'mainnet',
+      mocks: ['successHandlers', 'seedMultisigMockSessions'],
+    },
+    selectors: { ready: MultisigSelectors.DashboardPage, others: [] },
+    actions: [],
+    open: [],
+    specs: [],
+    description:
+      'Multisig home: a "My vaults" list of the BTC and STX vault summaries (invited vaults first) with a create-vault tile, beside a recent activity feed (dashboard.page.tsx). Without a BTC or STX session the index route redirects to /multisig/onboarding, keeping an ?invite= param (multisig.route.tsx); an ?invite=<vaultId> matching a listed vault opens the invitation modal. In mock mode seedMultisigMockSessions provides sessions and the multisig mock returns vault-btc-1, vault-stx-1 and the invited vault-stx-invite.',
+  },
+  {
+    id: 'multisig-onboarding',
+    anchor: { kind: 'route' },
+    routes: [RouteUrls.MultisigOnboarding],
+    params: [],
+    entry: [
+      {
+        kind: 'nav',
+        steps: ['Open any /multisig route without a multisig session; the layout redirects here'],
+      },
+    ],
+    gate: 'multisigLayout',
+    flags: [],
+    preconditions: { session: 'mock-installed', network: 'mainnet', mocks: ['successHandlers'] },
+    selectors: { ready: ConnectSelectors.ConnectCard, others: [] },
+    actions: [],
+    open: [],
+    specs: [],
+    description:
+      'Connect card "Get started with Leather Multisig" over a blurred backdrop, with one connect row per chain (BTC, STX) that signs in to the multisig API, and an "Install the extension" link (onboarding.page.tsx). As soon as either session exists it redirects to /multisig, keeping ?invite=. multisig.layout.tsx sends every other multisig path here when neither session is present; mock mode seeds both sessions, so clear localStorage key leather:multisig:sessions after load to see this screen.',
+  },
+  {
+    id: 'multisig-create-vault',
+    anchor: { kind: 'route' },
+    routes: [RouteUrls.MultisigCreateVault],
+    params: [],
+    entry: [{ kind: 'nav', steps: ['On /multisig click the create-vault tile'] }],
+    gate: 'multisigLayout',
+    flags: [],
+    preconditions: {
+      session: 'mock-installed',
+      network: 'mainnet',
+      mocks: ['successHandlers', 'seedMultisigMockSessions'],
+    },
+    selectors: { ready: MultisigSelectors.CreateVaultPage, others: [] },
+    actions: [],
+    open: [],
+    specs: [],
+    description:
+      'Form to create a vault: chain (STX by default), name, theme and the member list, signing in on the chosen chain first when needed (create-vault.page.tsx). On success it shows a toast and navigates to the new vault at /multisig/vault/:vaultId.',
+  },
+  {
+    id: 'multisig-settings',
+    anchor: { kind: 'route' },
+    routes: [RouteUrls.MultisigSettings],
+    params: [],
+    entry: [{ kind: 'deepLink', steps: ['Open /multisig/settings'] }],
+    gate: 'multisigLayout',
+    flags: [],
+    preconditions: {
+      session: 'mock-installed',
+      network: 'mainnet',
+      mocks: ['successHandlers', 'seedMultisigMockSessions'],
+    },
+    selectors: { ready: MultisigSelectors.SettingsPage, others: [] },
+    actions: [],
+    open: [],
+    specs: [],
+    description:
+      '"Multisig settings": a "Notifications & display" section stored locally (daily digest, vault sort order, default landing tab) and one settings section per chain (settings.page.tsx). Back returns to /multisig.',
+  },
+  {
+    id: 'multisig-vault',
+    anchor: { kind: 'route' },
+    routes: [RouteUrls.MultisigVault],
+    params: [{ name: 'vaultId', example: 'vault-stx-1' }],
+    entry: [{ kind: 'nav', steps: ['On /multisig click a vault card'] }],
+    gate: 'multisigLayout',
+    flags: [],
+    preconditions: {
+      session: 'mock-installed',
+      network: 'mainnet',
+      mocks: ['successHandlers', 'seedMultisigMockSessions'],
+    },
+    selectors: { ready: MultisigSelectors.VaultPage, others: [] },
+    actions: [],
+    open: [],
+    specs: [],
+    description:
+      'Vault detail titled with the vault name: its accounts with balances, members, invite sharing, editing and cancelling the vault, and an "You\'ve been invited to this vault" callout with join and decline for an invited member (vault.page.tsx). The vault network is resolved from the BTC and STX vault lists; an unknown id shows "No vault found. It may not exist, or you may not be a member."',
+  },
+  {
+    id: 'multisig-account',
+    anchor: { kind: 'route' },
+    routes: [RouteUrls.MultisigAccount],
+    params: [
+      { name: 'vaultId', example: 'vault-stx-1' },
+      { name: 'accountId', example: 'acct-cold-vault-stx-1' },
+    ],
+    entry: [{ kind: 'nav', steps: ['On a vault page click one of its accounts'] }],
+    gate: 'multisigLayout',
+    flags: [],
+    preconditions: {
+      session: 'mock-installed',
+      network: 'mainnet',
+      mocks: ['successHandlers', 'seedMultisigMockSessions'],
+    },
+    selectors: { ready: MultisigSelectors.AccountPage, others: [] },
+    actions: [],
+    open: [],
+    specs: [],
+    description:
+      'Vault account detail titled with the account name: balance, assets, the transaction feed, and actions to propose a transaction, receive, edit the account and add it to the wallet (account.page.tsx). An unknown account shows "No account found. It may not exist, or you may not be a member." The mock returns an empty transaction list for every account.',
+  },
+  {
+    id: 'multisig-activity-detail',
+    anchor: { kind: 'route' },
+    routes: [RouteUrls.MultisigActivityDetail],
+    params: [
+      { name: 'vaultId', example: 'vault-stx-1' },
+      { name: 'accountId', example: 'acct-cold-vault-stx-1' },
+      {
+        name: 'txid',
+        example: '0x1111111111111111111111111111111111111111111111111111111111111111',
+      },
+    ],
+    entry: [{ kind: 'nav', steps: ['On an account page click an on-chain activity row'] }],
+    gate: 'multisigLayout',
+    flags: [],
+    preconditions: {
+      session: 'mock-installed',
+      network: 'mainnet',
+      mocks: ['successHandlers', 'seedMultisigMockSessions'],
+    },
+    selectors: { ready: MultisigSelectors.ActivityDetailPage, others: [] },
+    actions: [],
+    open: [],
+    specs: [],
+    description:
+      '"Activity" detail of one on-chain transaction of a vault account, read from the blockchain activity query (activity-detail.page.tsx). Back goes to the previous entry when there is one, otherwise to the account; a txid with no activity shows "No activity found for this transaction."',
+  },
+  {
+    id: 'multisig-transaction',
+    anchor: { kind: 'route' },
+    routes: [RouteUrls.MultisigTransaction],
+    params: [
+      { name: 'vaultId', example: 'vault-stx-1' },
+      { name: 'txId', example: 'tx-1' },
+    ],
+    entry: [
+      { kind: 'nav', steps: ['On an account page click a proposed transaction, or propose one'] },
+    ],
+    gate: 'multisigLayout',
+    flags: [],
+    preconditions: {
+      session: 'mock-installed',
+      network: 'mainnet',
+      mocks: ['successHandlers', 'seedMultisigMockSessions'],
+    },
+    selectors: { ready: MultisigSelectors.TransactionPage, others: [] },
+    actions: [],
+    open: [],
+    specs: [],
+    description:
+      '"Transaction details" of a multisig proposal: signers and approvals, on-chain detail once broadcast, and sign, cancel and broadcast actions (tx.page.tsx). Route state from the propose flow starts signing automatically; back goes to the transaction\'s account. The multisig mocks define no single-transaction endpoint, so in mock mode it ends at "No transaction found. It may not exist, or you may not be a member."',
+  },
+  {
+    id: 'multisig-transaction-preview',
+    anchor: { kind: 'route' },
+    routes: [RouteUrls.MultisigTransactionPreview],
+    params: [],
+    entry: [
+      { kind: 'deepLink', steps: ['Open /multisig/transaction-preview in a non-production build'] },
+    ],
+    gate: 'none',
+    flags: ['nonProductionBuild'],
+    preconditions: { session: 'uninstalled', network: 'mainnet', mocks: [] },
+    selectors: { others: [] },
+    actions: [],
+    open: [],
+    specs: [],
+    description:
+      'Design-review page for the transaction feed (In progress / History segments, sidebar scale) rendered with mock summaries and no wallet (transaction-list-preview.page.tsx). It is registered outside the multisig layout, so it needs no session, and only when import.meta.env.MODE is not production (multisig.routes.ts).',
+  },
+  {
+    id: 'multisig-sidebar-preview',
+    anchor: { kind: 'route' },
+    routes: [RouteUrls.MultisigSidebarPreview],
+    params: [],
+    entry: [
+      { kind: 'deepLink', steps: ['Open /multisig/sidebar-preview in a non-production build'] },
+    ],
+    gate: 'none',
+    flags: ['nonProductionBuild'],
+    preconditions: { session: 'uninstalled', network: 'mainnet', mocks: [] },
+    selectors: { others: [] },
+    actions: [],
+    open: [],
+    specs: [],
+    description:
+      'Design-review page rendering every multisig sidebar panel with mock vault, member and transaction data so the column can be checked for scale without a wallet (sidebar-preview.page.tsx). Registered outside the multisig layout and only outside production builds.',
+  },
+  {
+    id: 'multisig-context-preview',
+    anchor: { kind: 'route' },
+    routes: [RouteUrls.MultisigContextPreview],
+    params: [],
+    entry: [
+      { kind: 'deepLink', steps: ['Open /multisig/context-preview in a non-production build'] },
+    ],
+    gate: 'none',
+    flags: ['nonProductionBuild'],
+    preconditions: { session: 'uninstalled', network: 'mainnet', mocks: [] },
+    selectors: { others: [] },
+    actions: [],
+    open: [],
+    specs: [],
+    description:
+      'Design-review page showing the activity and transaction feed in each real page context (dashboard sidebar, account main column, vault sidebar) with mock data; self-fetching neighbours such as vault-card balances render empty (context-preview.page.tsx). Registered outside the multisig layout and only outside production builds.',
+  },
+  {
+    id: 'multisig-mock-sessions',
+    anchor: { kind: 'behavior' },
+    routes: [],
+    params: [],
+    entry: [{ kind: 'nav', steps: ['Enable mock mode and load the app'] }],
+    gate: 'none',
+    flags: [],
+    preconditions: {
+      session: 'mock-installed',
+      network: 'mainnet',
+      mocks: ['seedMultisigMockSessions'],
+    },
+    selectors: { others: [] },
+    actions: [],
+    open: [],
+    specs: [],
+    description:
+      'In mock mode entry.client.tsx calls seedMultisigMockSessions before starting the MSW worker: it writes mock auth sessions for stx and btc mainnet, stx and btc testnet and btc regtest, valid for a year, to localStorage key leather:multisig:sessions (multisig-session-seed.ts). That is why the multisig layout never redirects to onboarding in mock mode; remove the key to test the signed-out flow.',
+  },
+] as const satisfies readonly WebFeatureEntry[];

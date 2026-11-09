@@ -11,7 +11,8 @@ import { type RpcHandler, type SelectorObject } from './test-assets.js';
 const config = getFeatureMapAppConfig('extension');
 const appRoutes = path.join(config.appDir, 'src/app/routes/app-routes.tsx');
 const sendRoutes = path.join(config.appDir, 'src/app/pages/send/send.routes.tsx');
-const mockApis = path.join(config.mocksDir, 'mock-apis.ts');
+const mockApis = path.join(config.appDir, 'tests/mocks/mock-apis.ts');
+const rpcMethodsDir = path.join(config.appDir, 'src/background/messaging/rpc-methods');
 
 function route(overrides: Partial<RoutedRoute>): RoutedRoute {
   return {
@@ -347,7 +348,7 @@ function selectorObject(name: string, fileName: string, members: string[]): Sele
 }
 
 function rpcHandler(name: string, methods: string[]): RpcHandler {
-  return { name, file: path.join(config.rpcMethodsDir, `${name}.ts`), line: 1, methods };
+  return { name, file: path.join(rpcMethodsDir, `${name}.ts`), line: 1, methods };
 }
 
 const selectorObjects = new Map([
@@ -508,6 +509,130 @@ describe('router flags and orphan sheets', () => {
     );
     expect(result.errors).toEqual([
       "entry 'orphan' (apps/extension/tests/feature-map/home.features.ts:1): route 'edit-tx-nonce' is not mounted under any of this entry's routes; it only nests under other screens. Fix: move it to the entry whose route mounts it.",
+    ]);
+  });
+});
+
+describe('web app rules', () => {
+  const webConfig = getFeatureMapAppConfig('web');
+  const webRoutesFile = path.join(webConfig.appDir, 'app/routes.ts');
+  const multisigRoutesFile = path.join(webConfig.appDir, 'app/pages/multisig/multisig.routes.ts');
+  const webRoutes: RoutedRoute[] = [
+    route({ file: webRoutesFile, keys: ['Staking'], path: 'staking', mountedPath: '/staking' }),
+    route({
+      file: multisigRoutesFile,
+      keys: ['Multisig'],
+      mountedPath: '/multisig',
+      gates: ['multisigLayout'],
+      line: 24,
+    }),
+  ];
+
+  function webFeature(overrides: Partial<ParsedFeature>): ParsedFeature {
+    return feature({
+      file: path.join(webConfig.featuresDir, 'staking.features.ts'),
+      id: 'staking',
+      routes: [{ value: '/staking', ref: 'RouteUrls.Staking' }],
+      gate: 'none',
+      preconditions: { session: 'mock-connected', network: 'mainnet', mocks: [] },
+      selectors: { others: [] },
+      ...overrides,
+    });
+  }
+
+  const staking = webFeature({});
+  const multisig = webFeature({
+    file: path.join(webConfig.featuresDir, 'multisig.features.ts'),
+    id: 'multisig-dashboard',
+    routes: [{ value: '/multisig', ref: 'RouteUrls.Multisig' }],
+    gate: 'multisigLayout',
+  });
+
+  function webModel(overrides: Partial<FeatureMapModel>): FeatureMapModel {
+    return model({
+      config: webConfig,
+      routeUrls: new Map([
+        ['Staking', '/staking'],
+        ['Multisig', '/multisig'],
+      ]),
+      router: {
+        routes: webRoutes,
+        references: new Map(
+          webRoutes.flatMap(item =>
+            item.keys.map(key => [key, [{ key, file: item.file, line: item.line }]] as const)
+          )
+        ),
+        unresolved: [],
+      },
+      features: [staking, multisig],
+      pageObjectActions: new Map(),
+      mocks: new Map(),
+      setupMocks: undefined,
+      flags: ['nonProductionBuild'],
+      rpcMethods: new Set(),
+      ...overrides,
+    });
+  }
+
+  test('accepts route entries without a ready selector and with web gates', () => {
+    const result = checkFeatureMap(webModel({}));
+    expect(result.errors).toEqual([]);
+  });
+
+  test('requires a RouteUrls key for every mounted path', () => {
+    const unkeyed = route({
+      file: webRoutesFile,
+      path: 'sbtc',
+      mountedPath: '/sbtc',
+      line: 10,
+      module: path.join(webConfig.appDir, 'app/pages/sbtc/sbtc.route.tsx'),
+    });
+    const routes = [...webRoutes, unkeyed];
+    const result = checkFeatureMap(webModel({ router: { ...webModel({}).router, routes } }));
+    expect(result.errors).toEqual([
+      "route '/sbtc' (apps/web/app/pages/sbtc/sbtc.route.tsx) is mounted at apps/web/app/routes.ts:10 but no RouteUrls key has that value. Fix: add a key for '/sbtc' to RouteUrls in apps/web/app/route-urls.ts.",
+    ]);
+  });
+
+  test('requires every RouteUrls key to match a mounted route', () => {
+    const routeUrls = new Map([
+      ['Staking', '/staking'],
+      ['Multisig', '/multisig'],
+      ['Renamed', '/renamed'],
+    ]);
+    const result = checkFeatureMap(webModel({ routeUrls }));
+    expect(result.errors).toEqual([
+      "RouteUrls.Renamed ('/renamed') in apps/web/app/route-urls.ts matches no mounted route. Fix: correct its value or remove the key.",
+    ]);
+  });
+
+  test('derives the gate from the configured layout', () => {
+    const wrongGate = webFeature({ ...multisig, gate: 'none' });
+    const result = checkFeatureMap(webModel({ features: [staking, wrongGate] }));
+    expect(result.errors).toEqual([
+      expect.stringContaining(
+        "gate 'none' does not match the router: RouteUrls.Multisig mounts at '/multisig' behind multisigLayout"
+      ),
+    ]);
+  });
+
+  test('rejects an rpc anchor', () => {
+    const rpc = webFeature({
+      id: 'rpc-entry',
+      anchor: { kind: 'rpc', handlers: ['open'] },
+      routes: [],
+    });
+    const result = checkFeatureMap(webModel({ features: [staking, multisig, rpc] }));
+    expect(result.errors).toEqual([
+      "entry 'rpc-entry' (apps/web/tests/feature-map/staking.features.ts:1): web has no rpc handlers; use a route, selectors or behavior anchor.",
+    ]);
+  });
+
+  test('checks flags against the configured web flags', () => {
+    const flagged = webFeature({ ...staking, flags: ['releaseOnramperSell'] });
+    const result = checkFeatureMap(webModel({ features: [flagged, multisig] }));
+    expect(result.errors).toEqual([
+      "entry 'staking' (apps/web/tests/feature-map/staking.features.ts:1): flag 'releaseOnramperSell' is not a web feature flag. Fix: use one of nonProductionBuild.",
     ]);
   });
 });

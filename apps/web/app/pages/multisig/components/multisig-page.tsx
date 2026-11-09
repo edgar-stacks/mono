@@ -10,11 +10,19 @@ interface MultisigPageProps {
   onBack?(): void;
   maxWidth?: string;
   children: ReactNode;
+  testId?: string;
 }
 
-export function MultisigPage({ title, backTo, onBack, maxWidth, children }: MultisigPageProps) {
+export function MultisigPage({
+  title,
+  backTo,
+  onBack,
+  maxWidth,
+  children,
+  testId,
+}: MultisigPageProps) {
   return (
-    <Page>
+    <Page data-testid={testId}>
       <Page.Header title={title} backTo={backTo} onBack={onBack} />
       <OutdatedExtensionCallout />
       <Box mt="space.08" maxWidth={maxWidth} mx="auto">

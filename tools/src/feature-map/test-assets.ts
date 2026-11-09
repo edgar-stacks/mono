@@ -72,9 +72,13 @@ export function loadSelectorObjects(config: FeatureMapAppConfig): Map<string, Se
   return objects;
 }
 
+function listOptionalFiles(dir: string | undefined, matches: (file: string) => boolean): string[] {
+  return dir === undefined ? [] : listFiles(dir, matches);
+}
+
 function loadRpcEndpointNames(config: FeatureMapAppConfig): Map<string, string> {
   const endpoints = new Map<string, string>();
-  for (const file of listFiles(config.rpcEndpointsDir, file => file.endsWith('.ts'))) {
+  for (const file of listOptionalFiles(config.rpcEndpointsDir, file => file.endsWith('.ts'))) {
     const defined = collectDefinedEndpoints(
       parseSourceFile(file),
       rpcEndpointFunction,
@@ -88,7 +92,7 @@ function loadRpcEndpointNames(config: FeatureMapAppConfig): Map<string, string> 
 export function loadRpcHandlers(config: FeatureMapAppConfig): Map<string, RpcHandler> {
   const endpoints = loadRpcEndpointNames(config);
   const handlers = new Map<string, RpcHandler>();
-  const files = listFiles(
+  const files = listOptionalFiles(
     config.rpcMethodsDir,
     file => file.endsWith('.ts') && !specFilePattern.test(file)
   );
@@ -114,7 +118,7 @@ export interface PageObjectAction extends SourceLocation {
 
 export function loadPageObjectActions(config: FeatureMapAppConfig): Map<string, PageObjectAction> {
   const actions = new Map<string, PageObjectAction>();
-  for (const file of listFiles(config.pageObjectsDir, file => file.endsWith('.ts'))) {
+  for (const file of listOptionalFiles(config.pageObjectsDir, file => file.endsWith('.ts'))) {
     for (const [className, methods] of collectClassMethods(parseSourceFile(file))) {
       for (const [method, info] of methods) {
         actions.set(`${className}.${method}`, {
@@ -132,7 +136,7 @@ export function loadPageObjectActions(config: FeatureMapAppConfig): Map<string, 
 
 export function loadMockFunctions(config: FeatureMapAppConfig): Map<string, SourceLocation> {
   const mocks = new Map<string, SourceLocation>();
-  for (const file of listFiles(config.mocksDir, file => file.endsWith('.ts'))) {
+  for (const file of listOptionalFiles(config.mocksDir, file => file.endsWith('.ts'))) {
     for (const [name, line] of collectExportedNames(parseSourceFile(file))) {
       mocks.set(name, { file, line });
     }
@@ -150,6 +154,7 @@ export function loadSetupMocks(
   mocks: ReadonlyMap<string, SourceLocation>
 ): SetupMocks | undefined {
   const name = config.setupMocksFunctionName;
+  if (name === undefined) return undefined;
   const location = mocks.get(name);
   if (!location) return undefined;
   const calls = collectFunctionCallees(parseSourceFile(location.file), name);
@@ -176,6 +181,9 @@ export function loadSpecs(config: FeatureMapAppConfig): Map<string, SpecFile> {
 }
 
 export function loadFeatureFlags(config: FeatureMapAppConfig): string[] {
+  if (config.flags) return [...config.flags];
+  if (config.featureFlagsFile === undefined || config.featureFlagsInterfaceName === undefined)
+    return [];
   return collectInterfaceProperties(
     parseSourceFile(config.featureFlagsFile),
     config.featureFlagsInterfaceName
@@ -184,7 +192,7 @@ export function loadFeatureFlags(config: FeatureMapAppConfig): string[] {
 
 export function loadRpcMethods(config: FeatureMapAppConfig): Set<string> {
   const methods = new Set<string>();
-  for (const file of listFiles(config.rpcEndpointsDir, file => file.endsWith('.ts'))) {
+  for (const file of listOptionalFiles(config.rpcEndpointsDir, file => file.endsWith('.ts'))) {
     for (const method of collectObjectPropertyStrings(parseSourceFile(file), rpcMethodProperty)) {
       methods.add(method);
     }

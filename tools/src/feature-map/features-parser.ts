@@ -6,13 +6,11 @@ import {
   type FeatureAnchor,
   type FeatureEntryKind,
   type FeatureEntryPoint,
-  type FeatureGate,
   type FeatureParam,
-  type FeatureSession,
+  type FeatureVocabulary,
+  defaultFeatureVocabulary,
   featureAnchorKinds,
   featureEntryKinds,
-  featureGates,
-  featureSessions,
 } from './feature-entry.js';
 import {
   type EvaluatedString,
@@ -42,10 +40,10 @@ export interface ParsedFeature {
   readonly deepLinkable: boolean;
   readonly params: readonly FeatureParam[];
   readonly entry: readonly FeatureEntryPoint[];
-  readonly gate: FeatureGate;
+  readonly gate: string;
   readonly flags: readonly string[];
   readonly preconditions: {
-    readonly session: FeatureSession;
+    readonly session: string;
     readonly network?: string;
     readonly accountType?: string;
     readonly mocks: readonly string[];
@@ -321,11 +319,16 @@ function readEntryPoints(reader: FeatureReader): FeatureEntryPoint[] {
   return points;
 }
 
+interface FeatureSource {
+  readonly file: string;
+  readonly label: string;
+  readonly group: string;
+  readonly line: number;
+  readonly vocabulary: FeatureVocabulary;
+}
+
 function readFeature(
-  file: string,
-  label: string,
-  group: string,
-  line: number,
+  { file, label, group, line, vocabulary }: FeatureSource,
   props: ReadonlyMap<string, ParsedValue>
 ): { feature?: ParsedFeature; errors: string[] } {
   const reader = new FeatureReader(`${label}:${line}`, props);
@@ -339,10 +342,10 @@ function readFeature(
   const deepLinkable = reader.boolean('deepLinkable', true);
   const params = readParams(reader);
   const entry = readEntryPoints(reader);
-  const gate = reader.oneOf('gate', featureGates);
+  const gate = reader.oneOf('gate', vocabulary.gates);
   const flags = reader.strings('flags');
   const preconditions = reader.object('preconditions');
-  const session = preconditions?.oneOf('session', featureSessions);
+  const session = preconditions?.oneOf('session', vocabulary.sessions);
   const network = preconditions?.string('network', false);
   const accountType = preconditions?.string('accountType', false);
   const mocks = preconditions?.strings('mocks') ?? [];
@@ -407,7 +410,8 @@ function findFeatureArrays(sourceFile: ts.SourceFile): ts.ArrayLiteralExpression
 export function parseFeaturesSource(
   file: string,
   text: string,
-  table: StringTable
+  table: StringTable,
+  vocabulary: FeatureVocabulary = defaultFeatureVocabulary
 ): FeaturesParseResult {
   const sourceFile = parseSourceFile(file, text);
   const group = path.basename(file).replace(featuresFileSuffix, '');
@@ -432,7 +436,7 @@ export function parseFeaturesSource(
         errors.push(`${label}:${line}: each feature must be an object literal`);
         continue;
       }
-      const result = readFeature(file, label, group, line, value.props);
+      const result = readFeature({ file, label, group, line, vocabulary }, value.props);
       errors.push(...result.errors);
       if (result.feature) features.push(result.feature);
     }

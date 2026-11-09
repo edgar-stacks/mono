@@ -1,8 +1,8 @@
 import { readFileSync } from 'node:fs';
 
 import { compareStrings } from '../utils/compare.js';
-import { type FeatureMapAppConfig } from './app-config.js';
-import { type FeatureGate, type FeatureParam, featureGates } from './feature-entry.js';
+import { type FeatureMapAppConfig, featureVocabulary } from './app-config.js';
+import { type FeatureParam, type FeatureVocabulary } from './feature-entry.js';
 import {
   type FeaturesParseResult,
   type ParsedFeature,
@@ -15,6 +15,7 @@ import {
   type RouterModel,
   innermostGate,
   parseRouterFiles,
+  readFromDisk,
 } from './routers-parser.js';
 import {
   type PageObjectAction,
@@ -36,6 +37,7 @@ import {
   loadSpecs,
 } from './test-assets.js';
 import { type SourceLocation, type StringTable, mergeStringTables } from './ts-ast.js';
+import { parseWebRouteConfig } from './web-routes-parser.js';
 
 export interface FeatureMapModel {
   readonly config: FeatureMapAppConfig;
@@ -54,16 +56,48 @@ export interface FeatureMapModel {
   readonly rpcHandlers: ReadonlyMap<string, RpcHandler>;
 }
 
-function parseAllFeatures(files: readonly string[], table: StringTable): FeaturesParseResult {
+function parseAllFeatures(
+  files: readonly string[],
+  table: StringTable,
+  vocabulary: FeatureVocabulary
+): FeaturesParseResult {
   const features: ParsedFeature[] = [];
   const errors: string[] = [];
   for (const file of files) {
-    const result = parseFeaturesSource(file, readFileSync(file, 'utf8'), table);
+    const result = parseFeaturesSource(file, readFileSync(file, 'utf8'), table, vocabulary);
     features.push(...result.features);
     errors.push(...result.errors);
   }
   features.sort((a, b) => compareStrings(a.id, b.id));
   return { features, errors };
+}
+
+function parseRouter(
+  config: FeatureMapAppConfig,
+  table: StringTable
+): { readonly router: RouterModel; readonly errors: readonly string[] } {
+  if (config.routeConfigFile !== undefined) {
+    return parseWebRouteConfig(
+      {
+        routeConfigFile: config.routeConfigFile,
+        table,
+        objectName: config.routeUrlsObjectName,
+        importAliases: config.importAliases,
+        layoutGates: config.layoutGates,
+        conditionFlags: config.conditionFlags,
+      },
+      readFromDisk
+    );
+  }
+  return {
+    router: parseRouterFiles(
+      loadRouterFiles(config),
+      table,
+      config.routeUrlsObjectName,
+      config.importAliases
+    ),
+    errors: [],
+  };
 }
 
 export function buildFeatureMapModel(config: FeatureMapAppConfig): FeatureMapModel {
@@ -73,22 +107,17 @@ export function buildFeatureMapModel(config: FeatureMapAppConfig): FeatureMapMod
     selectorTable,
     new Map([[config.routeUrlsObjectName, routeUrls]]),
   ]);
-  const router = parseRouterFiles(
-    loadRouterFiles(config),
-    table,
-    config.routeUrlsObjectName,
-    config.importAliases
-  );
-  const parsed = parseAllFeatures(loadFeatureFiles(config), table);
+  const routerResult = parseRouter(config, table);
+  const parsed = parseAllFeatures(loadFeatureFiles(config), table, featureVocabulary(config));
   const mocks = loadMockFunctions(config);
 
   return {
     config,
     routeUrls,
     selectorTable,
-    router,
+    router: routerResult.router,
     features: parsed.features,
-    parseErrors: parsed.errors,
+    parseErrors: [...routerResult.errors, ...parsed.errors],
     pageObjectActions: loadPageObjectActions(config),
     mocks,
     setupMocks: loadSetupMocks(config, mocks),
@@ -138,6 +167,10 @@ function routesForPath(model: FeatureMapModel, value: string): RoutedRoute[] {
 
 export function unkeyedRoutes(model: FeatureMapModel): RoutedRoute[] {
   return model.router.routes.filter(route => route.keys.length === 0 && !route.isIndex);
+}
+
+export function hasRpcHandlers(model: FeatureMapModel): boolean {
+  return model.config.rpcMethodsDir !== undefined;
 }
 
 export function firstReference(model: FeatureMapModel, key: string): RouteReference | undefined {
@@ -246,9 +279,11 @@ export function featureRouteInstances(
   });
 }
 
-export function derivedGate(instance: RoutedRoute): FeatureGate {
+const noGate = 'none';
+
+export function derivedGate(model: FeatureMapModel, instance: RoutedRoute): string {
   const innermost = innermostGate(instance);
-  return featureGates.find(gate => gate === innermost) ?? 'none';
+  return featureVocabulary(model.config).gates.find(gate => gate === innermost) ?? noGate;
 }
 
 export function uncoveredFeatures(model: FeatureMapModel): ParsedFeature[] {

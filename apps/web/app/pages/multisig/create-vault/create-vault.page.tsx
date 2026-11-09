@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
 
+import { MultisigSelectors } from '@tests/selectors/multisig.selectors';
 import { Box, Flex, styled } from 'leather-styles/jsx';
 import { useMultisigNetworks } from '~/features/multisig/auth/use-multisig-networks';
 import { useSession } from '~/features/multisig/auth/use-session';
@@ -333,7 +334,11 @@ export function CreateVaultPage() {
   }
 
   return (
-    <MultisigPage title="Create vault" backTo={multisigPaths.index}>
+    <MultisigPage
+      title="Create vault"
+      backTo={multisigPaths.index}
+      testId={MultisigSelectors.CreateVaultPage}
+    >
       <Flex
         direction={['column', 'column', 'row']}
         gap={['space.06', 'space.06', 'space.08', 'space.10']}

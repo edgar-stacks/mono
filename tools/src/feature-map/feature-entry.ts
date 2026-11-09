@@ -13,6 +13,25 @@ export type FeatureGate = (typeof featureGates)[number];
 export const featureSessions = ['signed-in', 'signed-out', 'locked'] as const;
 export type FeatureSession = (typeof featureSessions)[number];
 
+export const webFeatureGates = ['multisigLayout', 'playgroundLayout', 'none'] as const;
+export type WebFeatureGate = (typeof webFeatureGates)[number];
+
+export const webFeatureSessions = ['uninstalled', 'mock-installed', 'mock-connected'] as const;
+export type WebFeatureSession = (typeof webFeatureSessions)[number];
+
+export const webFeatureFlags = ['nonProductionBuild'] as const;
+export type WebFeatureFlag = (typeof webFeatureFlags)[number];
+
+export interface FeatureVocabulary {
+  readonly gates: readonly string[];
+  readonly sessions: readonly string[];
+}
+
+export const defaultFeatureVocabulary: FeatureVocabulary = {
+  gates: featureGates,
+  sessions: featureSessions,
+};
+
 export const featureAnchorKinds = ['route', 'selectors', 'rpc', 'behavior'] as const;
 export type FeatureAnchorKind = (typeof featureAnchorKinds)[number];
 
@@ -47,8 +66,8 @@ export interface FeatureEntryPoint {
   readonly method?: string;
 }
 
-export interface FeaturePreconditions {
-  readonly session: FeatureSession;
+export interface FeaturePreconditions<Session extends string = FeatureSession> {
+  readonly session: Session;
   readonly network?: string;
   readonly accountType?: string;
   readonly mocks: readonly string[];
@@ -59,7 +78,10 @@ export interface FeatureSelectors {
   readonly others: readonly string[];
 }
 
-export interface FeatureEntry {
+export interface FeatureEntry<
+  Gate extends string = FeatureGate,
+  Session extends string = FeatureSession,
+> {
   readonly id: string;
   readonly anchor: FeatureAnchor;
   readonly routes: readonly string[];
@@ -68,9 +90,9 @@ export interface FeatureEntry {
   readonly deepLinkable?: boolean;
   readonly params: readonly FeatureParam[];
   readonly entry: readonly FeatureEntryPoint[];
-  readonly gate: FeatureGate;
+  readonly gate: Gate;
   readonly flags: readonly string[];
-  readonly preconditions: FeaturePreconditions;
+  readonly preconditions: FeaturePreconditions<Session>;
   readonly selectors: FeatureSelectors;
   readonly actions: readonly string[];
   readonly specs: readonly string[];

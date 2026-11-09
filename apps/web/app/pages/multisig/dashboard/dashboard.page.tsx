@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 
+import { MultisigSelectors } from '@tests/selectors/multisig.selectors';
 import { Box, Flex, styled } from 'leather-styles/jsx';
 import type { VaultActivityItem } from '~/features/multisig/activity/harmonize-vault-activity';
 import { useMultisigNetworks } from '~/features/multisig/auth/use-multisig-networks';
@@ -189,7 +190,7 @@ export function MultisigDashboardPage() {
     );
 
   return (
-    <MultisigPage title="Multisig">
+    <MultisigPage title="Multisig" testId={MultisigSelectors.DashboardPage}>
       <Flex
         direction={['column', 'column', 'row']}
         gap={['space.06', 'space.06', 'space.08', 'space.10']}
