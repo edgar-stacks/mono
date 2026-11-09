@@ -25,6 +25,7 @@ export const RouteUrls = {
   AllBalancesBondHistory: '/all-balances/bonded/history',
   AddWallet: '/add-wallet',
   CreateWallet: '/create-wallet',
+  ApprovalScreensPreview: '/approval-screens-preview',
 
   // nested routes must have relative paths
   Activity: '/activity',

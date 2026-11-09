@@ -1,5 +1,8 @@
+import { ApprovalScreensPreviewSelectors } from '@tests/selectors/approval-screens-preview.selectors';
 import { HomePageSelectors } from '@tests/selectors/home.selectors';
 import { SwapRevampSelectors } from '@tests/selectors/swap-revamp.selectors';
+
+import { RouteUrls } from '@shared/route-urls';
 
 import type { ExtensionFeatureEntry } from './extension-feature-entry';
 
@@ -82,5 +85,27 @@ export const rpcGeneralFeatures = [
     specs: [],
     description:
       'Handler apps/extension/src/background/messaging/rpc-methods/supported-methods.ts. Pure background response with a hard-coded list of 15 methods and their gitbook links; it omits the registered btc_addAccount and stx_addAccount (rpc-message-handler.ts). No UI and no session requirement. No extension spec; the test-app supportedMethods card (tagged ci) exercises it.',
+  },
+  {
+    id: 'approval-screens-preview',
+    anchor: { kind: 'route' },
+    routes: [RouteUrls.ApprovalScreensPreview],
+    params: [],
+    entry: [
+      {
+        kind: 'deepLink',
+        steps: [
+          'Open chrome-extension://<id>/index.html#/approval-screens-preview in a development or test build; production builds do not register the route',
+        ],
+      },
+    ],
+    gate: 'none',
+    flags: [],
+    preconditions: { session: 'signed-in', mocks: [...defaultMocks] },
+    selectors: { ready: ApprovalScreensPreviewSelectors.Heading, others: [] },
+    actions: ['OnboardingPage.signInWithTestAccount'],
+    specs: ['apps/extension/tests/specs/screenshots/approval-screens-preview.spec.ts'],
+    description:
+      'Dev-only page (approval-screens-preview.tsx), lazy-loaded and registered only when IS_DEV_ENV or IS_TEST_ENV. Under the heading "Approval screens — live components" it renders the real approval layout components with hand-written fixtures (approval-screens-preview.fixtures.ts), each in a 390×756 frame: shared header, contract call, allow mode, deploy, two STX transfers, multisig co-sign, sponsored fee, Connect app and the legacy message-signing header. The frames ignore pointer input. The contract-call frames load the bns ABI, which setupMockApis supplies. approval-screens-preview.spec.ts signs in, opens the route and asserts the heading.',
   },
 ] as const satisfies readonly ExtensionFeatureEntry[];
