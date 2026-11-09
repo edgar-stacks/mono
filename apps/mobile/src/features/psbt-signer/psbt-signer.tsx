@@ -12,6 +12,7 @@ import { useBtcMarketDataQuery } from '@/queries/market-data/btc-market-data.que
 import { useGenerateBtcUnsignedTransactionNativeSegwit } from '@/queries/transaction/bitcoin-transactions.hooks';
 import { useBitcoinBroadcastTransaction } from '@/queries/transaction/use-bitcoin-broadcast-transaction';
 import { useAccountUtxos } from '@/queries/utxos/utxos.query';
+import { RpcBitcoinSelectors } from '@/shared/selectors/rpc-bitcoin.selectors';
 import { useBitcoinAccounts } from '@/store/keychains/bitcoin/bitcoin-keychains.read';
 import { analytics } from '@/utils/analytics';
 import { formatCurrency } from '@/utils/currency-formatter';
@@ -285,7 +286,7 @@ function BasePsbtSigner(props: BasePsbtSignerProps) {
           )}
           {broadcastedTxid && <BtcStatusRow txid={broadcastedTxid} />}
 
-          <Approver.Overview>
+          <Approver.Overview testID={RpcBitcoinSelectors.PsbtSigner}>
             <Approver.Section mb="-3">
               <Approver.Subheader icon={<SentIcon variant="small" />}>
                 {t`You’ll send`}

@@ -10,6 +10,7 @@ import { LanguageSheet } from '@/features/settings/language-sheet';
 import SettingsLayout from '@/features/settings/settings-layout';
 import { ThemeSheet } from '@/features/settings/theme-sheet';
 import { supportedLanguages } from '@/i18n/languages';
+import { SettingsSelectors } from '@/shared/selectors/settings.selectors';
 import { useSettings } from '@/store/settings/settings';
 import { select, t } from '@lingui/core/macro';
 import { keys } from 'remeda';
@@ -49,7 +50,7 @@ export default function SettingsDisplayScreen() {
   }
 
   return (
-    <SettingsLayout title={t`Display`}>
+    <SettingsLayout title={t`Display`} testID={SettingsSelectors.DisplayScreen}>
       <SettingsList>
         <SettingsListItem
           title={t`Theme`}

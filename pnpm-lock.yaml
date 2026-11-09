@@ -878,6 +878,9 @@ importers:
       '@leather.io/test-config':
         specifier: workspace:*
         version: link:../../packages/test-config
+      '@leather.io/tools':
+        specifier: workspace:*
+        version: link:../../tools
       '@lingui/babel-plugin-lingui-macro':
         specifier: 5.4.0
         version: 5.4.0(babel-plugin-macros@3.1.0)(typescript@5.9.3)

@@ -1,4 +1,5 @@
 import unavailableFeatureImage from '@/assets/unavailable-feature.png';
+import { SharedSelectors } from '@/shared/selectors/shared.selectors';
 import { analytics } from '@/utils/analytics';
 import { t } from '@lingui/core/macro';
 import { Image } from 'expo-image';
@@ -31,7 +32,7 @@ export function NotifyUserSheetLayout({
 
   return (
     <Sheet onDismiss={onCloseSheet} ref={sheetRef}>
-      <Sheet.View>
+      <Sheet.View testID={SharedSelectors.NotifyUserSheet}>
         <Image style={{ height: 180 }} contentFit="cover" source={unavailableFeatureImage} />
         <Box p="5" justifyContent="space-between" gap="5">
           <Box gap="4">

@@ -3,6 +3,7 @@ import { Screen } from '@/components/screen/screen';
 import { HeaderTitle } from '@/components/screen/screen-header/components/header-title';
 import { Sticker } from '@/components/sticker';
 import { LinkCard } from '@/features/browser/browser/link-card';
+import { BrowserSelectors } from '@/shared/selectors/browser.selectors';
 import { useApps } from '@/store/apps/apps.read';
 import { t } from '@lingui/core/macro';
 
@@ -40,5 +41,9 @@ export default function ConnectionsScreen() {
 
   const innerContent = appList.length === 0 ? emptyState : withApps;
 
-  return <Screen backgroundColor="ink.background-primary">{innerContent}</Screen>;
+  return (
+    <Screen backgroundColor="ink.background-primary" testID={BrowserSelectors.ConnectionsScreen}>
+      {innerContent}
+    </Screen>
+  );
 }

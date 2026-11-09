@@ -1,4 +1,5 @@
 import { useBtcMarketDataQuery } from '@/queries/market-data/btc-market-data.query';
+import { ApproverSelectors } from '@/shared/selectors/approver.selectors';
 import BigNumber from 'bignumber.js';
 
 import { type AverageBitcoinFeeRates, FeeTypes } from '@leather.io/models';
@@ -51,7 +52,7 @@ export function BitcoinFeesSheet({
   }
 
   return (
-    <FeeSheetLayout sheetRef={sheetRef}>
+    <FeeSheetLayout sheetRef={sheetRef} testID={ApproverSelectors.BitcoinFeeSheet}>
       {feeTypes.map(feeType => {
         const { feeRate, fee } = getFee(feeType);
         return (

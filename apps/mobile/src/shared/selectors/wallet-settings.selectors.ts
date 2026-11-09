@@ -1,0 +1,17 @@
+export const WalletSettingsSelectors = {
+  AccountNameCell: 'walletSettingsAccountNameCell',
+  ChangeNameSheetInput: 'walletChangeNameSheetInput',
+  ChangeNameSheetSaveButton: 'walletChangeNameSheetSaveButton',
+  ChooseAvatarScreen: 'walletSettingsChooseAvatarScreen',
+  ConfigureAccountScreen: 'walletSettingsConfigureAccountScreen',
+  ConfigureWalletScreen: 'walletSettingsConfigureWalletScreen',
+  HiddenAccountsScreen: 'walletSettingsHiddenAccountsScreen',
+  ListAccountCard: 'walletListAccountCard',
+  ListSettingsButton: 'walletListSettingsButton',
+  RemoveWalletButton: 'walletSettingsRemoveWalletButton',
+  RemoveWalletSheet: 'walletSettingsRemoveWalletSheet',
+  RenameWalletButton: 'walletSettingsRenameWalletButton',
+  ViewSecretKeyButton: 'walletSettingsViewSecretKeyButton',
+  ViewSecretKeyScreen: 'walletSettingsViewSecretKeyScreen',
+  WalletsScreen: 'walletSettingsWalletsScreen',
+} as const;

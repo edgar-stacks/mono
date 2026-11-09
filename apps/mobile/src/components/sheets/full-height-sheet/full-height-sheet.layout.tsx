@@ -7,13 +7,14 @@ import { Box, type HasChildren, useTheme } from '@leather.io/ui/native';
 
 interface FullHeightSheetLayoutProps extends HasChildren {
   header: React.ReactNode;
+  testID?: string;
 }
-export function FullHeightSheetLayout({ children, header }: FullHeightSheetLayoutProps) {
+export function FullHeightSheetLayout({ children, header, testID }: FullHeightSheetLayoutProps) {
   const { bottom } = useSafeAreaInsets();
   const theme = useTheme();
 
   return (
-    <Screen>
+    <Screen testID={testID}>
       <Box paddingTop="4">{header}</Box>
       <Box
         flex={1}

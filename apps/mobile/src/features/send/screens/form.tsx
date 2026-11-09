@@ -6,6 +6,7 @@ import { FullHeightSheetLayout } from '@/components/sheets/full-height-sheet/ful
 import { InlineAssetPicker } from '@/features/send/components/inline-asset-picker';
 import { useSendNavigation, useSendRoute } from '@/features/send/navigation';
 import { useSendFlowContext } from '@/features/send/send-flow-provider';
+import { SendSelectors } from '@/shared/selectors/send.selectors';
 import { useAccounts } from '@/store/accounts/accounts.read';
 import { analytics } from '@/utils/analytics';
 import { t } from '@lingui/core/macro';
@@ -49,6 +50,7 @@ export function Form() {
   return (
     <>
       <FullHeightSheetLayout
+        testID={SendSelectors.FormScreen}
         header={
           <FullHeightSheetHeader
             title={t`Send`}

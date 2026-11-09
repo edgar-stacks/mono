@@ -1,5 +1,6 @@
 import { useState } from 'react';
 
+import { SwapSelectors } from '@/shared/selectors/swap.selectors';
 import { formatPercentage } from '@/utils/currency-formatter';
 import { t } from '@lingui/core/macro';
 
@@ -22,7 +23,7 @@ export function SlippageSelectorSheet({ ref, value, onSave }: SlippageSelectorSh
 
   return (
     <Sheet ref={ref}>
-      <Sheet.View>
+      <Sheet.View testID={SwapSelectors.SlippageSheet}>
         <Sheet.Header leftElement={<Sheet.Title>{t`Edit Slippage`}</Sheet.Title>}></Sheet.Header>
         <Box px="5" mt="-2" gap="6">
           <Text variant="body02">{t`Price moving against you past this percentage will cancel the swap.`}</Text>

@@ -19,6 +19,7 @@ interface WarningSheetLayoutProps {
   onSubmit(): unknown;
   onPressSupport?(): void;
   variant?: WarningSheetVariant;
+  testID?: string;
 }
 export function WarningSheetLayout({
   sheetRef,
@@ -27,10 +28,11 @@ export function WarningSheetLayout({
   onSubmit,
   variant = 'normal',
   onPressSupport,
+  testID,
 }: WarningSheetLayoutProps) {
   return (
     <Sheet ref={sheetRef}>
-      <Sheet.View justifyContent="space-between" gap="5">
+      <Sheet.View justifyContent="space-between" gap="5" testID={testID}>
         <Sheet.Header
           leftElement={<Sheet.Title>{title}</Sheet.Title>}
           rightElement={

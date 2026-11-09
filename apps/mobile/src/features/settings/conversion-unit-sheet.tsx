@@ -1,6 +1,7 @@
 import { SettingsList } from '@/components/settings/settings-list';
 import { SettingsListItem } from '@/components/settings/settings-list-item';
 import { useToastContext } from '@/components/toast/toast-context';
+import { SettingsSelectors } from '@/shared/selectors/settings.selectors';
 import { useSettings } from '@/store/settings/settings';
 import { select, t } from '@lingui/core/macro';
 
@@ -26,7 +27,11 @@ export function ConversionUnitSheet({ sheetRef }: ConversionUnitSheetProps) {
   }
 
   return (
-    <SettingsSheetLayout sheetRef={sheetRef} title={t`Conversion unit`}>
+    <SettingsSheetLayout
+      sheetRef={sheetRef}
+      title={t`Conversion unit`}
+      testID={SettingsSelectors.ConversionUnitSheet}
+    >
       <SettingsList gap="0">
         {Object.entries(currencyNameMap).map(([symbol, name]) => (
           <SettingsListItem

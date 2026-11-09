@@ -6,6 +6,7 @@ import {
   getAccountDisplayPreferencesKeyedByType,
   getChainDisplayLabel,
 } from '@/shared/display-preference';
+import { SettingsSelectors } from '@/shared/selectors/settings.selectors';
 import { useSettings } from '@/store/settings/settings';
 import { t } from '@lingui/core/macro';
 
@@ -33,6 +34,7 @@ export function AccountIdentifierSheet({ sheetRef }: AccountIdentifierSheetProps
 
   return (
     <SettingsSheetLayout
+      testID={SettingsSelectors.AccountIdentifierSheet}
       sheetRef={sheetRef}
       title={t`Account identifier`}
       onPressSupport={() => {

@@ -8,7 +8,8 @@ import Animated, {
 
 import addWalletImage from '@/assets/stickers/add-wallet.png';
 import { useWaitlistFlag } from '@/features/feature-flags';
-import { TestId } from '@/shared/test-id';
+import { GlobalSheetSelectors } from '@/shared/selectors/global-sheet.selectors';
+import { OnboardingSelectors } from '@/shared/selectors/onboarding.selectors';
 import { t } from '@lingui/core/macro';
 import { Image } from 'expo-image';
 
@@ -62,7 +63,7 @@ export function AddWalletSheetLayout({
       ref={addWalletSheetRef}
       onDismiss={() => setMoreOptionsVisible(!!opensFully)}
     >
-      <Sheet.ScrollView>
+      <Sheet.ScrollView testID={GlobalSheetSelectors.AddWalletSheet}>
         <AnimatedBox style={animatedStyle}>
           <Box width="100%" style={{ height: 184, overflow: 'hidden' }}>
             <Image style={{ height: '100%' }} contentFit="cover" source={addWalletImage} />
@@ -76,14 +77,14 @@ export function AddWalletSheetLayout({
                 onPress={createWallet}
                 title={t`Create new wallet`}
                 caption={t`Generate new Secret Key for self-custody`}
-                testID={TestId.createNewWalletSheetButton}
+                testID={OnboardingSelectors.CreateNewWalletSheetButton}
                 icon={<PlusIcon />}
               />
               <AddWalletCell
                 onPress={restoreWallet}
                 title={t`Restore wallet`}
                 caption={t`Import existing accounts from self-custody`}
-                testID={TestId.restoreWalletSheetButton}
+                testID={OnboardingSelectors.RestoreWalletSheetButton}
                 icon={<ArrowRotateClockwiseIcon />}
               />
               {releaseWaitlistFeatures && (

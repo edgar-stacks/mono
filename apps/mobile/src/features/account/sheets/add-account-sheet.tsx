@@ -2,6 +2,7 @@ import { useCallback } from 'react';
 
 import { useGlobalSheets } from '@/core/global-sheet-provider';
 import { AddWalletCell } from '@/features/wallet-manager/add-wallet/add-wallet-cell';
+import { GlobalSheetSelectors } from '@/shared/selectors/global-sheet.selectors';
 import { t } from '@lingui/core/macro';
 import { useRouter } from 'expo-router';
 
@@ -22,7 +23,7 @@ export function AddAccountSheet() {
 
   return (
     <Sheet ref={addAccountSheetRef}>
-      <Sheet.View gap="3">
+      <Sheet.View gap="3" testID={GlobalSheetSelectors.AddAccountSheet}>
         <Sheet.Header leftElement={<Sheet.Title>{t`Add account`}</Sheet.Title>} />
         <Box>
           <AddWalletCell

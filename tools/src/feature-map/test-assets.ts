@@ -6,6 +6,7 @@ import { type FeatureMapAppConfig, toRepoRelative } from './app-config.js';
 import {
   type SourceLocation,
   type StringTable,
+  collectCallFirstStrings,
   collectClassMethods,
   collectDefinedEndpoints,
   collectExportedNames,
@@ -72,9 +73,9 @@ export function loadSelectorObjects(config: FeatureMapAppConfig): Map<string, Se
   return objects;
 }
 
-function loadRpcEndpointNames(config: FeatureMapAppConfig): Map<string, string> {
+export function loadRpcEndpointNames(rpcEndpointsDir: string): Map<string, string> {
   const endpoints = new Map<string, string>();
-  for (const file of listFiles(config.rpcEndpointsDir, file => file.endsWith('.ts'))) {
+  for (const file of listFiles(rpcEndpointsDir, file => file.endsWith('.ts'))) {
     const defined = collectDefinedEndpoints(
       parseSourceFile(file),
       rpcEndpointFunction,
@@ -86,8 +87,9 @@ function loadRpcEndpointNames(config: FeatureMapAppConfig): Map<string, string> 
 }
 
 export function loadRpcHandlers(config: FeatureMapAppConfig): Map<string, RpcHandler> {
-  const endpoints = loadRpcEndpointNames(config);
   const handlers = new Map<string, RpcHandler>();
+  if (config.rpcMethodsDir === undefined) return handlers;
+  const endpoints = loadRpcEndpointNames(config.rpcEndpointsDir);
   const files = listFiles(
     config.rpcMethodsDir,
     file => file.endsWith('.ts') && !specFilePattern.test(file)
@@ -114,6 +116,7 @@ export interface PageObjectAction extends SourceLocation {
 
 export function loadPageObjectActions(config: FeatureMapAppConfig): Map<string, PageObjectAction> {
   const actions = new Map<string, PageObjectAction>();
+  if (config.pageObjectsDir === undefined) return actions;
   for (const file of listFiles(config.pageObjectsDir, file => file.endsWith('.ts'))) {
     for (const [className, methods] of collectClassMethods(parseSourceFile(file))) {
       for (const [method, info] of methods) {
@@ -132,6 +135,7 @@ export function loadPageObjectActions(config: FeatureMapAppConfig): Map<string, 
 
 export function loadMockFunctions(config: FeatureMapAppConfig): Map<string, SourceLocation> {
   const mocks = new Map<string, SourceLocation>();
+  if (config.mocksDir === undefined) return mocks;
   for (const file of listFiles(config.mocksDir, file => file.endsWith('.ts'))) {
     for (const [name, line] of collectExportedNames(parseSourceFile(file))) {
       mocks.set(name, { file, line });
@@ -150,6 +154,7 @@ export function loadSetupMocks(
   mocks: ReadonlyMap<string, SourceLocation>
 ): SetupMocks | undefined {
   const name = config.setupMocksFunctionName;
+  if (name === undefined) return undefined;
   const location = mocks.get(name);
   if (!location) return undefined;
   const calls = collectFunctionCallees(parseSourceFile(location.file), name);
@@ -176,10 +181,10 @@ export function loadSpecs(config: FeatureMapAppConfig): Map<string, SpecFile> {
 }
 
 export function loadFeatureFlags(config: FeatureMapAppConfig): string[] {
-  return collectInterfaceProperties(
-    parseSourceFile(config.featureFlagsFile),
-    config.featureFlagsInterfaceName
-  );
+  const sourceFile = parseSourceFile(config.featureFlagsFile);
+  if (config.featureFlagHooks) return collectCallFirstStrings(sourceFile, config.featureFlagHooks);
+  if (config.featureFlagsInterfaceName === undefined) return [];
+  return collectInterfaceProperties(sourceFile, config.featureFlagsInterfaceName);
 }
 
 export function loadRpcMethods(config: FeatureMapAppConfig): Set<string> {

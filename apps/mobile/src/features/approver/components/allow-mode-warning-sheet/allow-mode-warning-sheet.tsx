@@ -1,5 +1,6 @@
 import { useState } from 'react';
 
+import { ApproverSelectors } from '@/shared/selectors/approver.selectors';
 import { t } from '@lingui/core/macro';
 
 import {
@@ -35,7 +36,11 @@ export function AllowModeWarningSheet({ ref, onDismiss: _onDismiss }: AllowModeW
       enablePanDownToClose={false}
       backdropComponent={props => <SheetNativeBackdrop pressBehavior="none" {...props} />}
     >
-      <Sheet.View justifyContent="space-between" gap="5">
+      <Sheet.View
+        justifyContent="space-between"
+        gap="5"
+        testID={ApproverSelectors.AllowModeWarningSheet}
+      >
         <Sheet.Header
           leftElement={
             <Sheet.Title>{t`Careful. This transaction could drain your wallet.`}</Sheet.Title>

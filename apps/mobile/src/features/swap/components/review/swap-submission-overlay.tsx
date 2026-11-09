@@ -10,6 +10,7 @@ import {
 import { SpinnerIcon } from '@/components/spinner-icon';
 import { SwapReviewSummary } from '@/features/swap/components/review/swap-review-summary';
 import { HEADER_HEIGHT } from '@/shared/constants';
+import { SwapSelectors } from '@/shared/selectors/swap.selectors';
 import { t } from '@lingui/core/macro';
 import { Trans } from '@lingui/react/macro';
 import * as Linking from 'expo-linking';
@@ -67,6 +68,7 @@ export function SwapSubmissionOverlay({
       bottom={0}
       left={0}
       bg="ink.background-primary"
+      testID={SwapSelectors.SubmissionOverlay}
       entering={FadeIn.duration(overlayEnteringAnimationDuration)}
     >
       <Box

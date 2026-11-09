@@ -3,6 +3,7 @@ import { SettingsListItem } from '@/components/settings/settings-list-item';
 import { useToastContext } from '@/components/toast/toast-context';
 import { useAuthentication } from '@/hooks/use-authentication';
 import { LEATHER_GUIDES_MOBILE_APP_AUTHENTICATION } from '@/shared/constants';
+import { SettingsSelectors } from '@/shared/selectors/settings.selectors';
 import { useSettings } from '@/store/settings/settings';
 import { t } from '@lingui/core/macro';
 
@@ -49,6 +50,7 @@ export function AppAuthenticationSheet({ sheetRef }: AppAuthenticationSheetProps
 
   return (
     <SettingsSheetLayout
+      testID={SettingsSelectors.AppAuthenticationSheet}
       sheetRef={sheetRef}
       title={t`App authentication`}
       onPressSupport={() => openUrl(LEATHER_GUIDES_MOBILE_APP_AUTHENTICATION)}

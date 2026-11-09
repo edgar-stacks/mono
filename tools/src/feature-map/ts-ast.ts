@@ -379,3 +379,23 @@ export function collectObjectPropertyStrings(
   visit(sourceFile);
   return texts;
 }
+
+export function collectCallFirstStrings(
+  sourceFile: ts.SourceFile,
+  calleeNames: readonly string[]
+): string[] {
+  const texts: string[] = [];
+  function visit(node: ts.Node) {
+    if (
+      ts.isCallExpression(node) &&
+      ts.isIdentifier(node.expression) &&
+      calleeNames.includes(node.expression.text)
+    ) {
+      const text = node.arguments[0] ? getStringLiteralText(node.arguments[0]) : undefined;
+      if (text !== undefined && !texts.includes(text)) texts.push(text);
+    }
+    ts.forEachChild(node, visit);
+  }
+  visit(sourceFile);
+  return texts;
+}

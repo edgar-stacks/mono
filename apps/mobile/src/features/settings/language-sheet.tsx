@@ -5,6 +5,7 @@ import Animated, { FadeIn } from 'react-native-reanimated';
 import { SettingsList } from '@/components/settings/settings-list';
 import { SettingsListItem } from '@/components/settings/settings-list-item';
 import { type AvailableLanguageCode, supportedLanguages } from '@/i18n/languages';
+import { SettingsSelectors } from '@/shared/selectors/settings.selectors';
 import { useSettings } from '@/store/settings/settings';
 import { t } from '@lingui/core/macro';
 import { useTheme } from '@shopify/restyle';
@@ -34,7 +35,11 @@ export function LanguageSheet({ sheetRef }: LanguageSheetProps) {
 
   return (
     <>
-      <SettingsSheetLayout sheetRef={sheetRef} title={t`Language`}>
+      <SettingsSheetLayout
+        sheetRef={sheetRef}
+        title={t`Language`}
+        testID={SettingsSelectors.LanguageSheet}
+      >
         <SettingsList gap="0">
           {entries(supportedLanguages).map(([code, name]) => (
             <SettingsListItem

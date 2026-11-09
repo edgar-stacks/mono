@@ -6,6 +6,7 @@ import { PortfolioHeader } from '@/features/account/components/portfolio-header'
 import SettingsLayout from '@/features/settings/settings-layout';
 import { EmptyWalletsScreen } from '@/features/settings/wallet-and-accounts/components/empty-wallets-screen';
 import { WalletsList } from '@/features/settings/wallet-and-accounts/wallets-list';
+import { WalletSettingsSelectors } from '@/shared/selectors/wallet-settings.selectors';
 import { useAccounts } from '@/store/accounts/accounts.read';
 import { useWallets } from '@/store/wallets/wallets.read';
 import { plural, t } from '@lingui/core/macro';
@@ -22,7 +23,7 @@ export default function SettingsWalletScreen() {
   const hasWallets = walletsList.length > 0;
 
   return (
-    <SettingsLayout title={t`Wallets`}>
+    <SettingsLayout title={t`Wallets`} testID={WalletSettingsSelectors.WalletsScreen}>
       {hasWallets && (
         <Box px="5" pb="3">
           <PortfolioHeader />

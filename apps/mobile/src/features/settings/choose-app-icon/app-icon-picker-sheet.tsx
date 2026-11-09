@@ -2,6 +2,7 @@ import { useRef } from 'react';
 
 import { useToastContext } from '@/components/toast/toast-context';
 import { SettingsSheetLayout } from '@/features/settings/settings-sheet.layout';
+import { SettingsSelectors } from '@/shared/selectors/settings.selectors';
 import { useSettings } from '@/store/settings/settings';
 import { analytics } from '@/utils/analytics';
 import { t } from '@lingui/core/macro';
@@ -67,7 +68,12 @@ export function AppIconPickerSheet({ sheetRef }: AppIconPickerSheetProps) {
   }
 
   return (
-    <SettingsSheetLayout sheetRef={sheetRef} title={t`App Icon`} onChange={handleSheetChange}>
+    <SettingsSheetLayout
+      sheetRef={sheetRef}
+      title={t`App Icon`}
+      onChange={handleSheetChange}
+      testID={SettingsSelectors.AppIconSheet}
+    >
       <AppIcons
         currentIcon={currentIcon}
         setNewIcon={icon => void handleIconSelect(icon)}

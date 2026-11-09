@@ -1,5 +1,7 @@
 import { type ReactNode } from 'react';
 
+import { SendSelectors } from '@/shared/selectors/send.selectors';
+
 import { Box, Sheet, type SheetRef } from '@leather.io/ui/native';
 
 interface RecipientSheetProps {
@@ -17,7 +19,9 @@ export function RecipientSheet({ sheetRef, onDismiss, children }: RecipientSheet
       snapPoints={['90%']}
       onDismiss={onDismiss}
     >
-      <Box flex={1}>{children}</Box>
+      <Box flex={1} testID={SendSelectors.RecipientSheet}>
+        {children}
+      </Box>
     </Sheet>
   );
 }

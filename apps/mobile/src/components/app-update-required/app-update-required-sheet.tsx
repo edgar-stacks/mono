@@ -1,5 +1,6 @@
 import appDisabledImage from '@/assets/stickers/app-disabled.png';
 import { useGlobalSheets } from '@/core/global-sheet-provider';
+import { AppUpdateSelectors } from '@/shared/selectors/app-update.selectors';
 import { t } from '@lingui/core/macro';
 import { Image } from 'expo-image';
 
@@ -17,7 +18,7 @@ export function AppUpdateRequiredSheet({ onUpdatePress }: AppUpdateRequiredSheet
 
   return (
     <Sheet ref={versionGuardSheetRef}>
-      <Sheet.View maxWidth={400} px="5">
+      <Sheet.View maxWidth={400} px="5" testID={AppUpdateSelectors.Sheet}>
         <Box pb="2" pt="6" flexDirection="row">
           <Box flex={1.4} gap="5">
             <Text color="ink.text-primary" variant="heading05">

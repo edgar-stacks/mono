@@ -5,6 +5,7 @@ import { SettingsListItem } from '@/components/settings/settings-list-item';
 import { AnalyticsSheet } from '@/features/settings/analytics-sheet';
 import { AppAuthenticationSheet } from '@/features/settings/app-authentication-sheet';
 import SettingsLayout from '@/features/settings/settings-layout';
+import { SettingsSelectors } from '@/shared/selectors/settings.selectors';
 import { useSettings } from '@/store/settings/settings';
 import { type SecurityLevelPreference } from '@/store/settings/utils';
 import { t } from '@lingui/core/macro';
@@ -31,7 +32,7 @@ export default function SettingsSecurityScreen() {
   const settings = useSettings();
 
   return (
-    <SettingsLayout title={t`Security`}>
+    <SettingsLayout title={t`Security`} testID={SettingsSelectors.SecurityScreen}>
       <SettingsList>
         <SettingsListItem
           title={t`Analytics`}

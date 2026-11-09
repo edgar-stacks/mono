@@ -5,6 +5,7 @@ import { usePreloadBtcData } from '@/features/send/hooks/use-preload-btc-data';
 import { usePreloadStxData } from '@/features/send/hooks/use-preload-stx-data';
 import { useSendNavigation } from '@/features/send/navigation';
 import { useSendFlowContext } from '@/features/send/send-flow-provider';
+import { SendSelectors } from '@/shared/selectors/send.selectors';
 import { analytics } from '@/utils/analytics';
 import { t } from '@lingui/core/macro';
 
@@ -32,6 +33,7 @@ export function SelectAsset() {
 
   return (
     <FullHeightSheetLayout
+      testID={SendSelectors.SelectAssetScreen}
       header={<FullHeightSheetHeader title={t`Select asset`} subtitle={t`Send`} />}
     >
       <AssetPicker

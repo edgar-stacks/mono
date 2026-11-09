@@ -8,7 +8,7 @@ import { AccountCard } from '@/features/account/components/account-card';
 import { AccountBalance } from '@/features/balances/total-balance';
 import SettingsLayout from '@/features/settings/settings-layout';
 import { AccountNameSheet } from '@/features/settings/wallet-and-accounts/account-name-sheet';
-import { TestId } from '@/shared/test-id';
+import { WalletSettingsSelectors } from '@/shared/selectors/wallet-settings.selectors';
 import { type Account, AccountLoader } from '@/store/accounts/accounts';
 import { userRenamesAccount, userTogglesHideAccount } from '@/store/accounts/accounts.write';
 import { useAppDispatch } from '@/store/utils';
@@ -62,7 +62,10 @@ function ConfigureAccount({ fingerprint, accountIndex, account }: ConfigureAccou
 
   return (
     <>
-      <SettingsLayout title={t`Configure\naccount`}>
+      <SettingsLayout
+        title={t`Configure\naccount`}
+        testID={WalletSettingsSelectors.ConfigureAccountScreen}
+      >
         <Box gap="4">
           <Box px="5">
             <WalletLoader fingerprint={account.fingerprint} key={account.id}>
@@ -92,7 +95,7 @@ function ConfigureAccount({ fingerprint, accountIndex, account }: ConfigureAccou
               onPress={() => {
                 accountNameSheetRef.current?.present();
               }}
-              testID={TestId.walletSettingsAccountNameCell}
+              testID={WalletSettingsSelectors.AccountNameCell}
             />
             <SettingsListItem
               title={t`Avatar`}

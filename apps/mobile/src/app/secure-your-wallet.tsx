@@ -5,6 +5,7 @@ import { Screen } from '@/components/screen/screen';
 import { SkipSecureWalletSheet } from '@/features/wallet-manager/secure-your-wallet/skip-secure-wallet-sheet';
 import { useAuthentication } from '@/hooks/use-authentication';
 import { useCreateWallet } from '@/hooks/use-create-wallet';
+import { OnboardingSelectors } from '@/shared/selectors/onboarding.selectors';
 import { t } from '@lingui/core/macro';
 import { Image } from 'expo-image';
 
@@ -23,7 +24,7 @@ export default function SecureYourWalletScreen() {
   }
 
   return (
-    <Screen>
+    <Screen testID={OnboardingSelectors.SecureYourWalletScreen}>
       <Screen.Header />
       <Screen.ScrollView>
         <Screen.Title>{pageTitle}</Screen.Title>

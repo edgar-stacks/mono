@@ -1,4 +1,5 @@
 import { WarningSheetLayout } from '@/components/sheets/warning-sheet.layout';
+import { OnboardingSelectors } from '@/shared/selectors/onboarding.selectors';
 import { t } from '@lingui/core/macro';
 
 import { type SheetRef } from '@leather.io/ui/native';
@@ -10,6 +11,7 @@ interface SkipSecureWalletSheetProps {
 export function SkipSecureWalletSheet({ sheetRef, onSubmit }: SkipSecureWalletSheetProps) {
   return (
     <WarningSheetLayout
+      testID={OnboardingSelectors.SkipSecuritySheet}
       variant="critical"
       sheetRef={sheetRef}
       title={t`Continue without security`}

@@ -2,6 +2,7 @@ import { SettingsList } from '@/components/settings/settings-list';
 import { SettingsListItem } from '@/components/settings/settings-list-item';
 import { useOpenUrl } from '@/features/browser/browser/use-open-url';
 import SettingsLayout from '@/features/settings/settings-layout';
+import { SettingsSelectors } from '@/shared/selectors/settings.selectors';
 import { t } from '@lingui/core/macro';
 
 import { LEATHER_GUIDES_URL, LEATHER_LEARN_URL, LEATHER_SUPPORT_URL } from '@leather.io/constants';
@@ -11,7 +12,7 @@ export default function SettingsHelpScreen() {
   const { openUrl } = useOpenUrl();
 
   return (
-    <SettingsLayout title={t`Help`}>
+    <SettingsLayout title={t`Help`} testID={SettingsSelectors.HelpScreen}>
       <SettingsList>
         <SettingsListItem
           title={t`Contact us`}

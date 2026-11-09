@@ -1,4 +1,5 @@
 import { InputSheetLayout } from '@/components/sheets/input-sheet.layout';
+import { OnboardingSelectors } from '@/shared/selectors/onboarding.selectors';
 import { t } from '@lingui/core/macro';
 
 import { type SheetRef } from '@leather.io/ui/native';
@@ -20,6 +21,7 @@ export function RecoverWalletSheet({
       title={t`BIP39 passphrase`}
       placeholder={t`Passphrase`}
       submitTitle={t`Confirm`}
+      inputTestId={OnboardingSelectors.PassphraseSheetInput}
       onSubmit={newPassphrase => {
         recoverWalletSheetRef.current?.close();
         setPassphrase(newPassphrase);

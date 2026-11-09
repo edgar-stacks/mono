@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 
 import { SheetLayout } from '@/components/sheets/sheet.layout';
 import { type GuardResult } from '@/features/send/components/recipient/use-recipient-evaluator';
+import { SendSelectors } from '@/shared/selectors/send.selectors';
 import { t } from '@lingui/core/macro';
 
 import { AddressDisplayer, Box, Button, type SheetRef, Text } from '@leather.io/ui/native';
@@ -37,7 +38,12 @@ export function RecipientGuardSheet({ sheetRef, config, onConfirm }: RecipientWa
   }
 
   return (
-    <SheetLayout handleComponent={null} sheetRef={sheetRef} title={title}>
+    <SheetLayout
+      handleComponent={null}
+      sheetRef={sheetRef}
+      title={title}
+      testID={SendSelectors.RecipientGuardSheet}
+    >
       <Text>{description}</Text>
       <Box
         p="5"

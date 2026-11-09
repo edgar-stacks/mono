@@ -4,6 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { FullHeightSheet } from '@/components/sheets/full-height-sheet/full-height-sheet';
 import { AccountBalance } from '@/features/balances/total-balance';
 import { HEADER_HEIGHT } from '@/shared/constants';
+import { AccountSelectors } from '@/shared/selectors/account.selectors';
 import { type Account } from '@/store/accounts/accounts';
 import { getConnectedAppsToAccountIdMap, useApps } from '@/store/apps/apps.read';
 import { useSettings } from '@/store/settings/settings';
@@ -47,7 +48,7 @@ export function AccountSelectorSheetLayout({
       >
         <PortfolioHeader />
       </Box>
-      <Sheet.ScrollView>
+      <Sheet.ScrollView testID={AccountSelectors.SelectorSheet}>
         <Box px="5" pb="7">
           <Box gap="2">
             {accounts.map(account => (

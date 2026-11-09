@@ -1,6 +1,7 @@
 import { SettingsList } from '@/components/settings/settings-list';
 import { SettingsListItem } from '@/components/settings/settings-list-item';
 import { SettingsSheetLayout } from '@/features/settings/settings-sheet.layout';
+import { HomeSelectors } from '@/shared/selectors/home.selectors';
 import { useSettings } from '@/store/settings/settings';
 import { type TokenPreset, tokenPresets } from '@/store/settings/utils';
 import { t } from '@lingui/core/macro';
@@ -28,7 +29,11 @@ export function TokenPresetSheet({ sheetRef }: TokenPresetSheetProps) {
   const { tokenPreset, changeTokenPreset } = useSettings();
 
   return (
-    <SettingsSheetLayout sheetRef={sheetRef} title={t`Default set`}>
+    <SettingsSheetLayout
+      sheetRef={sheetRef}
+      title={t`Default set`}
+      testID={HomeSelectors.TokenPresetSheet}
+    >
       <SettingsList gap="0">
         {tokenPresets.map(preset => {
           const label = getTokenPresetLabel(preset);

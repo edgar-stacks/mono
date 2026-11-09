@@ -2,6 +2,7 @@ import { SettingsList } from '@/components/settings/settings-list';
 import { SettingsListItem } from '@/components/settings/settings-list-item';
 import { useToastContext } from '@/components/toast/toast-context';
 import SettingsLayout from '@/features/settings/settings-layout';
+import { SettingsSelectors } from '@/shared/selectors/settings.selectors';
 import { useSettings } from '@/store/settings/settings';
 import { defaultNetworkPreferences } from '@/store/settings/utils';
 import { t } from '@lingui/core/macro';
@@ -41,7 +42,7 @@ export default function SettingsNetworksScreen() {
   }
 
   return (
-    <SettingsLayout title={t`Networks`}>
+    <SettingsLayout title={t`Networks`} testID={SettingsSelectors.NetworksScreen}>
       <SettingsList>
         {defaultNetworkPreferences.map(network => (
           <SettingsListItem

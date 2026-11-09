@@ -5,6 +5,7 @@ import { FullHeightSheetLayout } from '@/components/sheets/full-height-sheet/ful
 import { getAmountErrorMessage } from '@/features/swap/components/amount-field/amount-field-error-messages';
 import { AmountPresets } from '@/features/swap/components/amount-presets';
 import { QuotePreview } from '@/features/swap/components/quote-preview/quote-preview';
+import { SwapSelectors } from '@/shared/selectors/swap.selectors';
 import { t } from '@lingui/core/macro';
 
 import { currencyDecimalsMap } from '@leather.io/constants';
@@ -55,7 +56,10 @@ export function SwapFormScreen({ liveEstimate, onPressReview }: SwapFormScreenPr
   }
 
   return (
-    <FullHeightSheetLayout header={<FullHeightSheetHeader title={t`Swap`} />}>
+    <FullHeightSheetLayout
+      header={<FullHeightSheetHeader title={t`Swap`} />}
+      testID={SwapSelectors.FormScreen}
+    >
       <LayoutAnimationConfig skipEntering>
         <Panel.Root>
           <Panel.Card type="pay">

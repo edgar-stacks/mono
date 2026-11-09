@@ -1,6 +1,7 @@
 import { Dimensions } from 'react-native';
 
 import { WalletGenerationAnimation } from '@/components/animations/wallet-generation';
+import { OnboardingSelectors } from '@/shared/selectors/onboarding.selectors';
 import { t } from '@lingui/core/macro';
 
 import { Box, Text } from '@leather.io/ui/native';
@@ -9,7 +10,7 @@ const { height } = Dimensions.get('window');
 
 export default function GeneratingWalletScreen() {
   return (
-    <Box flex={1} bg="ink.background-primary">
+    <Box flex={1} bg="ink.background-primary" testID={OnboardingSelectors.GeneratingWalletScreen}>
       <Box
         position="absolute"
         bottom={height / 2}

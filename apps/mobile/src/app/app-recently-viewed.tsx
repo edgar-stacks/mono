@@ -4,6 +4,7 @@ import { HeaderTitle } from '@/components/screen/screen-header/components/header
 import { Sticker } from '@/components/sticker';
 import { ScreenshotCard } from '@/features/browser/browser/screenshot-card';
 import { useOpenUrl } from '@/features/browser/browser/use-open-url';
+import { BrowserSelectors } from '@/shared/selectors/browser.selectors';
 import { useApps } from '@/store/apps/apps.read';
 import { t } from '@lingui/core/macro';
 
@@ -48,5 +49,9 @@ export default function RecentlyViewedScreen() {
 
   const innerContent = appList.length === 0 ? emptyState : withApps;
 
-  return <Screen backgroundColor="ink.background-primary">{innerContent}</Screen>;
+  return (
+    <Screen backgroundColor="ink.background-primary" testID={BrowserSelectors.RecentlyViewedScreen}>
+      {innerContent}
+    </Screen>
+  );
 }
