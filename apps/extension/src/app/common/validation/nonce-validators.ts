@@ -10,3 +10,9 @@ export const nonceValidator = numberField('Nonce must be a positive integer or 0
     error: 'Nonce must be zero or more',
   })
 );
+
+export function getNonceInputError(value: unknown) {
+  const result = nonceValidator.safeParse(value);
+  if (result.success) return;
+  return result.error.issues[0]?.message;
+}

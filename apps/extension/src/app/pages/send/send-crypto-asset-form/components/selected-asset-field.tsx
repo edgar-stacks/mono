@@ -1,5 +1,6 @@
-import { Field, useField } from 'formik';
-import { Flex, styled } from 'leather-styles/jsx';
+import { useFormContext } from 'react-hook-form';
+
+import { Box, Flex, styled } from 'leather-styles/jsx';
 
 import { Flag, useOnMount } from '@leather.io/ui';
 
@@ -9,9 +10,9 @@ interface SelectedAssetFieldProps {
   symbol: string;
 }
 export function SelectedAssetField({ icon, name, symbol }: SelectedAssetFieldProps) {
-  const [, , helpers] = useField('symbol');
+  const { setValue } = useFormContext<{ symbol?: string }>();
 
-  useOnMount(() => helpers.setValue(symbol));
+  useOnMount(() => setValue('symbol', symbol));
 
   return (
     <Flex
@@ -24,11 +25,11 @@ export function SelectedAssetField({ icon, name, symbol }: SelectedAssetFieldPro
       px="space.04"
       width="100%"
     >
-      <Field as="div" name="symbol">
+      <Box>
         <Flag img={icon} spacing="space.03" width="100%">
           <styled.span textStyle="label.01">{name}</styled.span>
         </Flag>
-      </Field>
+      </Box>
     </Flex>
   );
 }

@@ -1,10 +1,11 @@
 import { type FormEvent, memo } from 'react';
+import { useFormContext, useWatch } from 'react-hook-form';
 
-import { useField } from 'formik';
 import { Stack, type StackProps } from 'leather-styles/jsx';
 
 import { Input } from '@leather.io/ui';
 
+import { useFieldError } from '@app/common/form-utils';
 import { ErrorLabel } from '@app/components/error-label';
 
 interface EditNonceFieldProps extends StackProps {
@@ -13,21 +14,23 @@ interface EditNonceFieldProps extends StackProps {
 
 export const EditNonceField = memo(function EditNonceField(props: EditNonceFieldProps) {
   const { onBlur } = props;
-  const [field, meta, helpers] = useField<number | string | undefined>('nonce');
+  const { control, setValue } = useFormContext<{ nonce?: number | string }>();
+  const nonce = useWatch({ control, name: 'nonce' });
+  const error = useFieldError('nonce');
 
   return (
     <Stack width="100%" {...props}>
-      <Input.Root data-has-error={meta.error}>
+      <Input.Root data-has-error={error}>
         <Input.Label>Custom nonce</Input.Label>
         <Input.Field
           onBlur={onBlur}
-          value={field.value}
+          value={nonce}
           onChange={(evt: FormEvent<HTMLInputElement>) => {
-            void helpers.setValue(evt.currentTarget.value);
+            setValue('nonce', evt.currentTarget.value);
           }}
         />
       </Input.Root>
-      {meta.error && <ErrorLabel>{meta.error}</ErrorLabel>}
+      {error && <ErrorLabel>{error}</ErrorLabel>}
     </Stack>
   );
 });

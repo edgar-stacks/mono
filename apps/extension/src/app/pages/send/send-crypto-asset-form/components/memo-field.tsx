@@ -1,5 +1,6 @@
+import { useController } from 'react-hook-form';
+
 import { SendCryptoAssetSelectors } from '@tests/selectors/send.selectors';
-import { useField } from 'formik';
 import { Box } from 'leather-styles/jsx';
 
 import { Input } from '@leather.io/ui';
@@ -10,7 +11,7 @@ import { TextInputFieldError } from '@app/components/field-error';
 const name = 'memo';
 
 export function MemoField() {
-  const [field] = useField(name);
+  const { field } = useController({ name });
 
   const showError = useShowFieldError(name);
 

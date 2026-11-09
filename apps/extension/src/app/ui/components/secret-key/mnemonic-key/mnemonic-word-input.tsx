@@ -1,6 +1,5 @@
 import { useState } from 'react';
-
-import { useField } from 'formik';
+import { useController } from 'react-hook-form';
 
 import { Input } from '@leather.io/ui';
 import { extractPhraseFromString } from '@leather.io/utils';
@@ -20,11 +19,11 @@ export function MnemonicWordInput({
   onPasteEntireKey,
 }: MnemonicWordInputProps) {
   const name = `${fieldNumber}`;
-  const [field, meta] = useField<string>(name);
+  const { field, fieldState } = useController<Record<string, string>>({ name });
   const [isFocused, setIsFocused] = useState(false);
   const isDirty = useIsFieldDirty(name);
   return (
-    <Input.Root hasError={isDirty && !!meta.error} shrink={!!value}>
+    <Input.Root hasError={isDirty && !!fieldState.error?.message} shrink={!!value}>
       <Input.Field
         // Limitation of the animated label is that we cannot detect
         // programatically updated inputs. Here we add an empty place holder to

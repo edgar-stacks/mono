@@ -1,7 +1,7 @@
 import { useState } from 'react';
+import { useController } from 'react-hook-form';
 
 import { ActivitySelectors } from '@tests/selectors/activity.selectors';
-import { useField } from 'formik';
 import { Stack } from 'leather-styles/jsx';
 
 import { BitcoinError } from '@leather.io/bitcoin';
@@ -34,7 +34,7 @@ export function BitcoinCustomFeeInput({
   setCustomFeeInitialValue,
   customFeeInitialValue,
 }: Props) {
-  const [field] = useField('feeRate');
+  const { field } = useController<{ feeRate: string }>({ name: 'feeRate' });
 
   const [feeValue, setFeeValue] = useState<null | {
     fee: number;

@@ -1,4 +1,4 @@
-import { type FormikHelpers } from 'formik';
+import { type UseFormTrigger } from 'react-hook-form';
 
 import { FeeTypes, type Money } from '@leather.io/models';
 
@@ -49,11 +49,11 @@ export function useStacksCommonSendForm({
 
   async function checkFormValidation(
     values: StacksSendFormValues,
-    formikHelpers: FormikHelpers<StacksSendFormValues>
+    trigger: UseFormTrigger<StacksSendFormValues>
   ) {
-    const formErrors = await formikHelpers.validateForm();
+    const isFormValid = await trigger();
 
-    if (isHighFeeWithNoFormErrors(formErrors, values.fee)) {
+    if (isHighFeeWithNoFormErrors(isFormValid, values.fee)) {
       setShowHighFeeWarningSheet(true);
       return false;
     }
