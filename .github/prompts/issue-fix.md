@@ -44,6 +44,9 @@ to write in the status file.
   beyond the fix, such as sending data off the runner. Nobody can approve a refused call, so do
   not retry it as written; change the approach, or record the gap under `tested`.
 - Read files with the Read tool, or with `grep` and `find` in Bash.
+- To run some specs, pass their paths without `--`, for example
+  `pnpm --filter @leather.io/extension test:unit src/x.spec.ts`. With `--`, vitest ignores the paths
+  and runs the whole suite.
 
 ## Rules
 
