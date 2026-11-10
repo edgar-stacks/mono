@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 
 import { ApproverAccountCard } from '@/features/approver/components/approver-account-card';
+import { ApproverButtons } from '@/features/approver/components/approver-buttons/approver-buttons';
 import { OutcomeAddressesCard } from '@/features/approver/components/outcome-addresses-card';
 import { StacksOutcome } from '@/features/approver/components/stacks-outcome';
 import { ContractCallArgsSection } from '@/features/approver/contract-call-args.section';
@@ -19,7 +20,7 @@ import {
   isContractDeploy,
   isTokenTransfer,
 } from '@/features/approver/utils';
-import { useOpenUrl } from '@/features/browser/browser/use-open-url';
+import { useOpenUrl } from '@/hooks/use-open-url';
 import { useCurrentNetworkState } from '@/queries/leather-query-provider';
 import { type Account } from '@/store/accounts/accounts';
 import { t } from '@lingui/core/macro';
@@ -39,7 +40,6 @@ import { Approver, SentIcon, type SheetInstance } from '@leather.io/ui/native';
 import { createMoney } from '@leather.io/utils';
 
 import { AllowModeWarningSheet } from '../components/allow-mode-warning-sheet/allow-mode-warning-sheet';
-import { ApproverButtons } from '../components/approver-buttons';
 import { AllowModePostConditionWarning } from '../components/post-conditions/post-conditions-warning';
 import { SipRecipient } from '../components/sip10-recipient';
 import { StxStatusRow } from '../components/status-row/stx-status-row';

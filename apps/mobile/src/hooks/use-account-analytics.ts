@@ -3,7 +3,7 @@ import { useEffect } from 'react';
 import { useAccountTotalBalance } from '@/queries/balance/account-balance.query';
 import { useBtcAccountBalance } from '@/queries/balance/btc-balance.query';
 import { useStxAccountBalance } from '@/queries/balance/stx-balance.query';
-import { analytics } from '@/utils/analytics';
+import { analytics } from '@/store/analytics';
 import { countBy, filter, identity, map, pipe } from 'remeda';
 
 import { makeAccountIdentifer } from '@leather.io/crypto';

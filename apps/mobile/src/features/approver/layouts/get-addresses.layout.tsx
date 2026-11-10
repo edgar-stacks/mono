@@ -1,12 +1,11 @@
 import { ApproverAccountCard } from '@/features/approver/components/approver-account-card';
+import { ApproverButtons } from '@/features/approver/components/approver-buttons/approver-buttons';
 import { ApproverPermissions } from '@/features/approver/components/approver-permissions';
 import { type Account } from '@/store/accounts/accounts';
 import { t } from '@lingui/core/macro';
 
 import { makeAccountIdentifer } from '@leather.io/crypto';
 import { Approver, Cell, ChevronRightIcon } from '@leather.io/ui/native';
-
-import { ApproverButtons } from '../components/approver-buttons';
 
 interface GetAddressesApproverLayoutProps {
   requester: string;

@@ -1,6 +1,6 @@
 import { createSelector } from '@reduxjs/toolkit';
 
-import { type RootState } from '../store';
+import type { RootState } from '../store';
 import { useAppSelector } from '../utils';
 import { appsAdapter } from './apps.write';
 import { type App, type AppStatus } from './utils';

@@ -10,7 +10,7 @@ import {
 import { type Account } from '../accounts/accounts';
 import { useAccountsByFingerprint } from '../accounts/accounts.read';
 import { mnemonicStore } from '../secure-store/mnemonic-store';
-import { type RootState } from '../store';
+import type { RootState } from '../store';
 import { useAppDispatch, useAppSelector } from '../utils';
 
 const selectors = walletAdapter.getSelectors((state: RootState) => state.wallets);
