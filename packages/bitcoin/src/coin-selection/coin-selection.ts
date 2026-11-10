@@ -136,12 +136,20 @@ export function determineUtxosForSpend<T extends InputData>({
     ...changeUtxos,
   ];
 
+  const hasChange = changeUtxos.length > 0;
+
+  const sizeInfo = hasChange
+    ? estimateTransactionSize()
+    : getSizeInfo({ utxos: neededUtxos, recipients, isSendMax: true, inputSizing });
+
+  const finalFee = hasChange ? new BigNumber(fee) : getUtxoTotal(neededUtxos).minus(amount.amount);
+
   return {
     filteredUtxos,
     inputs: neededUtxos,
     outputs,
-    size: estimateTransactionSize().txVBytes,
-    fee: createMoney(new BigNumber(fee), 'BTC'),
-    ...estimateTransactionSize(),
+    size: sizeInfo.txVBytes,
+    fee: createMoney(finalFee, 'BTC'),
+    ...sizeInfo,
   };
 }
