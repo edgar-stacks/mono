@@ -1,7 +1,7 @@
 import * as btc from '@scure/btc-signer';
 import { hexToBytes } from '@stacks/common';
 
-import { isWshDescriptor } from '@leather.io/bitcoin';
+import { compilesToP2wpkhScriptCode, isWshDescriptor } from '@leather.io/bitcoin';
 import { RpcErrorCode, createRpcErrorResponse, signPsbt } from '@leather.io/rpc';
 import { ensureArray, isDefined, isUndefined } from '@leather.io/utils';
 
@@ -90,6 +90,25 @@ export const signPsbtHandler = defineRpcRequestHandler(signPsbt.method, async (r
         error: {
           code: RpcErrorCode.INVALID_PARAMS,
           message: 'Only wsh() descriptors are supported',
+        },
+      })
+    );
+    return;
+  }
+
+  if (
+    isDefined(request.params.descriptor) &&
+    compilesToP2wpkhScriptCode(request.params.descriptor)
+  ) {
+    void trackRpcRequestError({ endpoint: request.method, error: 'Invalid descriptor' });
+
+    void sendMessageToOriginatingFrame(
+      getOriginatingFrameFromPort(port),
+      createRpcErrorResponse('signPsbt', {
+        id: request.id,
+        error: {
+          code: RpcErrorCode.INVALID_PARAMS,
+          message: 'Descriptor is not supported for signing',
         },
       })
     );
