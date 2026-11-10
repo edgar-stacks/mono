@@ -1,6 +1,6 @@
 import { inject, injectable } from 'inversify';
 
-import { isDefined } from '@leather.io/utils';
+import { isDefined, isError } from '@leather.io/utils';
 
 import {
   type LeatherApiAddressComplianceCheck,
@@ -15,6 +15,45 @@ export type AddressComplianceCheckResult =
   | { status: 'compliant' }
   | { status: 'non_compliant'; reason: string }
   | { status: 'unavailable'; reason: string };
+
+const complianceCheckRetryDelayMs = 750;
+const offlineComplianceCheckReason = 'leather_api_offline';
+
+export function isOfflineComplianceCheckReason(reason: string) {
+  return reason === offlineComplianceCheckReason;
+}
+
+function isOffline() {
+  return typeof navigator !== 'undefined' && navigator.onLine === false;
+}
+
+function isTimeoutError(error: unknown) {
+  return isError(error) && error.name === 'TimeoutError';
+}
+
+function createAbortError() {
+  const abortError = new Error('AbortError');
+  abortError.name = 'AbortError';
+  return abortError;
+}
+
+function waitForRetryDelay(signal?: AbortSignal) {
+  return new Promise<void>((resolve, reject) => {
+    if (signal?.aborted) {
+      reject(createAbortError());
+      return;
+    }
+    function onAbort() {
+      clearTimeout(timeout);
+      reject(createAbortError());
+    }
+    const timeout = setTimeout(() => {
+      signal?.removeEventListener('abort', onAbort);
+      resolve();
+    }, complianceCheckRetryDelayMs);
+    signal?.addEventListener('abort', onAbort, { once: true });
+  });
+}
 
 @injectable()
 export class ComplianceService {
@@ -32,9 +71,7 @@ export class ComplianceService {
     }
 
     try {
-      const complianceCheck = await this.leatherApiClient.fetchAddressComplianceCheck(address, {
-        signal,
-      });
+      const complianceCheck = await this.fetchAddressComplianceCheckWithRetry(address, signal);
       if (complianceCheck.status === 'non_compliant') {
         return { status: 'non_compliant', reason: this.getFailedChecksReason(complianceCheck) };
       }
@@ -45,6 +82,16 @@ export class ComplianceService {
     } catch (error) {
       if (signal?.aborted) throw error;
       return { status: 'unavailable', reason: this.getLeatherApiUnavailableReason(error) };
+    }
+  }
+
+  private async fetchAddressComplianceCheckWithRetry(address: string, signal?: AbortSignal) {
+    try {
+      return await this.leatherApiClient.fetchAddressComplianceCheck(address, { signal });
+    } catch (error) {
+      if (signal?.aborted || !(error instanceof TypeError)) throw error;
+      await waitForRetryDelay(signal);
+      return await this.leatherApiClient.fetchAddressComplianceCheck(address, { signal });
     }
   }
 
@@ -70,7 +117,10 @@ export class ComplianceService {
 
   private getLeatherApiUnavailableReason(error: unknown): string {
     if (LeatherApiError.isLeatherApiError(error)) return `leather_api_http_${error.status}`;
-    if (error instanceof TypeError) return 'leather_api_network_error';
+    if (isTimeoutError(error)) return 'leather_api_timeout';
+    if (error instanceof TypeError) {
+      return isOffline() ? offlineComplianceCheckReason : 'leather_api_network_error';
+    }
     return 'leather_api_unknown_error';
   }
 }
