@@ -1,5 +1,6 @@
 import { ApproverAccountCard } from '@/features/approver/components/approver-account-card';
 import { ApproverPermissions } from '@/features/approver/components/approver-permissions';
+import { ApproverSelectors } from '@/shared/selectors/approver.selectors';
 import { type Account } from '@/store/accounts/accounts';
 import { t } from '@lingui/core/macro';
 
@@ -31,7 +32,7 @@ export function GetAddressesApproverLayout({
     <Approver requester={requester}>
       <Approver.Container>
         <Approver.Header showLargeFavicon title={t`Connect`} />
-        <Approver.Section mb="1">
+        <Approver.Section mb="1" testID={ApproverSelectors.ConnectAccountSection}>
           {selectedAccountId ? (
             <ApproverAccountCard
               accounts={accounts.filter(

@@ -6,7 +6,8 @@ import { FullHeightSheetHeader } from '@/components/sheets/full-height-sheet/ful
 import { FullHeightSheetLayout } from '@/components/sheets/full-height-sheet/full-height-sheet.layout';
 import { QrCard } from '@/features/receive/components/qr-card';
 import { useCopyAddress } from '@/hooks/use-copy-address';
-import { TestId } from '@/shared/test-id';
+import { ReceiveSelectors } from '@/shared/selectors/receive.selectors';
+import { SharedSelectors } from '@/shared/selectors/shared.selectors';
 import { useAccounts } from '@/store/accounts/accounts.read';
 import { analytics } from '@/utils/analytics';
 import { t } from '@lingui/core/macro';
@@ -57,13 +58,13 @@ export function AssetDetails() {
           subtitle={account?.name}
           leftElement={
             canGoBack ? (
-              <HeaderBackButton onPress={navigation.goBack} testID={TestId.backButton} />
+              <HeaderBackButton onPress={navigation.goBack} testID={SharedSelectors.BackButton} />
             ) : null
           }
         />
       }
     >
-      <Box gap="5" px="5" flex={1}>
+      <Box gap="5" px="5" flex={1} testID={ReceiveSelectors.AssetDetails}>
         <Box mt="5" mb="6">
           <QrCard value={address} />
         </Box>
@@ -80,6 +81,7 @@ export function AssetDetails() {
         </Box>
 
         <Pressable
+          testID={ReceiveSelectors.CopyAddressButton}
           flexDirection="row"
           px="4"
           py="3"
@@ -98,6 +100,7 @@ export function AssetDetails() {
         </Pressable>
 
         <Button
+          testID={ReceiveSelectors.ShareButton}
           variant="outline"
           iconStart={ArrowOutOfBoxIcon}
           style={{ marginTop: 'auto' }}

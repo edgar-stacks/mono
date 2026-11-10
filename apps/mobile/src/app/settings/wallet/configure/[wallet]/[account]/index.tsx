@@ -8,7 +8,7 @@ import { AccountCard } from '@/features/account/components/account-card';
 import { AccountBalance } from '@/features/balances/total-balance';
 import SettingsLayout from '@/features/settings/settings-layout';
 import { AccountNameSheet } from '@/features/settings/wallet-and-accounts/account-name-sheet';
-import { TestId } from '@/shared/test-id';
+import { WalletSettingsSelectors } from '@/shared/selectors/wallet-settings.selectors';
 import { type Account, AccountLoader } from '@/store/accounts/accounts';
 import { userRenamesAccount, userTogglesHideAccount } from '@/store/accounts/accounts.write';
 import { useAppDispatch } from '@/store/utils';
@@ -92,7 +92,7 @@ function ConfigureAccount({ fingerprint, accountIndex, account }: ConfigureAccou
               onPress={() => {
                 accountNameSheetRef.current?.present();
               }}
-              testID={TestId.walletSettingsAccountNameCell}
+              testID={WalletSettingsSelectors.AccountNameCell}
             />
             <SettingsListItem
               title={t`Avatar`}
@@ -103,18 +103,21 @@ function ConfigureAccount({ fingerprint, accountIndex, account }: ConfigureAccou
                   params: { wallet: fingerprint, account: accountIndex },
                 });
               }}
+              testID={WalletSettingsSelectors.AccountAvatarCell}
             />
             {account.status === 'active' ? (
               <SettingsListItem
                 title={t`Hide account`}
                 icon={<Eye1ClosedIcon />}
                 onPress={toggleHideAccount}
+                testID={WalletSettingsSelectors.AccountHideCell}
               />
             ) : (
               <SettingsListItem
                 title={t`Reveal account`}
                 icon={<Eye1Icon />}
                 onPress={toggleHideAccount}
+                testID={WalletSettingsSelectors.AccountHideCell}
               />
             )}
           </SettingsList>

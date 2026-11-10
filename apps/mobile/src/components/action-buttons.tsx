@@ -1,4 +1,5 @@
 import { useOnramperBuyFlag, useOnramperSellFlag, useSwapFlag } from '@/features/feature-flags';
+import { HomeSelectors } from '@/shared/selectors/home.selectors';
 import { t } from '@lingui/core/macro';
 
 import { Button, type ButtonProps } from '@leather.io/ui/native';
@@ -29,7 +30,13 @@ export function ActionButtons({
   return (
     <>
       {onSend && (
-        <Button onPress={onSend} minWidth={86} size={size} flex={fullWidth ? 1 : 0}>
+        <Button
+          onPress={onSend}
+          minWidth={86}
+          size={size}
+          flex={fullWidth ? 1 : 0}
+          testID={HomeSelectors.SendButton}
+        >
           {t`Send`}
         </Button>
       )}
@@ -40,6 +47,7 @@ export function ActionButtons({
           size={size}
           variant="outline"
           flex={fullWidth ? 1 : 0}
+          testID={HomeSelectors.ReceiveButton}
         >
           {t`Receive`}
         </Button>
@@ -51,6 +59,7 @@ export function ActionButtons({
           size={size}
           variant="outline"
           flex={fullWidth ? 1 : 0}
+          testID={HomeSelectors.BuyButton}
         >
           {t`Buy`}
         </Button>
@@ -62,6 +71,7 @@ export function ActionButtons({
           size={size}
           variant="outline"
           flex={fullWidth ? 1 : 0}
+          testID={HomeSelectors.SellButton}
         >
           {t`Sell`}
         </Button>
@@ -73,6 +83,7 @@ export function ActionButtons({
           size={size}
           variant="outline"
           flex={fullWidth ? 1 : 0}
+          testID={HomeSelectors.SwapButton}
         >
           {t`Swap`}
         </Button>

@@ -25,6 +25,7 @@ import { SlippageInfoSheet } from '@/features/swap/components/slippage-info-shee
 import { SlippageSelectorSheet } from '@/features/swap/components/slippage-selector/slippage-selector-sheet';
 import { formatSwapRate, sumFeesInQuoteCurrency } from '@/features/swap/swap.utils';
 import { useAndroidBackHandler } from '@/hooks/use-android-back-handler';
+import { SwapSelectors } from '@/shared/selectors/swap.selectors';
 import { formatCurrency, formatPercentage } from '@/utils/currency-formatter';
 import { useBottomSheetModal } from '@gorhom/bottom-sheet';
 import { t } from '@lingui/core/macro';
@@ -125,7 +126,7 @@ function SwapReviewContent({ liveEstimate }: SwapReviewContentProps) {
   }
 
   return (
-    <Box gap="8" flex={1}>
+    <Box gap="8" flex={1} testID={SwapSelectors.Review}>
       <SwapReviewSummary
         baseAsset={baseAsset}
         targetAsset={targetAsset}
@@ -198,6 +199,7 @@ function SwapReviewContent({ liveEstimate }: SwapReviewContentProps) {
         >{t`Make sure everything looks correct.\nConfirmed transactions cannot be undone.`}</Text>
 
         <Button
+          testID={SwapSelectors.ConfirmButton}
           disabled={!swapState.canSubmit || submissionStatus !== 'idle'}
           onPress={handleConfirm}
         >{t`Confirm`}</Button>

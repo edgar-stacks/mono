@@ -1,0 +1,15 @@
+export const HomeSelectors = {
+  CreateWalletCard: 'homeCreateWalletCard',
+  PrivacyButton: 'homePrivacyButton',
+  SettingsButton: 'homeSettingsButton',
+  Screen: 'homeScreen',
+  SignedOutScreen: 'homeSignedOutScreen',
+  AccountHeader: 'homeAccountHeader',
+  TokensTab: 'homeTokensTab',
+  CollectiblesTab: 'homeCollectiblesTab',
+  SendButton: 'homeSendButton',
+  ReceiveButton: 'homeReceiveButton',
+  BuyButton: 'homeBuyButton',
+  SellButton: 'homeSellButton',
+  SwapButton: 'homeSwapButton',
+} as const;

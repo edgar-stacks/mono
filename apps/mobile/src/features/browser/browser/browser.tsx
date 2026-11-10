@@ -5,6 +5,7 @@ import { WebView, type WebViewMessageEvent, type WebViewNavigation } from 'react
 
 import { useGlobalSheets } from '@/core/global-sheet-provider';
 import { type BrowserLoadingMethods } from '@/features/account/components/browser-loading';
+import { BrowserSelectors } from '@/shared/selectors/browser.selectors';
 import { userAddsApp } from '@/store/apps/apps.write';
 import { useAppDispatch } from '@/store/utils';
 import * as Linking from 'expo-linking';
@@ -134,6 +135,7 @@ export function Browser({
     <Box flex={1} bg="ink.background-primary">
       <ViewShot ref={viewShotRef} style={{ flex: 1, paddingTop: top }}>
         <WebView
+          testID={BrowserSelectors.WebView}
           originWhitelist={['*']}
           onScroll={({ nativeEvent }) => {
             if (nativeEvent.contentOffset.y < -CONTENT_OFFSET_FOR_BROWSER_CLOSE) {

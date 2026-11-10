@@ -2,6 +2,7 @@ import { useCallback } from 'react';
 
 import { useGlobalSheets } from '@/core/global-sheet-provider';
 import { AddWalletCell } from '@/features/wallet-manager/add-wallet/add-wallet-cell';
+import { GlobalSheetSelectors } from '@/shared/selectors/global-sheet.selectors';
 import { t } from '@lingui/core/macro';
 import { useRouter } from 'expo-router';
 
@@ -28,12 +29,14 @@ export function AddAccountSheet() {
           <AddWalletCell
             onPress={addToWallet}
             title={t`Add to existing wallet`}
+            testID={GlobalSheetSelectors.AddAccountToExistingWallet}
             caption={t`Choose existing wallet`}
             icon={<WalletPlusIcon />}
           />
           <AddWalletCell
             onPress={addToNewWallet}
             title={t`Add to new wallet`}
+            testID={GlobalSheetSelectors.AddAccountToNewWallet}
             caption={t`Generate new Secret Key for self-custody`}
             icon={<PlusIcon />}
           />

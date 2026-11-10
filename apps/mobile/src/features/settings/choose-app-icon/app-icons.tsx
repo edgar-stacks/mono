@@ -1,5 +1,7 @@
 import { View, useWindowDimensions } from 'react-native';
 
+import { SettingsSelectors } from '@/shared/selectors/settings.selectors';
+
 import { Box, useTheme } from '@leather.io/ui/native';
 
 import { AppIconButton } from './app-icon-button';
@@ -22,7 +24,7 @@ export function AppIcons({ setNewIcon, currentIcon, availableIcons }: AppIconsPr
   const iconSize = containerWidth > 0 ? Math.floor((containerWidth - totalGapWidth) / COLUMNS) : 0;
 
   return (
-    <Box px="5">
+    <Box px="5" testID={SettingsSelectors.AppIconGrid}>
       <View
         style={{
           flexDirection: 'row',

@@ -1,4 +1,5 @@
 import { ApproverAccountCard } from '@/features/approver/components/approver-account-card';
+import { RpcStacksSelectors } from '@/shared/selectors/rpc-stacks.selectors';
 import { type Account } from '@/store/accounts/accounts';
 import { t } from '@lingui/core/macro';
 
@@ -38,7 +39,7 @@ export function BaseStxMessageApproverLayout({
     <Approver requester={origin}>
       <Approver.Container>
         <Approver.Header title={t`Sign Message`} />
-        <Approver.Section>
+        <Approver.Section testID={RpcStacksSelectors.MessageAccountSection}>
           <ApproverAccountCard
             accounts={accounts.filter(
               acc => makeAccountIdentifer(acc.fingerprint, acc.accountIndex) === accountId

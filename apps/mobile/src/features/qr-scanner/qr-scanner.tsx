@@ -2,6 +2,7 @@ import { useRef, useState } from 'react';
 
 import { QrScannerCamera } from '@/features/qr-scanner/qr-scanner-camera';
 import { QrScannerChrome } from '@/features/qr-scanner/qr-scanner-chrome';
+import { SendSelectors } from '@/shared/selectors/send.selectors';
 import { type BarcodeScanningResult } from 'expo-camera';
 
 import { Box, ThemeProvider, useHaptics } from '@leather.io/ui/native';
@@ -37,7 +38,7 @@ export function QrScanner<T>({ onClose, onScanned, parse }: QrScannerProps<T>) {
 
   return (
     <ThemeProvider theme="dark">
-      <Box bg="ink.background-primary" flex={1}>
+      <Box bg="ink.background-primary" flex={1} testID={SendSelectors.QrScanner}>
         <QrScannerCamera onBarcodeScanned={handleBarcodeScanned} />
         <QrScannerChrome onClose={onClose} errorMessage={error} />
       </Box>

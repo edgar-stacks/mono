@@ -6,12 +6,14 @@ interface TabButtonProps {
   title: string;
   onPress(): void;
   isActive: boolean;
+  testID?: string;
 }
 
-export function TabButton({ title, onPress, isActive }: TabButtonProps) {
+export function TabButton({ title, onPress, isActive, testID }: TabButtonProps) {
   return (
     <Pressable
       onPress={onPress}
+      testID={testID}
       width={TAB_WIDTH}
       py="4"
       justifyContent="center"

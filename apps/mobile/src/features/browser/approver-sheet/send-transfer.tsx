@@ -5,6 +5,7 @@ import { OutcomeAddressesCard } from '@/features/approver/components/outcome-add
 import { PsbtSigner } from '@/features/psbt-signer/psbt-signer';
 import { useAverageBitcoinFeeRates } from '@/queries/fees/fee-estimates.hooks';
 import { useAccountUtxos } from '@/queries/utxos/utxos.query';
+import { RpcBitcoinSelectors } from '@/shared/selectors/rpc-bitcoin.selectors';
 import { useGetBtcNetworkFromRequestParams } from '@/shared/utils';
 import { type App } from '@/store/apps/utils';
 import {
@@ -76,7 +77,7 @@ function SendTransferFeesUnavailable({
     <Approver requester={origin}>
       <Approver.Container>
         <Approver.Header title={t`Send token`} />
-        <Approver.Section>
+        <Approver.Section testID={RpcBitcoinSelectors.SendTransferFeesUnavailable}>
           <Approver.Subheader>{t`To address`}</Approver.Subheader>
           <OutcomeAddressesCard addresses={recipients.map(recipient => recipient.address)} />
         </Approver.Section>

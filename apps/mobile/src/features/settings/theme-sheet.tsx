@@ -1,6 +1,7 @@
 import { SettingsList } from '@/components/settings/settings-list';
 import { SettingsListItem } from '@/components/settings/settings-list-item';
 import { useToastContext } from '@/components/toast/toast-context';
+import { SettingsSelectors } from '@/shared/selectors/settings.selectors';
 import { useSettings } from '@/store/settings/settings';
 import { type ThemePreference, defaultThemePreferences } from '@/store/settings/utils';
 import { select, t } from '@lingui/core/macro';
@@ -26,7 +27,7 @@ export function ThemeSheet({ sheetRef }: ThemeSheetProps) {
 
   return (
     <SettingsSheetLayout sheetRef={sheetRef} title={t`Theme`}>
-      <SettingsList gap="0">
+      <SettingsList gap="0" testID={SettingsSelectors.ThemeSheetList}>
         {defaultThemePreferences.map(themePreference => (
           <SettingsListItem
             title={t({

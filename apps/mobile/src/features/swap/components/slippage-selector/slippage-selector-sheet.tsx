@@ -1,5 +1,6 @@
 import { useState } from 'react';
 
+import { SwapSelectors } from '@/shared/selectors/swap.selectors';
 import { formatPercentage } from '@/utils/currency-formatter';
 import { t } from '@lingui/core/macro';
 
@@ -43,7 +44,10 @@ export function SlippageSelectorSheet({ ref, value, onSave }: SlippageSelectorSh
             </NumericInput>
           </Box>
 
-          <Button onPress={handleConfirm}>{t`Update slippage`}</Button>
+          <Button
+            testID={SwapSelectors.UpdateSlippageButton}
+            onPress={handleConfirm}
+          >{t`Update slippage`}</Button>
         </Box>
       </Sheet.View>
     </Sheet>

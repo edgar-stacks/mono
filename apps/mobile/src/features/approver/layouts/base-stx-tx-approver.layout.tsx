@@ -21,6 +21,7 @@ import {
 } from '@/features/approver/utils';
 import { useOpenUrl } from '@/features/browser/browser/use-open-url';
 import { useCurrentNetworkState } from '@/queries/leather-query-provider';
+import { RpcStacksSelectors } from '@/shared/selectors/rpc-stacks.selectors';
 import { type Account } from '@/store/accounts/accounts';
 import { t } from '@lingui/core/macro';
 import {
@@ -126,7 +127,7 @@ export function BaseStxTxApproverLayout({
           {isContractCall(tx.payload) && <AllowModePostConditionWarning txHex={txHex} />}
           {broadcastedTxid && <StxStatusRow txid={broadcastedTxid} />}
 
-          <Approver.Section>
+          <Approver.Section testID={RpcStacksSelectors.TxAccountSection}>
             <ApproverAccountCard
               accounts={accounts.filter(
                 acc => makeAccountIdentifer(acc.fingerprint, acc.accountIndex) === accountId

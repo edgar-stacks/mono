@@ -6,11 +6,13 @@ interface ToolbarButtonProps {
   onPress(): void;
   icon: ReactNode;
   label: string;
+  testID?: string;
 }
 
-export function ToolbarButton({ onPress, icon, label }: ToolbarButtonProps) {
+export function ToolbarButton({ onPress, icon, label, testID }: ToolbarButtonProps) {
   return (
     <Pressable
+      testID={testID}
       onPress={onPress}
       py="3"
       gap="1"

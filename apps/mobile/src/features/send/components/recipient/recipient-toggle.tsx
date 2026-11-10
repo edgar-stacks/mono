@@ -1,6 +1,7 @@
 import Animated, { withDelay, withTiming } from 'react-native-reanimated';
 
 import { AccountAvatar } from '@/features/account/components/account-avatar';
+import { SendSelectors } from '@/shared/selectors/send.selectors';
 import { t } from '@lingui/core/macro';
 
 import {
@@ -25,6 +26,7 @@ interface RecipientToggleProps {
 export function RecipientToggle({ onPress, onQrButtonPress, value }: RecipientToggleProps) {
   return (
     <Pressable
+      testID={SendSelectors.RecipientToggle}
       onPress={onPress}
       pressEffect={{
         backgroundColor: {

@@ -6,6 +6,7 @@ import {
   getAccountDisplayPreferencesKeyedByType,
   getChainDisplayLabel,
 } from '@/shared/display-preference';
+import { SettingsSelectors } from '@/shared/selectors/settings.selectors';
 import { useSettings } from '@/store/settings/settings';
 import { t } from '@lingui/core/macro';
 
@@ -39,7 +40,7 @@ export function AccountIdentifierSheet({ sheetRef }: AccountIdentifierSheetProps
         openUrl(LEATHER_GUIDES_MOBILE_ACCOUNT_IDENTIFIER);
       }}
     >
-      <SettingsList gap="0">
+      <SettingsList gap="0" testID={SettingsSelectors.AccountIdentifierSheetList}>
         {Object.values(getAccountDisplayPreferencesKeyedByType()).map(accountDisplayPref => (
           <SettingsListItem
             key={accountDisplayPref.name}
