@@ -1,0 +1,27 @@
+import { FeeTypes, type Money, type StacksTransactionFees } from '@leather.io/models';
+import { createMoney } from '@leather.io/utils';
+
+export function getStacksFeesByType(
+  fees: StacksTransactionFees | undefined
+): Record<FeeTypes, Money> {
+  const zeroMoney = createMoney(0, 'STX');
+  return {
+    [FeeTypes.Low]: fees?.options.low.value ?? zeroMoney,
+    [FeeTypes.Middle]: fees?.options.standard.value ?? zeroMoney,
+    [FeeTypes.High]: fees?.options.high.value ?? zeroMoney,
+    [FeeTypes.Unknown]: zeroMoney,
+    [FeeTypes.Custom]: zeroMoney,
+  };
+}
+
+interface StacksFeeTypeParams {
+  fee: Money;
+  fees: StacksTransactionFees | undefined;
+}
+export function getStacksFeeType({ fee, fees }: StacksFeeTypeParams) {
+  if (!fees) return FeeTypes.Custom;
+  if (fee.amount.isEqualTo(fees.options.standard.value.amount)) return FeeTypes.Middle;
+  if (fee.amount.isEqualTo(fees.options.low.value.amount)) return FeeTypes.Low;
+  if (fee.amount.isEqualTo(fees.options.high.value.amount)) return FeeTypes.High;
+  return FeeTypes.Custom;
+}

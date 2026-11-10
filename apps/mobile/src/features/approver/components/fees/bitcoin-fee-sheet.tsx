@@ -1,7 +1,6 @@
 import { useBtcMarketDataQuery } from '@/queries/market-data/btc-market-data.query';
-import BigNumber from 'bignumber.js';
 
-import { type AverageBitcoinFeeRates, FeeTypes } from '@leather.io/models';
+import { type BitcoinTransactionFees, FeeTypes, type Money } from '@leather.io/models';
 import { type SheetRef } from '@leather.io/ui/native';
 import { baseCurrencyAmountInQuoteWithFallback, createMoney } from '@leather.io/utils';
 
@@ -13,8 +12,8 @@ const feeTypes = [FeeTypes.Low, FeeTypes.Middle, FeeTypes.High, FeeTypes.Custom]
 interface FeesSheetProps {
   sheetRef: SheetRef;
   selectedFeeType: FeeTypes;
-  fees: AverageBitcoinFeeRates | undefined;
-  txSize: number;
+  fees: BitcoinTransactionFees | undefined;
+  currentFee: Money;
   currentFeeRate: number;
   onChangeFee(feeType: FeeTypes): void;
 }
@@ -23,26 +22,25 @@ export function BitcoinFeesSheet({
   sheetRef,
   selectedFeeType,
   fees,
-  txSize,
+  currentFee,
   currentFeeRate,
   onChangeFee,
 }: FeesSheetProps) {
   const { data: btcMarketData } = useBtcMarketDataQuery();
 
-  function convertFeeToQuote(fee: number) {
-    return baseCurrencyAmountInQuoteWithFallback(createMoney(fee, 'BTC'), btcMarketData);
+  function convertFeeToQuote(fee: Money) {
+    return baseCurrencyAmountInQuoteWithFallback(fee, btcMarketData);
   }
 
   function getFee(feeType: FeeTypes) {
-    const feeRate = {
-      [FeeTypes.Low]: fees?.hourFee ?? BigNumber(0),
-      [FeeTypes.Middle]: fees?.halfHourFee ?? BigNumber(0),
-      [FeeTypes.High]: fees?.fastestFee ?? BigNumber(0),
-      [FeeTypes.Unknown]: BigNumber(0),
-      [FeeTypes.Custom]: BigNumber(currentFeeRate),
+    const quote = {
+      [FeeTypes.Low]: fees?.options.low,
+      [FeeTypes.Middle]: fees?.options.standard,
+      [FeeTypes.High]: fees?.options.high,
+      [FeeTypes.Unknown]: undefined,
+      [FeeTypes.Custom]: { value: currentFee, rate: currentFeeRate },
     }[feeType];
-    const fee = txSize * feeRate.toNumber();
-    return { feeRate, fee };
+    return { feeRate: quote?.rate ?? 0, fee: quote?.value ?? createMoney(0, 'BTC') };
   }
 
   function handleFeeChange(feeType: FeeTypes) {
@@ -61,8 +59,8 @@ export function BitcoinFeesSheet({
             onPress={() => handleFeeChange(feeType)}
             key={feeType}
             feeType={feeType}
-            feeRate={feeRate.toNumber()}
-            fee={fee}
+            feeRate={feeRate}
+            fee={fee.amount.toNumber()}
             quoteFee={convertFeeToQuote(fee)}
           />
         );

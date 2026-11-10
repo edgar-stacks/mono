@@ -1,15 +1,15 @@
 import { useRef, useState } from 'react';
 
-import { useCalculateStacksTxFees } from '@/queries/stacks/fees/fees.hooks';
+import { useStacksTransactionFees } from '@/queries/stacks/fees/stacks-transaction-fees.query';
 import { AuthType, deserializeTransaction } from '@stacks/transactions';
 
-import { FeeTypes } from '@leather.io/models';
+import { type FeeTypes } from '@leather.io/models';
 import { Approver, type SheetInstance } from '@leather.io/ui/native';
-import { createMoney } from '@leather.io/utils';
 
 import { SponsoredFeeCard } from './components/fees/sponsored-fee-card';
 import { StacksFeeCard } from './components/fees/stacks-fee-card';
 import { StacksFeesSheet } from './components/fees/stacks-fee-sheet';
+import { getStacksFeeType, getStacksFeesByType } from './stacks-fees.utils';
 import { getTxFeeMoney } from './utils';
 
 interface StacksFeesSectionProps {
@@ -20,34 +20,13 @@ interface StacksFeesSectionProps {
 
 export function StacksFeesSection({ txHex, onChangeFee, disabled }: StacksFeesSectionProps) {
   const tx = deserializeTransaction(txHex);
-  const { data: stxFees } = useCalculateStacksTxFees(tx);
-  const fee = tx.auth.spendingCondition.fee;
-  function getFeeType() {
-    const options = stxFees?.options;
-    if (Number(fee) === options?.standard.value.amount.toNumber()) {
-      return FeeTypes.Middle;
-    }
-    if (Number(fee) === options?.low.value.amount.toNumber()) {
-      return FeeTypes.Low;
-    }
-    if (Number(fee) === options?.high.value.amount.toNumber()) {
-      return FeeTypes.High;
-    }
-    return FeeTypes.Custom;
-  }
-
+  const { data: stxFees } = useStacksTransactionFees(tx);
   const feeSheetRef = useRef<SheetInstance>(null);
 
-  const [selectedFeeType, setSelectedFeeType] = useState<FeeTypes>(getFeeType());
-  const zeroMoney = createMoney(0, 'STX');
-  const fees = {
-    [FeeTypes.Low]: stxFees?.options.low.value || zeroMoney,
-    [FeeTypes.Middle]: stxFees?.options.standard.value || zeroMoney,
-    [FeeTypes.High]: stxFees?.options.high.value || zeroMoney,
-    [FeeTypes.Unknown]: zeroMoney,
-    [FeeTypes.Custom]: zeroMoney,
-  };
+  const [pickedFeeType, setPickedFeeType] = useState<FeeTypes | null>(null);
   const feeMoney = getTxFeeMoney(tx);
+  const selectedFeeType = pickedFeeType ?? getStacksFeeType({ fee: feeMoney, fees: stxFees });
+  const fees = getStacksFeesByType(stxFees);
 
   if (tx.auth.authType === AuthType.Sponsored) {
     return (
@@ -73,9 +52,9 @@ export function StacksFeesSection({ txHex, onChangeFee, disabled }: StacksFeesSe
         sheetRef={feeSheetRef}
         selectedFeeType={selectedFeeType}
         fees={fees}
-        currentFee={createMoney(fee, 'STX')}
+        currentFee={feeMoney}
         onChangeFeeType={feeType => {
-          setSelectedFeeType(feeType);
+          setPickedFeeType(feeType);
           onChangeFee(fees[feeType].amount.toNumber());
         }}
       />
