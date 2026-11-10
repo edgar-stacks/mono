@@ -25,7 +25,7 @@ export interface PoolMinStake {
 
 interface CreateStakingFormSchemaArgs {
   networkMode: BitcoinNetworkModes;
-  availableBalance: Money;
+  availableBalance?: Money;
   payoutMode: PoolPayoutMode;
   supportsMinClaim: boolean;
   minStake?: PoolMinStake;
@@ -153,6 +153,7 @@ export function createStakingFormSchema({
         .refine(
           value =>
             !isNumericInput(value) ||
+            availableBalance === undefined ||
             validateAvailableBalance(Number(value), availableBalance.amount),
           validationMessages.cannotStackMoreThanBalance
         )

@@ -17,11 +17,14 @@ function makeSchema(overrides?: {
   payoutMode?: PoolPayoutMode;
   minStake?: PoolMinStake;
   supportsMinClaim?: boolean;
-  availableMicroStx?: number;
+  availableMicroStx?: number | null;
 }) {
+  const availableMicroStx =
+    overrides?.availableMicroStx === undefined ? hundredStxMicro : overrides.availableMicroStx;
   return createStakingFormSchema({
     networkMode: 'mainnet',
-    availableBalance: createMoney(overrides?.availableMicroStx ?? hundredStxMicro, 'STX'),
+    availableBalance:
+      availableMicroStx === null ? undefined : createMoney(availableMicroStx, 'STX'),
     payoutMode: overrides?.payoutMode ?? 'sbtc',
     minStake: overrides?.minStake,
     supportsMinClaim: overrides?.supportsMinClaim ?? false,
@@ -248,6 +251,22 @@ describe(createStakingFormSchema.name, () => {
 
     test('accepts more than the minimum', () => {
       expect(schema.safeParse({ ...validValues, amount: '2500' }).success).toBe(true);
+    });
+  });
+
+  describe('when no wallet balance is available', () => {
+    const schema = makeSchema({ minStake: planbetterMinStake, availableMicroStx: null });
+
+    test('accepts an amount above the pool minimum', () => {
+      expect(schema.safeParse({ ...validValues, amount: '2500' }).success).toBe(true);
+    });
+
+    test('still rejects an amount below the pool minimum', () => {
+      expect(schema.safeParse({ ...validValues, amount: '999' }).success).toBe(false);
+    });
+
+    test('still rejects an invalid amount', () => {
+      expect(schema.safeParse({ ...validValues, amount: 'abc' }).success).toBe(false);
     });
   });
 });

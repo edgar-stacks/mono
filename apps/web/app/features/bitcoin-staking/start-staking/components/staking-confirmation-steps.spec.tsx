@@ -4,6 +4,7 @@ import { bitcoinStakingContent } from '~/content/bitcoin-staking-content';
 import { type BitcoinStakingPool, getStakingPoolFromSlug } from '~/data/bitcoin-staking-data';
 
 import { useStakingAcknowledgment } from '../../hooks/use-staking-acknowledgment';
+import { type StakingConnectAction } from '../../hooks/use-staking-connect-action';
 import { StakingConfirmationSteps } from './staking-confirmation-steps';
 
 interface ConfirmationHarnessProps {
@@ -11,6 +12,7 @@ interface ConfirmationHarnessProps {
   onConfirm(): void;
   isBusy?: boolean;
   entered?: { stakeAmount: number | undefined; cycles: number | undefined };
+  connectAction?: StakingConnectAction;
 }
 
 function ConfirmationHarness({
@@ -18,6 +20,7 @@ function ConfirmationHarness({
   onConfirm,
   isBusy,
   entered = { stakeAmount: 3200, cycles: 12 },
+  connectAction,
 }: ConfirmationHarnessProps) {
   const acknowledgment = useStakingAcknowledgment('fast-pool:3200:12');
   return (
@@ -29,6 +32,7 @@ function ConfirmationHarness({
       acknowledgment={acknowledgment}
       onConfirm={onConfirm}
       isBusy={isBusy}
+      connectAction={connectAction}
     />
   );
 }
@@ -101,5 +105,40 @@ describe(StakingConfirmationSteps.name, () => {
     render(<ConfirmationHarness pool={pool} onConfirm={vi.fn()} />);
     expect(screen.getByText(text)).toBeTruthy();
     expect(screen.queryByText(/read and accepted.*terms/)).toBeNull();
+  });
+
+  test.each([
+    {
+      connectAction: { status: 'install', run: vi.fn() },
+      label: 'Install Leather to stake',
+      action: 'Install',
+    },
+    {
+      connectAction: { status: 'connect', run: vi.fn(() => Promise.resolve()) },
+      label: 'Connect Leather to stake',
+      action: 'Connect',
+    },
+  ] satisfies { connectAction: StakingConnectAction; label: string; action: string }[])(
+    'shows the $action step first and holds the terms and confirmation until connected',
+    ({ connectAction, label, action }) => {
+      const onConfirm = vi.fn();
+      render(<ConfirmationHarness onConfirm={onConfirm} connectAction={connectAction} />);
+      expect(screen.getByText(label)).toBeTruthy();
+      fireEvent.click(screen.getByRole('button', { name: action }));
+      expect(connectAction.run).toHaveBeenCalledTimes(1);
+      expect(screen.getByRole('checkbox').hasAttribute('disabled')).toBe(true);
+      const confirm = screen.getByRole('button', { name: 'Confirm and start staking' });
+      expect(confirm.hasAttribute('disabled')).toBe(true);
+      fireEvent.click(confirm);
+      expect(onConfirm).not.toHaveBeenCalled();
+    }
+  );
+
+  test('shows no connect step once connected', () => {
+    render(<ConfirmationHarness onConfirm={vi.fn()} connectAction={{ status: 'connected' }} />);
+    expect(screen.queryByText('Install Leather to stake')).toBeNull();
+    expect(screen.queryByText('Connect Leather to stake')).toBeNull();
+    expect(screen.queryByTestId('confirmation-connect-step')).toBeNull();
+    expect(screen.getByRole('checkbox').hasAttribute('disabled')).toBe(false);
   });
 });

@@ -1,3 +1,5 @@
+import { useMemo } from 'react';
+
 import { useQuery } from '@tanstack/react-query';
 import BigNumber from 'bignumber.js';
 import { pox5NetworkConfig } from '~/data/pox5-network-config';
@@ -55,7 +57,7 @@ interface UsePox5AvailableUnlockedBalanceResult {
 // network, so it cannot be reused here; the plain unlocked balance from the
 // pinned pox-5 chain is used instead.
 export function usePox5AvailableUnlockedBalance(
-  address: string
+  address: string | undefined
 ): UsePox5AvailableUnlockedBalanceResult {
   const client = usePox5StacksClient();
 
@@ -68,10 +70,13 @@ export function usePox5AvailableUnlockedBalance(
   );
 
   const resp = balanceQuery.data;
-  const unlocked = resp ? new BigNumber(resp.balance).minus(new BigNumber(resp.locked)) : null;
+  const availableBalance = useMemo(() => {
+    const unlocked = resp ? new BigNumber(resp.balance).minus(new BigNumber(resp.locked)) : null;
+    return createMoney(unlocked ?? new BigNumber(0), 'STX');
+  }, [resp]);
 
   return {
     isLoading: balanceQuery.isLoading,
-    availableBalance: createMoney(unlocked ?? new BigNumber(0), 'STX'),
+    availableBalance,
   };
 }
