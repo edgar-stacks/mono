@@ -1,5 +1,6 @@
+import { useFormContext, useWatch } from 'react-hook-form';
+
 import { SendCryptoAssetSelectors } from '@tests/selectors/send.selectors';
-import { useFormikContext } from 'formik';
 import { HStack, Stack } from 'leather-styles/jsx';
 
 import {
@@ -21,9 +22,11 @@ import { useStacksHighFeeWarningContext } from './stacks-high-fee-warning-contai
 
 interface HighFeeSheetProps {
   learnMoreUrl: string;
+  onSubmit(): void;
 }
-export function HighFeeSheet({ learnMoreUrl }: HighFeeSheetProps) {
-  const { handleSubmit, values } = useFormikContext<StacksSendFormValues>();
+export function HighFeeSheet({ learnMoreUrl, onSubmit }: HighFeeSheetProps) {
+  const { control } = useFormContext<StacksSendFormValues>();
+  const [fee, feeCurrency] = useWatch({ control, name: ['fee', 'feeCurrency'] });
   const { showHighFeeWarningSheet, setHasBypassedFeeWarning, setShowHighFeeWarningSheet } =
     useStacksHighFeeWarningContext();
 
@@ -41,7 +44,7 @@ export function HighFeeSheet({ learnMoreUrl }: HighFeeSheetProps) {
           <Button
             onClick={() => {
               setHasBypassedFeeWarning(true);
-              handleSubmit();
+              onSubmit();
             }}
             data-testid={SendCryptoAssetSelectors.HighFeeWarningSheetSubmit}
             type="submit"
@@ -56,8 +59,7 @@ export function HighFeeSheet({ learnMoreUrl }: HighFeeSheetProps) {
         <HStack>
           <ErrorTriangleIcon color="red.action-primary-default" />
           <Title>
-            Are you sure you want to pay {values.fee} {values.feeCurrency} in fees for this
-            transaction?
+            Are you sure you want to pay {fee} {feeCurrency} in fees for this transaction?
           </Title>
         </HStack>
         <Caption>

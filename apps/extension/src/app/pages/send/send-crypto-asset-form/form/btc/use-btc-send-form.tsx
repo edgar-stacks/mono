@@ -1,6 +1,5 @@
-import { useRef, useState } from 'react';
+import { useState } from 'react';
 
-import { type FormikHelpers, type FormikProps } from 'formik';
 import { z } from 'zod';
 
 import { useOnMount } from '@leather.io/ui';
@@ -15,7 +14,7 @@ import { numberField, stringField } from '@shared/forms/field-schemas';
 import { type BitcoinSendFormValues } from '@shared/models/form.model';
 
 import { formatPrecisionError } from '@app/common/error-formatters';
-import { createFormikValidationSchema } from '@app/common/validation/formik-validation-schema';
+import { createFormResolver } from '@app/common/validation/form-resolver';
 import {
   btcInsufficientBalanceValidator,
   btcMinimumSpendValidator,
@@ -38,9 +37,10 @@ type BtcSendFormValues = Pick<
   'amount' | 'recipient' | 'recipientBnsName' | 'symbol'
 >;
 
+const recipientValuesSchema = z.object({ recipient: z.string() });
+
 export function useBtcSendForm() {
   const [isSendingMax, setIsSendingMax] = useState(false);
-  const formRef = useRef<FormikProps<BtcSendFormValues>>(null);
   const currentNetwork = useCurrentNetwork();
   const { utxos, refetchUtxos } = useCurrentUtxos();
   const { btc: balance } = useCurrentBtcBalanceWithFallback();
@@ -57,14 +57,13 @@ export function useBtcSendForm() {
     balance,
     calcMaxSpend,
     currentNetwork,
-    formRef,
     isSendingMax,
     onFormStateChange,
     onSetIsSendingMax(value: boolean) {
       setIsSendingMax(value);
     },
     utxos,
-    validationSchema: createFormikValidationSchema(
+    resolver: createFormResolver<BitcoinSendFormValues>(values =>
       z.object({
         amount: numberField(FormErrorMessages.MustBeNumber).check(
           btcMinimumSpendValidator(),
@@ -72,7 +71,7 @@ export function useBtcSendForm() {
           currencyAmountValidator(),
           btcInsufficientBalanceValidator({
             calcMaxSpend,
-            recipient: formRef.current?.values.recipient ?? '',
+            recipient: recipientValuesSchema.safeParse(values).data?.recipient ?? '',
             utxos: utxos.available,
           })
         ),
@@ -85,12 +84,8 @@ export function useBtcSendForm() {
       })
     ),
 
-    async chooseTransactionFee(
-      values: BtcSendFormValues,
-      formikHelpers: FormikHelpers<BtcSendFormValues>
-    ) {
+    chooseTransactionFee(values: BtcSendFormValues) {
       // Validate and check high fee warning first
-      await formikHelpers.validateForm();
       void sendFormNavigate.toChooseTransactionFee(isSendingMax, utxos.available, values);
     },
   };

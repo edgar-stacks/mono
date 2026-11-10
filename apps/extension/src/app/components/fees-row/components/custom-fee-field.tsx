@@ -1,12 +1,15 @@
 import { type FormEvent, useCallback } from 'react';
+import { useFormContext, useWatch } from 'react-hook-form';
 
 import { SharedComponentsSelectors } from '@tests/selectors/shared-component.selectors';
-import { useField } from 'formik';
 import { Flex, Stack, styled } from 'leather-styles/jsx';
 
 import type { CryptoCurrency, StacksTransactionFeeQuote } from '@leather.io/models';
 import { stxToMicroStx } from '@leather.io/utils';
 
+import type { StacksSendFormValues } from '@shared/models/form.model';
+
+import { useFieldError } from '@app/common/form-utils';
 import { SendFormWarningMessages } from '@app/common/warning-messages';
 
 interface CustomFeeFieldProps {
@@ -21,18 +24,20 @@ export function CustomFeeField({
   setFieldWarning,
   disableFeeSelection,
 }: CustomFeeFieldProps) {
-  const [field, meta, helpers] = useField<string>('fee');
+  const { control, setValue } = useFormContext<Pick<StacksSendFormValues, 'fee'>>();
+  const value = useWatch({ control, name: 'fee' });
+  const feeError = useFieldError('fee');
 
   const checkFieldWarning = useCallback(
     (value: string) => {
-      if (meta.error) return setFieldWarning('');
+      if (feeError) return setFieldWarning('');
       const fee = stxToMicroStx(value);
       if (lowFeeQuote.value.amount.isGreaterThan(fee)) {
         return setFieldWarning(SendFormWarningMessages.AdjustedFeeBelowLowestEstimate);
       }
       return setFieldWarning('');
     },
-    [lowFeeQuote, meta.error, setFieldWarning]
+    [lowFeeQuote, feeError, setFieldWarning]
   );
 
   return (
@@ -59,7 +64,7 @@ export function CustomFeeField({
           name="fee"
           disabled={disableFeeSelection}
           onChange={(evt: FormEvent<HTMLInputElement>) => {
-            void helpers.setValue(evt.currentTarget.value);
+            setValue('fee', evt.currentTarget.value);
             // Separating warning check from field validations
             // bc we want the user to be able to submit the form
             // with the low fee warning present.
@@ -69,7 +74,7 @@ export function CustomFeeField({
           placeholder="0"
           ring="none"
           textAlign="right"
-          value={field.value}
+          value={value}
         />
       </Flex>
     </Stack>

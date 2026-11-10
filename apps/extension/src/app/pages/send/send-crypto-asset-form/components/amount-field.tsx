@@ -1,13 +1,15 @@
 import { type ChangeEvent, useCallback, useEffect, useRef, useState } from 'react';
+import { useFormContext, useWatch } from 'react-hook-form';
 
 import { SendCryptoAssetSelectors } from '@tests/selectors/send.selectors';
-import { useField } from 'formik';
 import { Box, Flex, Stack, styled } from 'leather-styles/jsx';
 
 import { STX_DECIMALS, TOKEN_NAME_LENGTH } from '@leather.io/constants';
 import type { Money } from '@leather.io/models';
 
-import { useShowFieldError } from '@app/common/form-utils';
+import type { BitcoinSendFormValues } from '@shared/models/form.model';
+
+import { useFieldError, useShowFieldError } from '@app/common/form-utils';
 import { linearInterpolation } from '@app/common/utils';
 import { ErrorLabel } from '@app/components/error-label';
 
@@ -53,7 +55,10 @@ export function AmountField({
   switchableAmount,
   tokenSymbol,
 }: AmountFieldProps) {
-  const [field, meta, helpers] = useField<string>('amount');
+  const { control, register, setValue } = useFormContext<Pick<BitcoinSendFormValues, 'amount'>>();
+  const field = register('amount');
+  const amount = String(useWatch({ control, name: 'amount' }));
+  const error = useFieldError('amount');
 
   const showError = useShowFieldError('amount');
   const [fontSize, setFontSize] = useState(maxFontSize);
@@ -83,7 +88,7 @@ export function AmountField({
       setFontSize(newFontSize);
     }
 
-    field.onChange(event);
+    void field.onChange(event);
   }
 
   useEffect(() => {
@@ -91,9 +96,9 @@ export function AmountField({
     if (symbol.length > TOKEN_NAME_LENGTH) setFontSize(minFontSize);
 
     // Copy/paste
-    if (field.value.length > symbol.length && field.value.length > previousTextLength + 2) {
+    if (amount.length > symbol.length && amount.length > previousTextLength + 2) {
       const modifiedFontSize = getAmountModifiedFontSize({
-        amount: field.value,
+        amount,
         fontSize,
         fontSizeModifier,
         maxFontSize,
@@ -102,9 +107,9 @@ export function AmountField({
       setFontSize(modifiedFontSize < minFontSize ? minFontSize : modifiedFontSize);
     }
     setPreviousTextLength(
-      isSendingMax ? field.value.length - subtractedLengthToPositionPrefix : field.value.length
+      isSendingMax ? amount.length - subtractedLengthToPositionPrefix : amount.length
     );
-  }, [field.value, fontSize, fontSizeModifier, isSendingMax, previousTextLength, symbol]);
+  }, [amount, fontSize, fontSizeModifier, isSendingMax, previousTextLength, symbol]);
 
   useEffect(() => {
     const resizeObserver = new ResizeObserver(entries => {
@@ -127,7 +132,7 @@ export function AmountField({
   // TODO: could be implemented with html using padded label element
   const onClickFocusInput = useCallback(() => {
     if (isSendingMax) {
-      void helpers.setValue('');
+      setValue('amount', '');
       onSetIsSendingMax?.(false);
     }
 
@@ -135,7 +140,7 @@ export function AmountField({
     setTimeout(() => {
       document.getElementById(amountInputId)?.focus();
     });
-  }, [isSendingMax, helpers, onSetIsSendingMax]);
+  }, [isSendingMax, setValue, onSetIsSendingMax]);
 
   return (
     <Stack alignItems="center" gap={['space.04', showError ? 'space.04' : '48px']} width="100%">
@@ -168,8 +173,8 @@ export function AmountField({
             ring="none"
             style={{
               fontSize: fontSize + 'px',
-              marginInlineStart: !field.value?.length ? 0 : -25 + 'px',
-              width: !field.value?.length ? '1ch' : textSizeInPx + 25 + 'px',
+              marginInlineStart: !amount.length ? 0 : -25 + 'px',
+              width: !amount.length ? '1ch' : textSizeInPx + 25 + 'px',
             }}
             textAlign="right"
             letterSpacing="0.64px"
@@ -204,7 +209,7 @@ export function AmountField({
             minWidth={1 + 'ch'}
             style={{ fontSize: fontSize + 'px' }}
           >
-            {field.value}
+            {amount}
           </styled.span>
           <styled.span
             fontFamily="Marche"
@@ -221,7 +226,7 @@ export function AmountField({
       {showError && (
         <Flex>
           <ErrorLabel data-testid={SendCryptoAssetSelectors.AmountFieldInputErrorLabel}>
-            {meta.error}
+            {error}
           </ErrorLabel>
         </Flex>
       )}

@@ -1,11 +1,12 @@
 import { useMemo, useState } from 'react';
+import { useFormContext, useFormState, useWatch } from 'react-hook-form';
 
 import { OnboardingSelectors } from '@tests/selectors/onboarding.selectors';
-import { useField } from 'formik';
 import { Box, Flex, styled } from 'leather-styles/jsx';
 
 import { Caption, Eye1ClosedIcon, Eye1Icon, Input } from '@leather.io/ui';
 
+import { useFieldError } from '@app/common/form-utils';
 import { useThemeSwitcher } from '@app/common/theme-provider';
 import { type ValidatedPassword } from '@app/common/validation/validate-password';
 import { ErrorLabel } from '@app/components/error-label';
@@ -23,7 +24,11 @@ export function PasswordField({
   isDisabled,
   showStrength = true,
 }: PasswordFieldProps) {
-  const [field, meta] = useField<string>('password');
+  const { control, register } = useFormContext<{ password: string }>();
+  const password = useWatch({ control, name: 'password' });
+  const { submitCount, touchedFields } = useFormState({ control, name: 'password' });
+  const error = useFieldError('password');
+  const showError = (submitCount > 0 || !!touchedFields.password) && !!error;
   const [showPassword, setShowPassword] = useState(false);
   const { theme } = useThemeSwitcher();
 
@@ -35,7 +40,7 @@ export function PasswordField({
   return (
     <>
       <Box position="relative">
-        <Input.Root hasError={!showStrength && meta.touched && !!meta.error}>
+        <Input.Root hasError={!showStrength && showError}>
           <Input.Label>Password</Input.Label>
           <Input.Field
             autoCapitalize="off"
@@ -46,7 +51,7 @@ export function PasswordField({
             key="password-input"
             type={showPassword ? 'text' : 'password'}
             width="100%"
-            {...field}
+            {...register('password')}
           />
         </Input.Root>
         <styled.button
@@ -69,17 +74,17 @@ export function PasswordField({
       {showStrength ? (
         <>
           <PasswordStrengthIndicator
-            password={field.value}
+            password={password}
             strengthColor={theme === 'light' ? strengthColorLightMode : strengthColorDarkMode}
             strengthResult={strengthResult}
           />
           <Flex alignItems="center">
             <Caption mr="space.02">Password strength:</Caption>
-            <Caption>{field.value ? strengthText : '—'}</Caption>
+            <Caption>{password ? strengthText : '—'}</Caption>
           </Flex>
         </>
       ) : (
-        meta.touched && meta.error && <ErrorLabel>{meta.error}</ErrorLabel>
+        showError && <ErrorLabel>{error}</ErrorLabel>
       )}
     </>
   );

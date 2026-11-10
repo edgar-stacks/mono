@@ -1,10 +1,8 @@
 import { createContext, useContext, useState } from 'react';
 
 import BigNumber from 'bignumber.js';
-import type { FormikErrors } from 'formik';
 
 import { HIGH_FEE_AMOUNT_STX } from '@leather.io/constants';
-import { isEmpty } from '@leather.io/utils';
 
 import type { HasChildren } from '@app/common/has-children';
 
@@ -13,7 +11,7 @@ interface StacksHighFeeWarningContext {
   setShowHighFeeWarningSheet(val: boolean): void;
   hasBypassedFeeWarning: boolean;
   setHasBypassedFeeWarning(val: boolean): void;
-  isHighFeeWithNoFormErrors(errors: FormikErrors<unknown>, fee: number | string): boolean;
+  isHighFeeWithNoFormErrors(fee: number | string): boolean;
 }
 
 const stacksHighFeeWarningContext = createContext<StacksHighFeeWarningContext | null>(null);
@@ -30,9 +28,9 @@ export function StacksHighFeeWarningContainer({ children }: HasChildren) {
   const [showHighFeeWarningSheet, setShowHighFeeWarningSheet] = useState(false);
   const [hasBypassedFeeWarning, setHasBypassedFeeWarning] = useState(false);
 
-  function isHighFeeWithNoFormErrors(errors: FormikErrors<unknown>, fee: number | string) {
+  function isHighFeeWithNoFormErrors(fee: number | string) {
     if (hasBypassedFeeWarning) return false;
-    return isEmpty(errors) && new BigNumber(fee).isGreaterThan(HIGH_FEE_AMOUNT_STX);
+    return new BigNumber(fee).isGreaterThan(HIGH_FEE_AMOUNT_STX);
   }
 
   return (

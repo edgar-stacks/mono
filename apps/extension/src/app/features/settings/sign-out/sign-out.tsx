@@ -1,5 +1,6 @@
+import { FormProvider, useForm } from 'react-hook-form';
+
 import { SettingsSelectors } from '@tests/selectors/settings.selectors';
-import { useFormik } from 'formik';
 import { Flex, HStack, styled } from 'leather-styles/jsx';
 import { mapToObj } from 'remeda';
 
@@ -25,18 +26,16 @@ export function SignOutSheet({ isShowing, onUserDeleteWallet, onClose }: SignOut
   const softwareWalletCount = softwareWallets.length;
   const hasSoftwareKeys = softwareWalletCount > 0;
 
-  const form = useFormik({
-    initialValues: {
+  const form = useForm({
+    defaultValues: {
       backups: mapToObj(softwareWallets, wallet => [wallet.fingerprint, false]),
       confirmPasswordDisable: !hasSoftwareKeys,
     },
-    onSubmit() {
-      handleSignOut();
-    },
   });
+  const values = form.watch();
 
-  const allBackedUp = softwareWallets.every(wallet => form.values.backups[wallet.fingerprint]);
-  const canSignOut = allBackedUp && form.values.confirmPasswordDisable;
+  const allBackedUp = softwareWallets.every(wallet => values.backups[wallet.fingerprint]);
+  const canSignOut = allBackedUp && values.confirmPasswordDisable;
 
   function handleSignOut() {
     if (canSignOut) {
@@ -77,46 +76,48 @@ export function SignOutSheet({ isShowing, onUserDeleteWallet, onClose }: SignOut
         {getSignOutCalloutBody(softwareWalletCount)}
       </Callout>
       <Flex alignItems="center" flexDirection="column" p="space.05">
-        <form onChange={form.handleChange} onSubmit={form.handleSubmit}>
-          {softwareWallets.map((wallet, index) => (
+        <FormProvider {...form}>
+          <form onSubmit={event => void form.handleSubmit(handleSignOut)(event)}>
+            {softwareWallets.map((wallet, index) => (
+              <styled.label
+                key={wallet.fingerprint}
+                alignItems="center"
+                display="flex"
+                mt={index === 0 ? undefined : 'space.05'}
+              >
+                <HStack gap="space.03">
+                  <input
+                    type="checkbox"
+                    defaultChecked={false}
+                    {...form.register(`backups.${wallet.fingerprint}`)}
+                    data-testid={`${SettingsSelectors.SignOutConfirmHasBackupCheckbox}-${wallet.fingerprint}`}
+                  />
+
+                  <styled.p textStyle="caption.01" userSelect="none">
+                    {getBackupConfirmationLabel(wallet.name, softwareWalletCount)}
+                  </styled.p>
+                </HStack>
+              </styled.label>
+            ))}
             <styled.label
-              key={wallet.fingerprint}
               alignItems="center"
-              display="flex"
-              mt={index === 0 ? undefined : 'space.05'}
+              mt="space.05"
+              display={hasSoftwareKeys ? 'flex' : 'none'}
             >
               <HStack gap="space.03">
                 <input
                   type="checkbox"
-                  name={`backups.${wallet.fingerprint}`}
-                  defaultChecked={false}
-                  data-testid={`${SettingsSelectors.SignOutConfirmHasBackupCheckbox}-${wallet.fingerprint}`}
+                  defaultChecked={values.confirmPasswordDisable}
+                  {...form.register('confirmPasswordDisable')}
+                  data-testid={SettingsSelectors.SignOutConfirmPasswordDisable}
                 />
-
                 <styled.p textStyle="caption.01" userSelect="none">
-                  {getBackupConfirmationLabel(wallet.name, softwareWalletCount)}
+                  {getPasswordDisableLabel(softwareWalletCount)}
                 </styled.p>
               </HStack>
             </styled.label>
-          ))}
-          <styled.label
-            alignItems="center"
-            mt="space.05"
-            display={hasSoftwareKeys ? 'flex' : 'none'}
-          >
-            <HStack gap="space.03">
-              <input
-                type="checkbox"
-                name="confirmPasswordDisable"
-                defaultChecked={form.values.confirmPasswordDisable}
-                data-testid={SettingsSelectors.SignOutConfirmPasswordDisable}
-              />
-              <styled.p textStyle="caption.01" userSelect="none">
-                {getPasswordDisableLabel(softwareWalletCount)}
-              </styled.p>
-            </HStack>
-          </styled.label>
-        </form>
+          </form>
+        </FormProvider>
       </Flex>
     </Sheet>
   );

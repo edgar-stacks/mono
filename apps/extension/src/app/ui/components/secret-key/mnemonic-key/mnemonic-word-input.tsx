@@ -1,11 +1,12 @@
 import { useState } from 'react';
-
-import { useField } from 'formik';
+import { useFormContext, useWatch } from 'react-hook-form';
 
 import { Input } from '@leather.io/ui';
 import { extractPhraseFromString } from '@leather.io/utils';
 
-import { useIsFieldDirty } from '@app/common/form-utils';
+import { useFieldError, useIsFieldDirty } from '@app/common/form-utils';
+
+import type { MnemonicFormValues } from './utils/error-handling';
 
 interface MnemonicWordInputProps {
   fieldNumber: number;
@@ -20,11 +21,24 @@ export function MnemonicWordInput({
   onPasteEntireKey,
 }: MnemonicWordInputProps) {
   const name = `${fieldNumber}`;
-  const [field, meta] = useField<string>(name);
+  const { control, getValues, setValue } = useFormContext<MnemonicFormValues>();
+  const fieldValue = useWatch({ control, name });
+  const error = useFieldError(name);
   const [isFocused, setIsFocused] = useState(false);
   const isDirty = useIsFieldDirty(name);
+  const field = {
+    name,
+    onChange(e: React.ChangeEvent<HTMLInputElement>) {
+      setValue(name, e.target.value, { shouldDirty: true, shouldValidate: true });
+    },
+    onBlur() {
+      const currentValue = getValues(name);
+      if (currentValue === undefined) return;
+      setValue(name, currentValue, { shouldTouch: true, shouldValidate: true });
+    },
+  };
   return (
-    <Input.Root hasError={isDirty && !!meta.error} shrink={!!value}>
+    <Input.Root hasError={isDirty && !!error} shrink={!!value}>
       <Input.Field
         // Limitation of the animated label is that we cannot detect
         // programatically updated inputs. Here we add an empty place holder to
@@ -37,7 +51,7 @@ export function MnemonicWordInput({
         type={isFocused ? 'text' : 'password'}
         onFocus={() => setIsFocused(!isFocused)}
         {...field}
-        value={value || field.value || ''}
+        value={value || fieldValue || ''}
         // using onChangeCapture + onBlurCapture to keep Formik validation
         onChangeCapture={(e: React.ChangeEvent<HTMLInputElement>) => {
           e.preventDefault();

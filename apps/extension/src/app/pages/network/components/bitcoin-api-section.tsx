@@ -1,5 +1,6 @@
+import { useFormContext } from 'react-hook-form';
+
 import { NetworkSelectors } from '@tests/selectors/network.selectors';
-import { type FormikHandlers, type FormikHelpers } from 'formik';
 import { Flex, HStack, styled } from 'leather-styles/jsx';
 
 import { type BitcoinNetwork } from '@leather.io/models';
@@ -10,19 +11,12 @@ import type { AddNetworkFormValues } from '@app/pages/network/components/use-add
 import { getSelectedNetworkLabel, getSelectedNetworkValue, networks } from './network-presets';
 
 interface BitcoinApiSectionProps {
-  handleChange: FormikHandlers['handleChange'];
   isEditNetworkMode?: boolean;
-  setFieldValue: FormikHelpers<AddNetworkFormValues>['setFieldValue'];
   setNetworkUrls(value: BitcoinNetwork): void;
-  values: AddNetworkFormValues;
 }
-export function BitcoinApiSection({
-  handleChange,
-  isEditNetworkMode,
-  setFieldValue,
-  setNetworkUrls,
-  values,
-}: BitcoinApiSectionProps) {
+export function BitcoinApiSection({ isEditNetworkMode, setNetworkUrls }: BitcoinApiSectionProps) {
+  const { register, setValue, watch } = useFormContext<AddNetworkFormValues>();
+  const values = watch();
   return (
     <Flex direction="column" gap="space.03">
       <styled.p textStyle="label.02">Bitcoin API</styled.p>
@@ -31,7 +25,7 @@ export function BitcoinApiSection({
         value={getSelectedNetworkValue(values)}
         onValueChange={(value: BitcoinNetwork) => {
           setNetworkUrls(value);
-          void setFieldValue('bitcoinNetwork', value);
+          setValue('bitcoinNetwork', value);
         }}
       >
         <Select.Trigger data-testid={NetworkSelectors.AddNetworkBitcoinAPISelector}>
@@ -71,9 +65,7 @@ export function BitcoinApiSection({
       <Input.Root>
         <Input.Label>Bitcoin API URL</Input.Label>
         <Input.Field
-          onChange={handleChange}
-          name="bitcoinUrl"
-          value={values.bitcoinUrl}
+          {...register('bitcoinUrl')}
           width="100%"
           data-testid={NetworkSelectors.NetworkBitcoinAddress}
         />
@@ -83,10 +75,8 @@ export function BitcoinApiSection({
         <Input.Label>Network key</Input.Label>
         <Input.Field
           data-testid={NetworkSelectors.NetworkKey}
-          onChange={handleChange}
           disabled={isEditNetworkMode}
-          name="key"
-          value={values.key}
+          {...register('key')}
           width="100%"
         />
       </Input.Root>

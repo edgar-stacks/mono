@@ -2,7 +2,7 @@ export function createDefaultInitialFormValues<T extends Record<string, unknown>
   return { amount: '', recipient: '', ...obj };
 }
 
-export const defaultSendFormFormikProps = {
-  validateOnChange: false,
-  validateOnMount: false,
+export const defaultSendFormOptions = {
+  mode: 'onBlur',
+  reValidateMode: 'onBlur',
 } as const;
