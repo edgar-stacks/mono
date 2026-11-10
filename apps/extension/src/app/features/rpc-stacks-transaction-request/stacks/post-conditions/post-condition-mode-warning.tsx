@@ -1,8 +1,11 @@
+import { PostConditionSelectors } from '@tests/selectors/requests.selectors';
+
 import { Callout } from '@leather.io/ui';
 
 export function PostConditionModeWarning() {
   return (
     <Callout
+      data-testid={PostConditionSelectors.PostConditionModeWarning}
       variant="warning"
       mb="space.03"
       title="This transaction can transfer any of your assets"
