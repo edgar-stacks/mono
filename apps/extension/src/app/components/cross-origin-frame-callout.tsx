@@ -3,13 +3,12 @@ import { RequestSelectors } from '@tests/selectors/requests.selectors';
 import { Callout, type CalloutProps } from '@leather.io/ui';
 
 import { isCrossOriginFrameRequest } from '@shared/utils/cross-origin-frame';
-import { getHostnameFromUrl } from '@shared/utils/urls';
 
 import { useDefaultRequestParams } from '@app/common/hooks/use-default-request-search-params';
 
 function getDisplayHostname(origin: string) {
   try {
-    return getHostnameFromUrl(origin);
+    return new URL(origin).host || origin;
   } catch {
     return origin;
   }

@@ -1,7 +1,15 @@
-import type { AccountId, BitcoinNetworkModes } from '@leather.io/models';
+import { z } from 'zod';
+
+import { isValidAccountIndex } from '@leather.io/crypto';
+import {
+  type AccountId,
+  type BitcoinNetworkModes,
+  bitcoinNetworkModesSchema,
+} from '@leather.io/models';
 import type { WalletStore } from '@leather.io/state/wallet';
 
 import { getRootState } from '@shared/storage/get-root-state';
+import { getOriginFromUrl } from '@shared/utils/urls';
 
 export interface AppPermission extends AccountId {
   origin: string;
@@ -12,20 +20,41 @@ export interface AppPermission extends AccountId {
   policyId?: string;
 }
 
-function hasRequestedAccountPermission(permission?: AppPermission) {
-  return !!permission?.requestedAccounts;
+function isCanonicalWebOrigin(origin: string) {
+  try {
+    return getOriginFromUrl(origin) === origin;
+  } catch {
+    return false;
+  }
+}
+
+const appPermissionSchema = z.object({
+  origin: z.string().refine(isCanonicalWebOrigin),
+  fingerprint: z.string().min(1),
+  accountIndex: z.number().refine(isValidAccountIndex),
+  requestedAccounts: z.string().min(1),
+  networkMode: bitcoinNetworkModesSchema,
+  policyId: z.string().optional(),
+});
+
+function parseAppPermission(value: unknown): AppPermission | null {
+  const result = appPermissionSchema.safeParse(value);
+  return result.success ? result.data : null;
 }
 
 export function isConnectedToExistingWallet(
-  permission: AppPermission | undefined,
+  permission: unknown,
   walletEntities: Partial<Record<string, WalletStore>>
 ): boolean {
-  if (!permission || !hasRequestedAccountPermission(permission)) return false;
-  return !!walletEntities[permission.fingerprint];
+  const validPermission = parseAppPermission(permission);
+  if (!validPermission) return false;
+  return !!walletEntities[validPermission.fingerprint];
 }
 
-export async function getPermissionsByOrigin(hostname: string) {
+export async function getPermissionsByOrigin(origin: string) {
   const rootstate = await getRootState();
   if (!rootstate) return null;
-  return rootstate.appPermissions.entities[hostname] ?? null;
+  const permission = parseAppPermission(rootstate.appPermissions.entities[origin]);
+  if (!permission || permission.origin !== origin) return null;
+  return permission;
 }

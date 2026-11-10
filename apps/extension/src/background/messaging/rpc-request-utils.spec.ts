@@ -26,14 +26,33 @@ vi.mock('./rpc-helpers', () => ({
 }));
 
 const hostname = 'app.example.com';
+const origin = `https://${hostname}`;
 const fingerprint = 'abcd1234';
 const frameId = 42;
 const tabId = 7;
 const request: RpcRequests = { jsonrpc: '2.0', id: 'req-1', method: 'supportedMethods' };
 
 function buildPort(tabUrl?: string) {
-  return createMockPort({ frameId, url: `https://${hostname}`, tab: { id: tabId, url: tabUrl } });
+  return createMockPort({
+    frameId,
+    origin,
+    url: `${origin}/page`,
+    tab: { id: tabId, url: tabUrl },
+  });
 }
+
+function buildPortFromSender(sender: { origin?: string; url?: string }) {
+  return createMockPort({ frameId, ...sender, tab: { id: tabId } });
+}
+
+const otherOriginPorts = [
+  { name: 'a different scheme', port: buildPortFromSender({ origin: `http://${hostname}` }) },
+  { name: 'a different port', port: buildPortFromSender({ origin: `https://${hostname}:8443` }) },
+  {
+    name: 'a null sender origin',
+    port: buildPortFromSender({ origin: 'null', url: `${origin}/page` }),
+  },
+];
 
 function objectContaining(expected: Record<string, unknown>): unknown {
   return expect.objectContaining(expected);
@@ -48,7 +67,7 @@ function buildWalletEntities(fingerprints: string[]) {
 
 function buildPermission(overrides: Record<string, unknown> = {}) {
   return {
-    origin: hostname,
+    origin,
     fingerprint,
     accountIndex: 0,
     requestedAccounts: '2024-01-01T00:00:00.000Z',
@@ -59,13 +78,15 @@ function buildPermission(overrides: Record<string, unknown> = {}) {
 
 function buildState({
   permission,
+  permissionKey = origin,
   walletFingerprints,
 }: {
   permission?: Record<string, unknown>;
+  permissionKey?: string;
   walletFingerprints: string[];
 }) {
   return {
-    appPermissions: { entities: permission ? { [hostname]: permission } : {} },
+    appPermissions: { entities: permission ? { [permissionKey]: permission } : {} },
     wallets: { entities: buildWalletEntities(walletFingerprints) },
   };
 }
@@ -85,8 +106,33 @@ describe(createConnectingAppMetadataSearchParams.name, () => {
       buildPort('https://top.example.com/some/page')
     );
 
-    expect(result.urlParams.get('origin')).toBe(`https://${hostname}`);
+    expect(result.urlParams.get('origin')).toBe(origin);
     expect(result.urlParams.get('topOrigin')).toBe('https://top.example.com');
+  });
+
+  test('prefers the sender origin over the sender url', () => {
+    const result = createConnectingAppMetadataSearchParams(
+      buildPortFromSender({ origin, url: 'https://other.example.com/page' })
+    );
+
+    expect(result.urlParams.get('origin')).toBe(origin);
+  });
+
+  test('falls back to the sender url origin when the sender has no origin', () => {
+    const result = createConnectingAppMetadataSearchParams(
+      buildPortFromSender({ url: `${origin}/page?x=1` })
+    );
+
+    expect(result.urlParams.get('origin')).toBe(origin);
+  });
+
+  test('resolves an opaque null sender origin to no origin', () => {
+    const result = createConnectingAppMetadataSearchParams(
+      buildPortFromSender({ origin: 'null', url: `${origin}/page` })
+    );
+
+    expect(result.origin).toBeUndefined();
+    expect(result.urlParams.get('origin')).toBeNull();
   });
 
   test('omits the top origin when the sender tab has no url', () => {
@@ -139,6 +185,32 @@ describe(createConnectingAppSearchParamsWithLastKnownAccount.name, () => {
     expect(result.urlParams.get('accountIndex')).toBe('2');
     expect(result.urlParams.get('fingerprint')).toBe(fingerprint);
     expect(result.urlParams.get('policyId')).toBeNull();
+  });
+
+  test.each(otherOriginPorts)('pins nothing for $name', async ({ port }) => {
+    mocks.getRootState.mockResolvedValue(
+      buildState({ permission: buildPermission({ accountIndex: 3 }), walletFingerprints: [] })
+    );
+
+    const result = await createConnectingAppSearchParamsWithLastKnownAccount(port);
+
+    expect(result.urlParams.get('accountIndex')).toBeNull();
+    expect(result.urlParams.get('fingerprint')).toBeNull();
+  });
+
+  test('pins nothing from a legacy hostname-keyed permission', async () => {
+    mocks.getRootState.mockResolvedValue(
+      buildState({
+        permission: buildPermission({ origin: hostname }),
+        permissionKey: hostname,
+        walletFingerprints: [],
+      })
+    );
+
+    const result = await createConnectingAppSearchParamsWithLastKnownAccount(buildPort());
+
+    expect(result.urlParams.get('accountIndex')).toBeNull();
+    expect(result.urlParams.get('fingerprint')).toBeNull();
   });
 
   test('pins nothing when the origin has no permission', async () => {
@@ -207,6 +279,47 @@ describe('validateConnectedWalletExists', () => {
     );
   });
 
+  test.each(otherOriginPorts)(
+    'fails with UNAUTHENTICATED for $name of the connected app',
+    async ({ port }) => {
+      mocks.getRootState.mockResolvedValue(
+        buildState({ permission: buildPermission(), walletFingerprints: [fingerprint] })
+      );
+
+      const result = await validateConnectedWalletExists(request, port);
+
+      expect(result).toEqual({ status: 'failure' });
+      expect(mocks.sendMessage).toHaveBeenCalledWith(
+        tabId,
+        expect.objectContaining({
+          error: objectContaining({ code: RpcErrorCode.UNAUTHENTICATED }),
+        }),
+        { frameId }
+      );
+    }
+  );
+
+  test('fails with UNAUTHENTICATED for a legacy hostname-keyed permission', async () => {
+    mocks.getRootState.mockResolvedValue(
+      buildState({
+        permission: buildPermission({ origin: hostname }),
+        permissionKey: hostname,
+        walletFingerprints: [fingerprint],
+      })
+    );
+
+    const result = await validateConnectedWalletExists(request, buildPort());
+
+    expect(result).toEqual({ status: 'failure' });
+    expect(mocks.sendMessage).toHaveBeenCalledWith(
+      tabId,
+      expect.objectContaining({
+        error: objectContaining({ code: RpcErrorCode.UNAUTHENTICATED }),
+      }),
+      { frameId }
+    );
+  });
+
   test('fails when the permission has never been granted account access', async () => {
     mocks.getRootState.mockResolvedValue(
       buildState({
@@ -238,7 +351,7 @@ describe('validateConnectedWalletExists', () => {
 
   test('fails and reports missing state when persisted state predates multiwallet support', async () => {
     mocks.getRootState.mockResolvedValue({
-      appPermissions: { entities: { [hostname]: buildPermission() } },
+      appPermissions: { entities: { [origin]: buildPermission() } },
     });
 
     const result = await validateConnectedWalletExists(request, buildPort());
