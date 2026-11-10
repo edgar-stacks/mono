@@ -107,6 +107,14 @@ export default defineConfig({
           '40%, 63.99%': { opacity: 1 },
           '64%, 100%': { opacity: 0 },
         },
+        sheetRiseIn: {
+          '0%': {
+            opacity: 0,
+            transform: 'translateY(32px)',
+            animationTimingFunction: 'cubic-bezier(0.16, 1, 0.3, 1)',
+          },
+          '100%': { opacity: 1, transform: 'translateY(0)' },
+        },
       },
     },
   },
