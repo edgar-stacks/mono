@@ -16,11 +16,15 @@ import {
   mockTaprootUtxo,
 } from '@tests/mocks/mock-mixed-utxos';
 import { makeBitcoinPolicy, policyStateOverrides } from '@tests/mocks/mock-policies';
-import { mockFundedBitcoinAddressUtxos } from '@tests/mocks/mock-utxos';
+import {
+  mockFundedBitcoinAddressUtxos,
+  mockTestnetTestAccountEmptyUtxosRequests,
+} from '@tests/mocks/mock-utxos';
 import {
   getConnectedTestAppPermissionsState,
   testFingerprint,
 } from '@tests/page-object-models/onboarding.page';
+import { AccountSelectors } from '@tests/selectors/account.selectors';
 import { SendCryptoAssetSelectors } from '@tests/selectors/send.selectors';
 
 import { BITCOIN_API_BASE_URL_TESTNET4 } from '@leather.io/models';
@@ -198,6 +202,102 @@ test.describe('RPC: sendTransfer', () => {
         message: 'User rejected request',
       },
     });
+  });
+});
+
+const insufficientFundsMessage =
+  "This account doesn't have enough funds for this transfer. Switch account or cancel the request.";
+
+const insufficientFundsParams = {
+  recipients: [{ address: TEST_TESTNET_ACCOUNT_2_BTC_ADDRESS, amount: '100000000' }],
+  network: 'testnet4',
+};
+
+async function mockUtxosFundedAfterFirstRender(
+  context: BrowserContext,
+  funding: { isOn: boolean }
+) {
+  await context.route('**/v1/utxos/**', route => {
+    const url = decodeURIComponent(route.request().url());
+    const isNativeSegwitDescriptor = url.includes('/v1/utxos/wpkh(');
+    if (!funding.isOn || !isNativeSegwitDescriptor) return route.fulfill({ json: [] });
+    return route.fulfill({
+      json: [
+        {
+          txid: '58d44000884f0ba4cdcbeb1ac082e6c802d300c16b0d3251738e8cf6a57397ce',
+          vout: 0,
+          value: '200000000',
+          height: 810183,
+          address: TEST_TESTNET_ACCOUNT_2_BTC_ADDRESS,
+          path: "m/84'/1'/1'/0/0",
+        },
+      ],
+    });
+  });
+}
+
+test.describe('RPC: sendTransfer with insufficient funds', () => {
+  const funding = { isOn: false };
+
+  test.beforeEach(async ({ extensionId, globalPage, onboardingPage, page, context }) => {
+    funding.isOn = false;
+    await globalPage.setupAndUseApiCalls(extensionId);
+    await mockLeatherApiRequests(context);
+    await mockTestnetTestAccountEmptyUtxosRequests(context);
+    await mockUtxosFundedAfterFirstRender(context, funding);
+    await onboardingPage.signInWithTestAccount(extensionId, getConnectedTestAppPermissionsState());
+    await page.goto('localhost:3000');
+  });
+
+  test('that the approval explains the shortfall and only offers cancel', async ({
+    page,
+    context,
+  }) => {
+    const resultPromise = openSendTransfer(page)(insufficientFundsParams);
+    const popup = await context.waitForEvent('page');
+
+    await test.expect(popup.getByText(insufficientFundsMessage)).toBeVisible({ timeout: 15_000 });
+    await test.expect(popup.getByText('Requested amount')).toBeVisible();
+    await test.expect(popup.getByText('Available to send')).toBeVisible();
+    await test.expect(popup.getByText('Something went wrong')).toHaveCount(0);
+    await test.expect(popup.getByRole('button', { name: 'Approve' })).toHaveCount(0);
+
+    const [result] = await Promise.all([
+      resultPromise,
+      popup.waitForEvent('close'),
+      popup.getByRole('button', { name: 'Cancel' }).dispatchEvent('click'),
+    ]);
+
+    assertExistence(result, 'Expected result');
+    delete result.id;
+
+    test.expect(result).toEqual({
+      jsonrpc: '2.0',
+      error: {
+        code: 4001,
+        message: 'User rejected request',
+      },
+    });
+  });
+
+  test('that switching to a funded account enables approve', async ({ page, context }) => {
+    const resultPromise = openSendTransfer(page)(insufficientFundsParams);
+    const popup = await context.waitForEvent('page');
+
+    await test.expect(popup.getByText(insufficientFundsMessage)).toBeVisible({ timeout: 15_000 });
+    funding.isOn = true;
+
+    await popup.getByTestId(AccountSelectors.SigningAccountCard).click();
+    await popup.getByTestId('switch-account-item-1').click();
+
+    await test.expect(popup.getByText('Account 2')).toBeVisible();
+    await test
+      .expect(popup.getByRole('button', { name: 'Approve' }))
+      .toBeVisible({ timeout: 15_000 });
+    await test.expect(popup.getByText(insufficientFundsMessage)).toHaveCount(0);
+
+    await popup.close();
+    await test.expect(resultPromise).resolves.toBeDefined();
   });
 });
 

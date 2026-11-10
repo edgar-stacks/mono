@@ -14,6 +14,7 @@ export interface Fee {
 
 export type Fees = Record<FeePriority, Fee>;
 export type FeeType = 'fee-rate' | 'fee-value';
+export type FeesErrorReason = 'insufficient-funds' | 'fee-estimation-failed';
 
 interface FeeEditorContext {
   availableBalance: Money;
@@ -24,6 +25,7 @@ interface FeeEditorContext {
   isSponsored: boolean;
   marketData: MarketData;
   fees: Fees;
+  feesError?: FeesErrorReason;
   selectedFee: Fee;
   getCustomFee(rate: number): Fee;
   onGoBack(): void;

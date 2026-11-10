@@ -14,11 +14,13 @@ import { noop } from '@leather.io/utils';
 import { RouteUrls } from '@shared/route-urls';
 
 import { useCreateAccount } from '@app/common/hooks/account/use-create-account';
+import type { SwitchAccountFilter } from '@app/common/switch-account/switch-account';
 import { useAppDispatch } from '@app/store';
 import { useCurrentAccountId } from '@app/store/accounts/account';
 import { useHiddenAccountIds } from '@app/store/accounts/accounts.selectors';
 import { userTogglesHideAccount } from '@app/store/accounts/accounts.slice';
 import { useWalletAccountRefTree } from '@app/store/common/wallet-type.selectors';
+import { useBitcoinAccountIdentifiers } from '@app/store/keychains/keychain.selectors';
 import { useCurrentNetwork } from '@app/store/networks/networks.selectors';
 import { type PolicyStore } from '@app/store/policy/policy-store.utils';
 import {
@@ -38,13 +40,18 @@ import { RenamePolicyDialog } from './components/rename-policy-dialog';
 import { RenameWalletDialog } from './components/rename-wallet-dialog';
 import { SwitchAccountListItem } from './components/switch-account-list-item';
 import { WalletHeader } from './components/wallet-header';
-import { buildWalletRows, canHideAccount } from './switch-account-sheet.utils';
+import {
+  buildWalletRows,
+  canHideAccount,
+  filterWalletTreeToBitcoinAccounts,
+} from './switch-account-sheet.utils';
 import { useAddWalletNavigation } from './use-add-wallet-navigation';
 
 interface SwitchAccountSheetProps {
   isShowing: boolean;
   onClose(): void;
   allowPolicyAccounts?: boolean;
+  accountFilter?: SwitchAccountFilter;
 }
 
 interface RenamingWallet {
@@ -56,11 +63,13 @@ export function SwitchAccountSheet({
   isShowing,
   onClose,
   allowPolicyAccounts = true,
+  accountFilter = 'all',
 }: SwitchAccountSheetProps) {
   const currentAccountId = useCurrentAccountId();
   const createAccount = useCreateAccount();
   const dispatch = useAppDispatch();
-  const walletTree = useWalletAccountRefTree();
+  const allWalletsTree = useWalletAccountRefTree();
+  const bitcoinAccountIdentifiers = useBitcoinAccountIdentifiers();
   const navigate = useNavigate();
   const hiddenAccountIds = useHiddenAccountIds();
   const isCreatingAccountRef = useRef(false);
@@ -74,6 +83,11 @@ export function SwitchAccountSheet({
 
   const allPolicies = useSelector(selectAllPolicies);
   const network = useCurrentNetwork();
+
+  const walletTree = useMemo(() => {
+    if (accountFilter === 'all') return allWalletsTree;
+    return filterWalletTreeToBitcoinAccounts(allWalletsTree, bitcoinAccountIdentifiers);
+  }, [accountFilter, allWalletsTree, bitcoinAccountIdentifiers]);
 
   const filteredWalletTree = useMemo(() => {
     if (isManageMode) return walletTree;
@@ -89,9 +103,11 @@ export function SwitchAccountSheet({
     (acc: AccountId) => {
       if (!allowPolicyAccounts) return [];
       const parentAccountId = makeAccountIdentifer(acc.fingerprint, acc.accountIndex);
-      return filterPoliciesByParentAndNetwork(allPolicies, parentAccountId, network.id);
+      const policies = filterPoliciesByParentAndNetwork(allPolicies, parentAccountId, network.id);
+      if (accountFilter === 'all') return policies;
+      return policies.filter(policy => policy.chain === 'bitcoin');
     },
-    [allPolicies, network.id, allowPolicyAccounts]
+    [allPolicies, network.id, allowPolicyAccounts, accountFilter]
   );
 
   const walletRows = useMemo(
@@ -185,7 +201,7 @@ export function SwitchAccountSheet({
                       isManageMode={isManageMode}
                       name={wallet.name}
                       walletType={wallet.type}
-                      canRemoveWallet={walletTree.length > 1}
+                      canRemoveWallet={allWalletsTree.length > 1}
                       onRename={() =>
                         setRenamingWallet({
                           fingerprint: wallet.fingerprint,

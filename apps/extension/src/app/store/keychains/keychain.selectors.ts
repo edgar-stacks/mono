@@ -2,6 +2,11 @@ import { useSelector } from 'react-redux';
 
 import { createSelector } from '@reduxjs/toolkit';
 
+import {
+  extractAccountIndexFromDescriptor,
+  extractFingerprintFromDescriptor,
+  makeAccountIdentifer,
+} from '@leather.io/crypto';
 import { keychainAdapter } from '@leather.io/state/keychains';
 
 import { type RootState } from '@app/store/store';
@@ -22,6 +27,26 @@ const selectBitcoinKeychainDescriptors = createSelector([selectBitcoinKeychains]
   keychains.map(keychain => keychain.descriptor)
 );
 
+const selectBitcoinAccountIdentifiers = createSelector(
+  [selectBitcoinKeychainDescriptors],
+  descriptors => {
+    const identifiers = new Set<string>();
+    for (const descriptor of descriptors) {
+      try {
+        identifiers.add(
+          makeAccountIdentifer(
+            extractFingerprintFromDescriptor(descriptor),
+            extractAccountIndexFromDescriptor(descriptor)
+          )
+        );
+      } catch {
+        continue;
+      }
+    }
+    return [...identifiers];
+  }
+);
+
 export const selectStacksKeychains = createSelector([selectAllKeychains], keychains =>
   keychains.filter(keychain => keychain.chain === 'stacks')
 );
@@ -36,4 +61,8 @@ export function useBitcoinKeychainDescriptors() {
 
 export function useStacksKeychainDescriptors() {
   return useSelector(selectStacksKeychainDescriptors);
+}
+
+export function useBitcoinAccountIdentifiers() {
+  return useSelector(selectBitcoinAccountIdentifiers);
 }

@@ -1,8 +1,9 @@
-import { Outlet, useNavigate } from 'react-router';
+import { Outlet, useNavigate, useOutletContext } from 'react-router';
 
 import { RouteUrls } from '@shared/route-urls';
 
 import { BitcoinUtxosLoader } from '@app/components/loaders/bitcoin-utxos-loader';
+import { FullPageLoadingSpinner } from '@app/components/loading-spinner';
 import { BitcoinFeeEditorProvider } from '@app/features/fee-editor/bitcoin/bitcoin-fee-editor.provider';
 import { useCurrentBtcBalanceWithFallback } from '@app/query/bitcoin/balance/btc-balance.hooks';
 import { useCryptoCurrencyMarketData } from '@app/query/common/market-data/market-data.hooks';
@@ -18,6 +19,7 @@ export function RpcSendTransferContainer() {
   const account = useAccountRequest();
 
   const navigate = useNavigate();
+  const outletContext = useOutletContext();
 
   const { recipients } = sendTransferState;
 
@@ -28,6 +30,7 @@ export function RpcSendTransferContainer() {
           account={account}
           availableBalance={btcBalance.availableBalance}
           isSendingMax={false}
+          loadingFallback={<FullPageLoadingSpinner />}
           marketData={btcMarketData}
           onGoBack={() => void navigate(RouteUrls.RpcSendTransfer)}
           recipients={recipients}
@@ -40,7 +43,7 @@ export function RpcSendTransferContainer() {
               utxos,
             }}
           >
-            <Outlet />
+            <Outlet context={outletContext} />
           </RpcSendTransferProvider>
         </BitcoinFeeEditorProvider>
       )}

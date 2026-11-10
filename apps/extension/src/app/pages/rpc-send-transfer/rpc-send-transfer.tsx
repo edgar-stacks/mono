@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 
 import { Box } from 'leather-styles/jsx';
 
@@ -10,11 +10,12 @@ import { analytics } from '@shared/utils/analytics';
 import { formatCurrency } from '@app/common/currency-formatter';
 import { focusTabAndWindow } from '@app/common/focus-tab';
 import { useConvertCryptoCurrencyToFiatAmount } from '@app/common/hooks/use-convert-to-fiat-amount';
+import { useSwitchAccountSheet } from '@app/common/switch-account/use-switch-account-sheet-context';
 import { AccountBitcoinAddress } from '@app/components/account/account-bitcoin-address';
+import { FormError } from '@app/components/form-error';
 import { BackgroundOverlay } from '@app/components/loading-overlay';
 import { NoBroadcastWarningLabel } from '@app/components/rpc-transaction-request/no-broadcast-warning-label';
 import { TransactionActionsTitle } from '@app/components/rpc-transaction-request/transaction-actions-title';
-import { TransactionError } from '@app/components/rpc-transaction-request/transaction-error';
 import { TransactionHeader } from '@app/components/rpc-transaction-request/transaction-header';
 import { TransactionRecipientsLayout } from '@app/components/rpc-transaction-request/transaction-recipients.layout';
 import { TransactionWrapper } from '@app/components/rpc-transaction-request/transaction-wrapper';
@@ -27,9 +28,14 @@ import { useBreakOnNonCompliantEntity } from '@app/query/common/compliance-check
 import { useCurrentAccountId } from '@app/store/accounts/account';
 import { useCurrentPolicy } from '@app/store/policy/policy.selectors';
 
+import { RpcSendTransferInsufficientFunds } from './rpc-send-transfer-insufficient-funds';
 import { getRpcSendTransferSpendSources } from './rpc-send-transfer-spend-sources';
 import { useRpcSendTransferContext } from './rpc-send-transfer.context';
 import { useRpcSendTransferActions } from './use-rpc-send-transfer-actions';
+import {
+  rpcSendTransferErrorMessages,
+  useRpcSendTransferError,
+} from './use-rpc-send-transfer-error';
 import { useRpcSendTransferTx } from './use-rpc-send-transfer-tx';
 
 export function RpcSendTransfer() {
@@ -40,11 +46,18 @@ export function RpcSendTransfer() {
   const { recipients, recipientAddresses, amount, broadcast, origin, isLoadingBalance, tabId } =
     useRpcSendTransferContext();
 
+  const { toggleSwitchAccount, setAccountFilter } = useSwitchAccountSheet();
+  const transferError = useRpcSendTransferError();
+
   const convertToFiatAmount = useConvertCryptoCurrencyToFiatAmount('BTC');
 
   useBreakOnNonCompliantEntity('rpc_send_transfer', recipientAddresses);
 
-  const isInsufficientBalance = availableBalance.amount.isLessThan(amount.amount);
+  useEffect(() => {
+    setAccountFilter('bitcoin');
+    return () => setAccountFilter('all');
+  }, [setAccountFilter]);
+
   const isBitcoinPolicy = policy?.chain === 'bitcoin';
   const isSignOnly = !broadcast && !isBitcoinPolicy;
   const generatedTx = useRpcSendTransferTx();
@@ -88,6 +101,7 @@ export function RpcSendTransfer() {
             fiatBalance={convertToFiatAmount(availableBalance)}
             isLoadingBalance={isLoadingBalance}
             showPolicyAccount={isBitcoinPolicy}
+            onSelectAccount={toggleSwitchAccount}
           />
           <TransactionRecipientsLayout
             title="Bitcoin"
@@ -96,22 +110,29 @@ export function RpcSendTransfer() {
             convertToFiatAmount={convertToFiatAmount}
             recipients={recipients}
           />
-          <FeeEditor.Trigger
-            feeType="fee-rate"
-            isLoading={isLoadingFees}
-            isSponsored={false}
-            marketData={marketData}
-            onEditFee={onUserActivatesFeeEditor}
-            selectedFee={selectedFee}
-          />
+          {transferError === 'insufficient-funds' && (
+            <RpcSendTransferInsufficientFunds convertToFiatAmount={convertToFiatAmount} />
+          )}
+          {!transferError && (
+            <FeeEditor.Trigger
+              feeType="fee-rate"
+              isLoading={isLoadingFees}
+              isSponsored={false}
+              marketData={marketData}
+              onEditFee={onUserActivatesFeeEditor}
+              selectedFee={selectedFee}
+            />
+          )}
         </Box>
         <Approver.Actions actions={approverActions}>
-          <TransactionActionsTitle amount={totalFiatValue} isLoading={isLoadingBalance} />
-          {spendSources && <SpendSourcesApproverRows breakdown={spendSources.breakdown} />}
-          <TransactionError
-            isLoading={isLoadingBalance}
-            isInsufficientBalance={isInsufficientBalance}
-          />
+          {transferError ? (
+            <FormError text={rpcSendTransferErrorMessages[transferError]} />
+          ) : (
+            <>
+              <TransactionActionsTitle amount={totalFiatValue} isLoading={isLoadingBalance} />
+              {spendSources && <SpendSourcesApproverRows breakdown={spendSources.breakdown} />}
+            </>
+          )}
         </Approver.Actions>
       </Approver>
     </TransactionWrapper>

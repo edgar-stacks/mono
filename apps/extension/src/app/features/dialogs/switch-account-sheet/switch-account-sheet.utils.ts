@@ -31,6 +31,25 @@ export function buildWalletRows(
   return rows;
 }
 
+export function filterWalletTreeToBitcoinAccounts<T extends WalletGroup>(
+  walletTree: T[],
+  bitcoinAccountIdentifiers: string[]
+): T[] {
+  return walletTree
+    .map(wallet => {
+      if (wallet.type === 'software') return wallet;
+      return {
+        ...wallet,
+        accounts: wallet.accounts.filter(acc =>
+          bitcoinAccountIdentifiers.includes(
+            makeAccountIdentifer(acc.fingerprint, acc.accountIndex)
+          )
+        ),
+      };
+    })
+    .filter(wallet => wallet.accounts.length > 0);
+}
+
 interface CanHideAccountArgs {
   account: AccountId;
   activeAccount: AccountId;

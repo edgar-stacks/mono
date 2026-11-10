@@ -6,7 +6,11 @@ import type { AccountId } from '@leather.io/models';
 import type { WalletType } from '@app/store/common/wallet-type.selectors';
 import type { PolicyStore } from '@app/store/policy/policy-store.utils';
 
-import { buildWalletRows, canHideAccount } from './switch-account-sheet.utils';
+import {
+  buildWalletRows,
+  canHideAccount,
+  filterWalletTreeToBitcoinAccounts,
+} from './switch-account-sheet.utils';
 
 const fingerprint = 'a1b2c3d4';
 function account(accountIndex: number): AccountId {
@@ -99,5 +103,48 @@ describe(canHideAccount.name, () => {
         hiddenAccountIds: [],
       })
     ).toBe(true);
+  });
+});
+
+describe(filterWalletTreeToBitcoinAccounts.name, () => {
+  const ledgerFingerprint = 'e5f6a7b8';
+  function ledgerAccount(accountIndex: number): AccountId {
+    return { fingerprint: ledgerFingerprint, accountIndex };
+  }
+  const softwareWallet = walletGroup('software', 3);
+  const ledgerWallet: { type: WalletType; accounts: AccountId[] } = {
+    type: 'ledger',
+    accounts: [ledgerAccount(0), ledgerAccount(1), ledgerAccount(2)],
+  };
+
+  test('keeps every software wallet account', () => {
+    expect(filterWalletTreeToBitcoinAccounts([softwareWallet], [])).toEqual([softwareWallet]);
+  });
+
+  test('keeps only ledger accounts that have a bitcoin keychain', () => {
+    const [wallet] = filterWalletTreeToBitcoinAccounts(
+      [ledgerWallet],
+      [idOf(ledgerAccount(0)), idOf(ledgerAccount(2))]
+    );
+    expect(wallet.accounts).toEqual([ledgerAccount(0), ledgerAccount(2)]);
+  });
+
+  test('drops ledger wallets left without accounts', () => {
+    expect(filterWalletTreeToBitcoinAccounts([softwareWallet, ledgerWallet], [])).toEqual([
+      softwareWallet,
+    ]);
+  });
+
+  test('ignores bitcoin keychains of another wallet', () => {
+    expect(filterWalletTreeToBitcoinAccounts([ledgerWallet], [idOf(account(0))])).toEqual([]);
+  });
+
+  test('keeps the other wallet fields', () => {
+    const namedLedgerWallet = { ...ledgerWallet, name: 'Ledger', fingerprint: ledgerFingerprint };
+    const [wallet] = filterWalletTreeToBitcoinAccounts(
+      [namedLedgerWallet],
+      [idOf(ledgerAccount(1))]
+    );
+    expect(wallet).toEqual({ ...namedLedgerWallet, accounts: [ledgerAccount(1)] });
   });
 });
