@@ -1,3 +1,5 @@
+import { useState } from 'react';
+
 import { compileWshDescriptor, findAccountDescriptorKey } from '@leather.io/bitcoin';
 import { buildUnsignedMultisigBtcTransfer } from '@leather.io/services';
 import { btcToSat, createMoney } from '@leather.io/utils';
@@ -7,8 +9,13 @@ import { logger } from '@shared/logger';
 import { useRouteState } from '@app/common/hooks/use-route-state';
 import { formFeeRowValue } from '@app/common/send/utils';
 import { useGenerateUnsignedBitcoinTx } from '@app/common/transactions/bitcoin/use-generate-bitcoin-tx';
+import { useWalletType } from '@app/common/use-wallet-type';
 import { type OnChooseFeeArgs } from '@app/components/bitcoin-fees-list/bitcoin-fees-list';
 import { isLedgerSigningCancelledError } from '@app/features/ledger/flow/unwrap-ledger-signing-outcome';
+import {
+  type LedgerBitcoinInputLimit,
+  getLedgerBitcoinInputLimit,
+} from '@app/features/ledger/utils/ledger-bitcoin-input-limit';
 import { useSignBitcoinTx } from '@app/store/accounts/blockchain/bitcoin/bitcoin.hooks';
 import { useCurrentNativeSegwitAccount } from '@app/store/accounts/blockchain/bitcoin/native-segwit-account.hooks';
 import { useCurrentNetwork } from '@app/store/networks/networks.selectors';
@@ -35,10 +42,13 @@ export function useBtcChooseFee() {
   const policy = useCurrentPolicy();
   const nativeSegwitAccount = useCurrentNativeSegwitAccount();
   const network = useCurrentNetwork();
+  const { walletType } = useWalletType();
+  const [ledgerInputLimit, setLedgerInputLimit] = useState<LedgerBitcoinInputLimit | null>(null);
   const amountAsMoney = createMoney(btcToSat(txValues.amount).toNumber(), 'BTC');
 
   return {
     amountAsMoney,
+    ledgerInputLimit,
 
     async previewTransaction({ feeRate, feeValue, time, isCustomFee }: OnChooseFeeArgs) {
       const feeRowValue = formFeeRowValue(feeRate, isCustomFee);
@@ -88,6 +98,17 @@ export function useBtcChooseFee() {
       const amount = isSendingMax
         ? calcMaxSpend(txValues.recipient, utxos, feeRate).amount
         : amountAsMoney;
+
+      if (walletType === 'ledger') {
+        const inputLimit = getLedgerBitcoinInputLimit({
+          recipients: [{ address: txValues.recipient, amount }],
+          utxos,
+          feeRate,
+          isSendMax: isSendingMax,
+        });
+        if (inputLimit.exceedsLimit) return setLedgerInputLimit(inputLimit);
+      }
+      setLedgerInputLimit(null);
 
       const resp = generateTx(
         {

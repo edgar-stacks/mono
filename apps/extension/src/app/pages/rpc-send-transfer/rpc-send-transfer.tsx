@@ -22,6 +22,7 @@ import { SpendSourcesApproverRows } from '@app/components/spend-sources/spend-so
 import { SpendSourcesTaprootCallout } from '@app/components/spend-sources/spend-sources-taproot-callout';
 import { FeeEditor } from '@app/features/fee-editor/fee-editor';
 import { useFeeEditorContext } from '@app/features/fee-editor/fee-editor.context';
+import { LedgerBitcoinInputLimitCallout } from '@app/features/ledger/components/ledger-bitcoin-input-limit-callout';
 import { SigningAccountCard } from '@app/features/rpc-stacks-transaction-request/signing-account-card/signing-account-card';
 import { useBreakOnNonCompliantEntity } from '@app/query/common/compliance-checker/compliance-checker.query';
 import { useCurrentAccountId } from '@app/store/accounts/account';
@@ -30,6 +31,7 @@ import { useCurrentPolicy } from '@app/store/policy/policy.selectors';
 import { getRpcSendTransferSpendSources } from './rpc-send-transfer-spend-sources';
 import { useRpcSendTransferContext } from './rpc-send-transfer.context';
 import { useRpcSendTransferActions } from './use-rpc-send-transfer-actions';
+import { useRpcSendTransferLedgerInputLimit } from './use-rpc-send-transfer-ledger-input-limit';
 import { useRpcSendTransferTx } from './use-rpc-send-transfer-tx';
 
 export function RpcSendTransfer() {
@@ -49,7 +51,10 @@ export function RpcSendTransfer() {
   const isSignOnly = !broadcast && !isBitcoinPolicy;
   const generatedTx = useRpcSendTransferTx();
   const unsignedTx = generatedTx.tx;
-  const { approverActions, isBroadcasting, isSubmitted } = useRpcSendTransferActions(generatedTx);
+  const ledgerInputLimit = useRpcSendTransferLedgerInputLimit();
+  const { approverActions, isBroadcasting, isSubmitted } = useRpcSendTransferActions(generatedTx, {
+    isApproveDisabled: ledgerInputLimit !== null,
+  });
   const showOverlay = isBroadcasting || isSubmitted;
 
   const spendSources = useMemo(() => {
@@ -81,6 +86,12 @@ export function RpcSendTransfer() {
           />
           {isSignOnly && <NoBroadcastWarningLabel origin={origin} />}
           {spendSources && <SpendSourcesTaprootCallout summary={spendSources.summary} />}
+          {ledgerInputLimit && (
+            <LedgerBitcoinInputLimitCallout
+              inputCount={ledgerInputLimit.inputCount}
+              maxAmountWithinLimit={ledgerInputLimit.maxAmountWithinLimit}
+            />
+          )}
           <SigningAccountCard
             address={<AccountBitcoinAddress accountId={currentAccount} />}
             availableBalance={availableBalance}
