@@ -244,7 +244,7 @@ msgstr "Address types"
 msgid "Advanced options"
 msgstr "Advanced options"
 
-#: src/utils/dapps.ts:25
+#: src/utils/dapps.ts:34
 msgid "Alex"
 msgstr "Alex"
 
@@ -381,7 +381,7 @@ msgstr "Approve"
 msgid "Argument {argumentNumber}"
 msgstr "Argument {argumentNumber}"
 
-#: src/utils/dapps.ts:35
+#: src/utils/dapps.ts:44
 msgid "Arkadiko"
 msgstr "Arkadiko"
 
@@ -448,7 +448,7 @@ msgstr "Bitcoin unit updated"
 
 #: src/features/swap/components/fees-info-sheet.tsx:18
 #: src/features/swap/components/fees-info-sheet.tsx:22
-#: src/utils/dapps.ts:45
+#: src/utils/dapps.ts:54
 msgid "Bitflow"
 msgstr "Bitflow"
 
@@ -513,7 +513,7 @@ msgstr "Change name"
 msgid "Changed network"
 msgstr "Changed network"
 
-#: src/utils/dapps.ts:55
+#: src/utils/dapps.ts:64
 msgid "Charisma"
 msgstr "Charisma"
 
@@ -883,7 +883,7 @@ msgstr "Failed to start a swap"
 msgid "Fast"
 msgstr "Fast"
 
-#: src/utils/dapps.ts:65
+#: src/utils/dapps.ts:74
 msgid "FastPool"
 msgstr "FastPool"
 
@@ -979,7 +979,7 @@ msgstr "Go back"
 msgid "Google Play"
 msgstr "Google Play"
 
-#: src/utils/dapps.ts:75
+#: src/utils/dapps.ts:84
 msgid "Granite"
 msgstr "Granite"
 
@@ -996,7 +996,7 @@ msgstr "Haptics"
 msgid "Help"
 msgstr "Help"
 
-#: src/utils/dapps.ts:85
+#: src/utils/dapps.ts:94
 msgid "Hermetica"
 msgstr "Hermetica"
 
@@ -1134,7 +1134,7 @@ msgstr "Learn"
 msgid "Learn more about stacking"
 msgstr "Learn more about stacking"
 
-#: src/utils/dapps.ts:95
+#: src/utils/dapps.ts:104
 msgid "Leather"
 msgstr "Leather"
 
@@ -1150,7 +1150,7 @@ msgstr "Leather will sign this transaction and hand it to this app, which can br
 msgid "Leather won't broadcast this transaction"
 msgstr "Leather won't broadcast this transaction"
 
-#: src/utils/dapps.ts:30
+#: src/utils/dapps.ts:39
 msgid "Lisa"
 msgstr "Lisa"
 
@@ -1398,7 +1398,7 @@ msgstr "Pay-to-anchor output"
 msgid "Pending"
 msgstr "Pending"
 
-#: src/utils/dapps.ts:40
+#: src/utils/dapps.ts:49
 msgid "PlanBetter"
 msgstr "PlanBetter"
 
@@ -1535,7 +1535,7 @@ msgstr "Request approval for transactions"
 msgid "Require biometrics or PIN"
 msgstr "Require biometrics or PIN"
 
-#: src/utils/dapps.ts:50
+#: src/utils/dapps.ts:59
 msgid "Restake"
 msgstr "Restake"
 
@@ -1753,7 +1753,7 @@ msgstr "Something went wrong"
 msgid "Sponsored fee"
 msgstr "Sponsored fee"
 
-#: src/utils/dapps.ts:60
+#: src/utils/dapps.ts:69
 msgid "StackingDAO"
 msgstr "StackingDAO"
 
@@ -2094,7 +2094,7 @@ msgid "Use your device PIN, Face ID or other biometrics to secure your wallets"
 msgstr "Use your device PIN, Face ID or other biometrics to secure your wallets"
 
 #: src/features/swap/components/fees-info-sheet.tsx:20
-#: src/utils/dapps.ts:70
+#: src/utils/dapps.ts:79
 msgid "Velar"
 msgstr "Velar"
 
@@ -2159,7 +2159,7 @@ msgstr "Withdrawing"
 msgid "Wrong URL"
 msgstr "Wrong URL"
 
-#: src/utils/dapps.ts:80
+#: src/utils/dapps.ts:89
 msgid "Xverse"
 msgstr "Xverse"
 
@@ -2237,6 +2237,6 @@ msgstr "Your total tokens across all your accounts."
 msgid "Your total tokens on chain. Includes both available and locked amounts."
 msgstr "Your total tokens on chain. Includes both available and locked amounts."
 
-#: src/utils/dapps.ts:90
+#: src/utils/dapps.ts:99
 msgid "Zest"
 msgstr "Zest"

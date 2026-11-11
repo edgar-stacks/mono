@@ -1,6 +1,15 @@
 import { t } from '@lingui/core/macro';
 
 import {
+  ALEX_LINK,
+  ARKADIKO_LINK,
+  BITFLOW_LINK,
+  GRANITE_LINK,
+  HERMETICA_LINK,
+  VELAR_LINK,
+  ZEST_LINK,
+} from '@leather.io/constants';
+import {
   AlexLogo,
   ArkadikoLogo,
   BitflowLogo,
@@ -23,7 +32,7 @@ export function getDappMap() {
     alex: {
       icon: AlexLogo,
       title: t`Alex`,
-      url: 'https://alexlab.co',
+      url: ALEX_LINK,
     },
     lisa: {
       icon: LisaLogo,
@@ -33,7 +42,7 @@ export function getDappMap() {
     arkadiko: {
       icon: ArkadikoLogo,
       title: t`Arkadiko`,
-      url: 'https://arkadiko.finance',
+      url: ARKADIKO_LINK,
     },
     planbetter: {
       icon: PlanBetterLogo,
@@ -43,7 +52,7 @@ export function getDappMap() {
     bitflow: {
       icon: BitflowLogo,
       title: t`Bitflow`,
-      url: 'https://www.bitflow.finance',
+      url: BITFLOW_LINK,
     },
     restake: {
       icon: RestakeLogo,
@@ -68,12 +77,12 @@ export function getDappMap() {
     velar: {
       icon: VelarLogo,
       title: t`Velar`,
-      url: 'https://velar.com',
+      url: VELAR_LINK,
     },
     granite: {
       icon: GraniteLogo,
       title: t`Granite`,
-      url: 'https://granite.world',
+      url: GRANITE_LINK,
     },
     xverse: {
       icon: XverseLogo,
@@ -83,12 +92,12 @@ export function getDappMap() {
     hermetica: {
       icon: HermeticaLogo,
       title: t`Hermetica`,
-      url: 'https://hermetica.fi',
+      url: HERMETICA_LINK,
     },
     zest: {
       icon: ZestLogo,
       title: t`Zest`,
-      url: 'https://zestprotocol.com',
+      url: ZEST_LINK,
     },
     leather: {
       icon: LeatherLogo,
