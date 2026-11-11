@@ -37,4 +37,44 @@ describe('Spam filter', () => {
       spamReplacement
     );
   });
+
+  it('should allow names that only contain spam words inside other words', () => {
+    const honestNames = [
+      'Darwin',
+      'Wonderland',
+      'Window Finance',
+      'Winter Token',
+      'Twin Peaks DAO',
+      'Clickhouse Credits',
+      'Rewind',
+      'Swing',
+      'Erwin',
+      'Wondrous',
+      'Baldwin',
+      'Winklevoss Dollar',
+      'Unwind Protocol',
+      'Crosswind',
+      'Goodwin',
+      'Twins',
+      'Wonton',
+      'Winery Coin',
+      'Kiwini',
+      'Brownie Points',
+    ];
+    honestNames.forEach(name => expect(spamFilter({ input: name, whitelist: [] })).toEqual(name));
+  });
+
+  it('should flag names where a spam word or url stands alone', () => {
+    const spamNames = [
+      'You won 500 STX',
+      'WIN a free NFT',
+      'click here to claim',
+      'Claim now: www.free-stx.com',
+      'Visit https://airdrop-stacks.io/claim?ref=you',
+      'You WON | claim at stx-rewards.net',
+    ];
+    spamNames.forEach(name =>
+      expect(spamFilter({ input: name, whitelist: [] })).toEqual(spamReplacement)
+    );
+  });
 });
