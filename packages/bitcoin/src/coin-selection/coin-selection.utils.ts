@@ -2,7 +2,7 @@ import BigNumber from 'bignumber.js';
 import validate, { AddressType, getAddressInfo } from 'bitcoin-address-validation';
 import { entries } from 'remeda';
 
-import { BTC_P2WPKH_DUST_AMOUNT } from '@leather.io/constants';
+import { BTC_P2TR_DUST_AMOUNT, BTC_P2WPKH_DUST_AMOUNT } from '@leather.io/constants';
 import { sumNumbers } from '@leather.io/utils';
 
 import { BtcSizeFeeEstimator } from '../fees/btc-size-fee-estimator';
@@ -131,6 +131,13 @@ export function getSpendableAmount<T extends InputData>({
   };
 }
 
+export function getDustThresholdByAddress(address: string) {
+  if (!validate(address)) return BTC_P2WPKH_DUST_AMOUNT;
+  return getAddressInfo(address).type === AddressType.p2tr
+    ? BTC_P2TR_DUST_AMOUNT
+    : BTC_P2WPKH_DUST_AMOUNT;
+}
+
 // Check if the spendable amount drops when adding a utxo
 export function filterUneconomicalUtxos<T extends InputData>({
   utxos,
@@ -151,17 +158,19 @@ export function filterUneconomicalUtxos<T extends InputData>({
   });
 
   const filteredUtxos = utxos
-    .filter(utxo => Number(utxo.value) >= BTC_P2WPKH_DUST_AMOUNT)
-    .filter(utxo => {
+    .map((utxo, index) => ({ utxo, index }))
+    .filter(({ utxo }) => Number(utxo.value) >= getDustThresholdByAddress(utxo.address))
+    .filter(({ index }) => {
       // Calculate spendableAmount without that utxo
       const { spendableAmount } = getSpendableAmount({
-        utxos: utxos.filter(u => u.txid !== utxo.txid),
+        utxos: utxos.filter((_, i) => i !== index),
         feeRate,
         recipients,
         inputSizing,
       });
       // If fullSpendableAmount is greater, do not use utxo
       return spendableAmount.toNumber() < fullSpendableAmount.toNumber();
-    });
+    })
+    .map(({ utxo }) => utxo);
   return filteredUtxos;
 }

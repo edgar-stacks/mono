@@ -336,6 +336,31 @@ describe('mixed input types', () => {
     expect(mixedResult.fee.amount.isGreaterThan(allTaprootResult.fee.amount)).toBeTruthy();
   });
 
+  test('that dropping change as dust reports the fee as inputs minus outputs', () => {
+    const utxos = generateMockTransactions([10_000]);
+    const recipientAmount = 9_700;
+
+    const result = determineUtxosForSpend({
+      utxos,
+      recipients: [{ address: recipientAddress, amount: createMoney(recipientAmount, 'BTC') }],
+      feeRate: 1,
+    });
+
+    const sizeWithoutChange = getSizeInfo({
+      utxos: result.inputs,
+      recipients: [{ address: recipientAddress, amount: createMoney(recipientAmount, 'BTC') }],
+      isSendMax: true,
+    });
+
+    const inputsTotal = sumNumbers(result.inputs.map(input => input.value));
+    const outputsTotal = result.outputs.reduce((total, output) => total + output.value, 0n);
+
+    expect(result.outputs).toHaveLength(1);
+    expect(result.fee.amount.toNumber()).toEqual(inputsTotal.toNumber() - Number(outputsTotal));
+    expect(result.size).toEqual(sizeWithoutChange.txVBytes);
+    expect(result.txVBytes).toEqual(sizeWithoutChange.txVBytes);
+  });
+
   test('that mixed P2WPKH + P2TR inputs are sorted by value descending', () => {
     const nativeSegwitUtxos = generateMockTransactions([15_000, 40_000]);
     const taprootUtxos = generateMockTaprootTransactions([25_000, 30_000]);
