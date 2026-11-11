@@ -5,6 +5,7 @@ import { getTransferSip10TxHex } from '@/features/approver/utils';
 import { useSendMax } from '@/features/send/hooks/use-send-max';
 import { useSendNavigation } from '@/features/send/navigation';
 import { calculateDefaultStacksFee } from '@/features/send/utils';
+import { useUserSettings } from '@/hooks/use-user-settings';
 import { useStacksSigners } from '@/store/keychains/stacks/stacks-keychains.read';
 import { assertStacksSigner } from '@/store/keychains/stacks/utils';
 import { useNetworkPreferenceStacksNetwork } from '@/store/settings/settings';
@@ -30,6 +31,7 @@ export function useSip10Form({ account, availableBalance, nonce, asset }: UseSip
   const { displayToast } = useToastContext();
   const { navigate } = useSendNavigation();
   const stacksNetwork = useNetworkPreferenceStacksNetwork();
+  const settings = useUserSettings();
   const stxSigner = useStacksSigners().fromAccountIndex(
     account.fingerprint,
     account.accountIndex
@@ -44,6 +46,7 @@ export function useSip10Form({ account, availableBalance, nonce, asset }: UseSip
     payerAddress: stxSigner.address,
     chainId: stacksNetwork.chainId,
     assetDecimals: asset.decimals,
+    settings,
   });
   const form = useForm<StxFormSchema>({
     resolver: zodResolver(schema),

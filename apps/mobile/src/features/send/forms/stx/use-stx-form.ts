@@ -12,6 +12,7 @@ import {
   calculateDefaultStacksFee,
   stxFormValuesToSerializedTransaction,
 } from '@/features/send/utils';
+import { useUserSettings } from '@/hooks/use-user-settings';
 import { useStacksSigners } from '@/store/keychains/stacks/stacks-keychains.read';
 import { assertStacksSigner } from '@/store/keychains/stacks/utils';
 import { useNetworkPreferenceStacksNetwork } from '@/store/settings/settings';
@@ -39,10 +40,12 @@ export function useStxForm({ account, availableBalance, nonce }: UseStxFormProps
   )[0];
   assertStacksSigner(stxSigner);
   const calculateStxMaxSpend = useCalculateStxMaxSpend(availableBalance);
+  const settings = useUserSettings();
   const schema = useStxSendFormSchema({
     calculateStxMaxSpend,
     payerAddress: stxSigner.address,
     chainId: stacksNetwork.chainId,
+    settings,
   });
   const form = useForm<StxFormSchema>({
     resolver: zodResolver(schema),
