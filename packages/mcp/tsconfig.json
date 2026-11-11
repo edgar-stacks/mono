@@ -1,0 +1,11 @@
+{
+  "extends": ["@leather.io/tsconfig-config/tsconfig.base.json"],
+  "compilerOptions": {
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    "types": ["node", "vitest/globals"],
+    "outDir": "./dist",
+    "rootDir": "./src"
+  },
+  "include": ["src/**/*"]
+}
