@@ -193,12 +193,8 @@ GitHub write there uses an installation token of the `fix-issue` GitHub App, not
 pull request start CI like any contributor's, and its API commits are signed. The pull request then
 needs two human reviews like any other.
 
-The App's private key never reaches the runner. It lives in AWS KMS, and `pnpm lt fix-issue
-app-token create` logs in to AWS through GitHub's OIDC token, has KMS sign the App's JWT, and
-exchanges the JWT for an installation token limited to this repository and to contents, pull
-requests and issues. The job revokes the token when it ends (`app-token revoke`), so a token that
-leaks from a run stops working when the run does, and within an hour at most. Nobody can copy the
-key, and every signature is logged in CloudTrail.
+The installation token comes from `actions/create-github-app-token`, limited to this repository
+and to contents, pull requests and issues; the action revokes it when the job ends.
 
 **What a leaked token can reach.** The App writes code, so the repository's rulesets are what keep a
 stolen token away from everything but bot branches. Keep them as follows:
@@ -225,16 +221,11 @@ only shrinks.
 1. Create a GitHub App (webhook off; repository permissions Contents, Pull requests and Issues read
    and write, Metadata read; no Workflows permission) and install it on the repository only. Set
    the repository variable `FIX_ISSUE_APP_CLIENT_ID` (the App's client ID, not a secret).
-2. Create the environment `environment/mono-fix-issue`, limited to the `dev` branch, with the
-   variables `AWS_ROLE_ARN`, `AWS_REGION` and `FIX_ISSUE_APP_KMS_KEY_ID`. It holds no secrets.
-3. In AWS, import a private key generated for the App into an asymmetric KMS key (`RSA_2048`,
-   `SIGN_VERIFY`), then delete the downloaded `.pem` and every other key on the App's settings page.
-   The role in `AWS_ROLE_ARN` trusts only GitHub's OIDC subject
-   `repo:leather-io/mono:environment:environment/mono-fix-issue` and may only call `kms:Sign` on
-   that key.
-4. Set up the rulesets above.
+2. Create the environment `fix-issue`, limited to the `dev` branch, with the secret
+   `FIX_ISSUE_APP_PRIVATE_KEY` (a private key generated for the App).
+3. Set up the rulesets above.
 
-Without the environment, the role or the key, the `app-token` step fails and no pull request opens;
+Without the environment or the key, the `app-token` step fails and no pull request opens;
 the patch stays in the run's artifact for three days. The fixer job reads the client ID too:
 `fetch-issue` keeps the App's own comments (its questions) next to the answers, and omits them when
 the variable is missing.
