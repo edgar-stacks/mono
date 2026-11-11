@@ -6,6 +6,9 @@ import {
 // The default test account is `${testFingerprint}/0`. Policies nest beneath it.
 const testPolicyParentAccountId = `${testFingerprint}/0`;
 
+export const testAccountNativeSegwitXpub =
+  'xpub6BuKrNqTrGfsy8VAAdUW2KCxbHywuSKjg7hZuAXERXDv7GfuxUgUWdVRKNsgujcwdjEHCjaXWouPKi1m5gMgdWX8JpRcyMkrSxPe4Da3Lx8';
+
 // A compilable `wsh(sortedmulti(...))` descriptor built from the test account's
 // real native-segwit and taproot xpubs. The injected policy flows (switch / home /
 // manage / getAddresses) never re-derive or re-verify a stored policy, so the

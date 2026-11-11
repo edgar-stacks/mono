@@ -18,6 +18,17 @@ export function getPolicyApprovalMode(
   return isWhitelistedOrigin(origin) && isWhitelistedOrigin(topOrigin) ? 'add' : 'verify';
 }
 
+type BtcAddAccountKind = 'multisig' | 'timelocked';
+
+export function getBtcAddAccountApprovalMode(
+  origin: string | null | undefined,
+  topOrigin: string | null | undefined,
+  kind: BtcAddAccountKind
+): PolicyApprovalMode {
+  if (kind === 'timelocked') return 'verify';
+  return getPolicyApprovalMode(origin, topOrigin);
+}
+
 // Shown in verify mode so the user understands the requesting site cannot add an
 // account — they are only double-checking the address it supplied.
 export const verifyModeCalloutMessage =
@@ -28,22 +39,30 @@ interface PolicyCallout {
   message: string;
 }
 
-const connectedAccountRequirement =
-  'You need to use an account that is connected to this multisig account.';
+const defaultPolicySubject = 'this multisig account';
+
+function connectedAccountRequirement(subject: string) {
+  return `You need to use an account that is connected to ${subject}.`;
+}
 
 // The callout shown above the Confirm action. It always states the connected
 // account requirement, surfaced as `info` when the active account satisfies it
 // and `warning` (with the reason) when it does not.
-export function policyCallout(status: PolicyMatchStatus, chainLabel: string): PolicyCallout {
+export function policyCallout(
+  status: PolicyMatchStatus,
+  chainLabel: string,
+  subject = defaultPolicySubject
+): PolicyCallout {
+  const requirement = connectedAccountRequirement(subject);
   if (status === 'no-active-account')
     return {
       variant: 'warning',
-      message: `No active ${chainLabel} account. ${connectedAccountRequirement}`,
+      message: `No active ${chainLabel} account. ${requirement}`,
     };
   if (status === 'mismatch')
     return {
       variant: 'warning',
-      message: `Your active ${chainLabel} account isn't connected to this multisig account. ${connectedAccountRequirement}`,
+      message: `Your active ${chainLabel} account isn't connected to ${subject}. ${requirement}`,
     };
-  return { variant: 'info', message: connectedAccountRequirement };
+  return { variant: 'info', message: requirement };
 }

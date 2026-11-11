@@ -4,11 +4,17 @@ import { bytesToHex } from '@noble/hashes/utils';
 import { HDKey } from '@scure/bip32';
 import { describe, expect, it } from 'vitest';
 
-import { makeNativeSegwitAccountXpub, makeNativeSegwitAddressPubkeyHex } from '../mocks/key-mocks';
 import {
+  makeNativeSegwitAccountKeychain,
+  makeNativeSegwitAccountXpub,
+  makeNativeSegwitAddressPubkeyHex,
+} from '../mocks/key-mocks';
+import {
+  findPolicyMemberAccountKey,
   getBondVaultKeys,
   instantiateBondDescriptor,
   matchBondDescriptor,
+  matchBondTemplateDescriptor,
   reconstructBondDescriptor,
 } from './bond-template';
 import { compileWshDescriptor, getWshDescriptorAddress } from './wsh-descriptor';
@@ -137,6 +143,138 @@ describe('matchBondDescriptor', () => {
   });
 });
 
+describe('matchBondTemplateDescriptor', () => {
+  it('returns a multi vault leaf with its threshold and keys', () => {
+    expect(matchBondTemplateDescriptor(bondDescriptor)).toEqual({
+      unlockHeight,
+      hash,
+      counterpartyKey,
+      vault: {
+        kind: 'multi',
+        expression: `sortedmulti(2,${xpubA}/0/7,${xpubB}/0/7,${xpubC}/0/7)`,
+        requiredSignatures: 2,
+        keys: [`${xpubA}/0/7`, `${xpubB}/0/7`, `${xpubC}/0/7`],
+      },
+    });
+  });
+
+  it('returns a pk vault leaf for a single owner key', () => {
+    const match = matchBondTemplateDescriptor(makeBondDescriptor(`pk(${xpubA}/0/3)`));
+    expect(match?.vault).toEqual({
+      kind: 'pk',
+      expression: `pk(${xpubA}/0/3)`,
+      requiredSignatures: 1,
+      keys: [`${xpubA}/0/3`],
+    });
+  });
+
+  it('accepts raw compressed public keys in the vault', () => {
+    const rawKeyA = makeNativeSegwitAddressPubkeyHex(1);
+    const rawKeyB = makeNativeSegwitAddressPubkeyHex(2);
+    expect(
+      matchBondTemplateDescriptor(makeBondDescriptor(`multi(2,${rawKeyA},${xpubB}/0/7,${rawKeyB})`))
+        ?.vault.keys
+    ).toEqual([rawKeyA, `${xpubB}/0/7`, rawKeyB]);
+    expect(matchBondTemplateDescriptor(makeBondDescriptor(`pk(${rawKeyA})`))?.vault.kind).toBe(
+      'pk'
+    );
+  });
+
+  it('accepts an origin of up to eight steps', () => {
+    const origin = `[aabbccdd${"/1'".repeat(8)}]`;
+    expect(
+      matchBondTemplateDescriptor(makeBondDescriptor(`pk(${origin}${xpubA}/0/7)`))
+    ).not.toBeNull();
+    expect(
+      matchBondTemplateDescriptor(
+        makeBondDescriptor(`pk([aabbccdd${"/1'".repeat(9)}]${xpubA}/0/7)`)
+      )
+    ).toBeNull();
+  });
+
+  it('rejects ranged, change-branch, pathless and deep-path keys', () => {
+    const invalidKeys = [`${xpubA}/0/*`, `${xpubA}/1/7`, xpubA, `${xpubA}/0/0/7`, `${xpubA}/7`];
+    invalidKeys.forEach(key => {
+      expect(matchBondTemplateDescriptor(makeBondDescriptor(`pk(${key})`))).toBeNull();
+      expect(
+        matchBondTemplateDescriptor(makeBondDescriptor(`sortedmulti(1,${key},${xpubB}/0/7)`))
+      ).toBeNull();
+      expect(matchBondTemplateDescriptor(bondDescriptor.replace(counterpartyKey, key))).toBeNull();
+    });
+  });
+
+  it('rejects out-of-range vault thresholds and oversized key sets', () => {
+    expect(
+      matchBondTemplateDescriptor(makeBondDescriptor(`multi(0,${xpubA}/0/7,${xpubB}/0/7)`))
+    ).toBeNull();
+    expect(
+      matchBondTemplateDescriptor(makeBondDescriptor(`multi(3,${xpubA}/0/7,${xpubB}/0/7)`))
+    ).toBeNull();
+    const tooManyKeys = Array.from({ length: 21 }, (_, index) => `${xpubA}/0/${index}`);
+    expect(
+      matchBondTemplateDescriptor(makeBondDescriptor(`multi(2,${tooManyKeys.join(',')})`))
+    ).toBeNull();
+  });
+
+  it('rejects private keys in a pk vault', () => {
+    const xprvA = HDKey.fromMasterSeed(new Uint8Array(32).fill(1)).derive(
+      "m/84'/0'/0'"
+    ).privateExtendedKey;
+    expect(matchBondTemplateDescriptor(makeBondDescriptor(`pk(${xprvA}/0/7)`))).toBeNull();
+  });
+});
+
+describe('matchBondDescriptor vault filtering', () => {
+  it('rejects a pk vault', () => {
+    expect(matchBondDescriptor(makeBondDescriptor(`pk(${xpubA}/0/7)`))).toBeNull();
+  });
+});
+
+describe('findPolicyMemberAccountKey', () => {
+  const accountKeychain = makeNativeSegwitAccountKeychain(1);
+
+  it('matches the account among the vault keys of a bond', () => {
+    const descriptor = makeBondDescriptor(`sortedmulti(2,${xpubA}/0/7,${xpubB}/0/7)`);
+    const match = findPolicyMemberAccountKey(
+      descriptor,
+      compileWshDescriptor(descriptor),
+      accountKeychain
+    );
+    expect(match?.key.keyExpression).toBe(`${xpubA}/0/7`);
+  });
+
+  it('matches a raw account key in a pk vault', () => {
+    const rawAccountKey = makeNativeSegwitAddressPubkeyHex(1);
+    const descriptor = makeBondDescriptor(`pk(${rawAccountKey})`);
+    const match = findPolicyMemberAccountKey(
+      descriptor,
+      compileWshDescriptor(descriptor),
+      accountKeychain
+    );
+    expect(match?.key.keyExpression).toBe(rawAccountKey);
+  });
+
+  it('does not match an account that only holds the counterparty key', () => {
+    const descriptor = makeBondDescriptor(`sortedmulti(2,${xpubB}/0/7,${xpubC}/0/7)`).replace(
+      counterpartyKey,
+      `${xpubA}/0/7`
+    );
+    expect(
+      findPolicyMemberAccountKey(descriptor, compileWshDescriptor(descriptor), accountKeychain)
+    ).toBeUndefined();
+  });
+
+  it('matches against every key of a plain multisig', () => {
+    expect(
+      findPolicyMemberAccountKey(
+        policyDescriptor,
+        compileWshDescriptor(policyDescriptor),
+        accountKeychain
+      )?.key.keyExpression
+    ).toBe(`${xpubA}/0/7`);
+  });
+});
+
 describe('instantiateBondDescriptor', () => {
   const vaultKeys = getBondVaultKeys(policyDescriptor);
 
@@ -255,6 +393,21 @@ describe('instantiateBondDescriptor', () => {
       })
     ).toThrow();
   });
+
+  it('refuses keys and thresholds the matcher would reject', () => {
+    const validArgs = { unlockHeight, hash, counterpartyKey, ...vaultKeys };
+    expect(() =>
+      instantiateBondDescriptor({ ...validArgs, counterpartyKey: `${xpubC}/1/0` })
+    ).toThrow();
+    expect(() =>
+      instantiateBondDescriptor({ ...validArgs, keyExpressions: [`${xpubA}/0/*`, `${xpubB}/0/*`] })
+    ).toThrow();
+    expect(() =>
+      instantiateBondDescriptor({ ...validArgs, keyExpressions: [`${xpubA}/1/7`, `${xpubB}/1/7`] })
+    ).toThrow();
+    expect(() => instantiateBondDescriptor({ ...validArgs, threshold: 4 })).toThrow();
+    expect(() => instantiateBondDescriptor({ ...validArgs, threshold: 0 })).toThrow();
+  });
 });
 
 describe('reconstructBondDescriptor', () => {
@@ -292,6 +445,13 @@ describe('reconstructBondDescriptor', () => {
     ).toThrow();
     expect(() =>
       reconstructBondDescriptor({ ...validArgs, covenantPubkey: covenantPubkey.toUpperCase() })
+    ).toThrow();
+  });
+
+  it('refuses vault keys the matcher would reject', () => {
+    const validArgs = { unlockHeight, hash, covenantPubkey, ...vaultKeys };
+    expect(() =>
+      reconstructBondDescriptor({ ...validArgs, keyExpressions: [xpubA, xpubB, xpubC] })
     ).toThrow();
   });
 });

@@ -4,6 +4,11 @@ import type { Money } from '@leather.io/models';
 import { Callout } from '@leather.io/ui';
 
 import { formatCurrency } from '@app/common/currency-formatter';
+import {
+  BondSpendingConditions,
+  type BondSpendingConditionsProps,
+  formatVaultSigners,
+} from '@app/components/bond-spending-conditions/bond-spending-conditions';
 import { useCalculateBitcoinFiatValue } from '@app/query/common/market-data/market-data.hooks';
 
 import type { DescriptorPsbtDetails } from '../hooks/use-descriptor-psbt-details';
@@ -39,21 +44,11 @@ const broadcastWarning =
 const trustNote = 'Only approve if you understand and trust this contract.';
 
 const bondProposalTitle = 'You are proposing a vault transaction';
-function makeBondProposalBody({ unlockHeight, vaultThreshold, vaultKeyCount }: PsbtBondDetails) {
-  return `This proposes a spend from a policy owned by your vault. It becomes spendable by ${formatVaultCosigners(vaultThreshold, vaultKeyCount)} from block ${unlockHeight}, or earlier if the counterparty shown below also signs and reveals the hash secret. Nothing is signed or broadcast now — co-signers must approve the proposal first. ${trustNote}`;
+function makeBondProposalBody(bondDetails: PsbtBondDetails) {
+  return `This proposes a spend from a policy owned by your vault. It becomes spendable by ${formatVaultSigners(bondDetails)} from block ${bondDetails.unlockHeight}, or earlier if the counterparty shown below also signs and reveals the hash secret. Nothing is signed or broadcast now — co-signers must approve the proposal first. ${trustNote}`;
 }
 
-function formatVaultCosigners(vaultThreshold: number, vaultKeyCount: number) {
-  return `${vaultThreshold} of ${vaultKeyCount} vault co-signers`;
-}
-
-export interface PsbtBondDetails {
-  unlockHeight: number;
-  hash: string;
-  counterpartyKey: string;
-  vaultThreshold: number;
-  vaultKeyCount: number;
-}
+export type PsbtBondDetails = BondSpendingConditionsProps;
 
 interface PsbtDescriptorPolicyProps {
   bondDetails?: PsbtBondDetails;
@@ -84,37 +79,14 @@ export function PsbtDescriptorPolicy({
 
       {bondDetails ? (
         <Section title="Spending conditions">
-          <Stack gap="space.04">
-            <Stack gap="space.01">
-              <styled.span textStyle="label.02">From block {bondDetails.unlockHeight}</styled.span>
-              <styled.span textStyle="caption.01" color="ink.text-secondary">
-                Requires{' '}
-                {formatVaultCosigners(bondDetails.vaultThreshold, bondDetails.vaultKeyCount)}
-              </styled.span>
-            </Stack>
-            <Stack gap="space.01">
-              <styled.span textStyle="label.02">
-                Before block {bondDetails.unlockHeight}
-              </styled.span>
-              <styled.span textStyle="caption.01" color="ink.text-secondary">
-                Requires{' '}
-                {formatVaultCosigners(bondDetails.vaultThreshold, bondDetails.vaultKeyCount)}, plus
-                a signature from the counterparty key and the secret matching the SHA-256 hash
-              </styled.span>
-              <styled.span textStyle="caption.01" color="ink.text-secondary">
-                Counterparty key
-              </styled.span>
-              <styled.code textStyle="caption.01" wordBreak="break-all">
-                {bondDetails.counterpartyKey}
-              </styled.code>
-              <styled.span textStyle="caption.01" color="ink.text-secondary">
-                SHA-256 hash
-              </styled.span>
-              <styled.code textStyle="caption.01" wordBreak="break-all">
-                {bondDetails.hash}
-              </styled.code>
-            </Stack>
-          </Stack>
+          <BondSpendingConditions
+            unlockHeight={bondDetails.unlockHeight}
+            hash={bondDetails.hash}
+            counterpartyKey={bondDetails.counterpartyKey}
+            vaultKind={bondDetails.vaultKind}
+            vaultThreshold={bondDetails.vaultThreshold}
+            vaultKeyExpressions={bondDetails.vaultKeyExpressions}
+          />
         </Section>
       ) : null}
 

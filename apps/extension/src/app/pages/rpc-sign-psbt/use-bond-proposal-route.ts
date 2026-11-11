@@ -33,8 +33,9 @@ interface BondProposalMatch {
   unlockHeight: number;
   hash: string;
   counterpartyKey: string;
+  vaultKind: 'multi';
   vaultThreshold: number;
-  vaultKeyCount: number;
+  vaultKeyExpressions: string[];
 }
 
 type BondProposalRoute = BondProposalError | BondProposalMatch | null;
@@ -54,8 +55,9 @@ function tryCompileScriptPubKey(descriptor: string): Uint8Array | null {
 
 interface InstantiatedBondDescriptor {
   bondDescriptor: string;
+  vaultKind: 'multi';
   vaultThreshold: number;
-  vaultKeyCount: number;
+  vaultKeyExpressions: string[];
 }
 
 function tryInstantiateBondDescriptor(
@@ -71,7 +73,12 @@ function tryInstantiateBondDescriptor(
       threshold,
       keyExpressions,
     });
-    return { bondDescriptor, vaultThreshold: threshold, vaultKeyCount: keyExpressions.length };
+    return {
+      bondDescriptor,
+      vaultKind: 'multi',
+      vaultThreshold: threshold,
+      vaultKeyExpressions: keyExpressions,
+    };
   } catch {
     return null;
   }
@@ -132,7 +139,7 @@ export function useBondProposalRoute({
     const instantiated = tryInstantiateBondDescriptor(bondMatch, policy.descriptor);
     if (!instantiated) return makeBondDescriptorMismatchError();
 
-    const { bondDescriptor, vaultThreshold, vaultKeyCount } = instantiated;
+    const { bondDescriptor, vaultKind, vaultThreshold, vaultKeyExpressions } = instantiated;
     const bondScriptPubKey = tryCompileScriptPubKey(bondDescriptor);
     if (!bondScriptPubKey) return makeBondDescriptorMismatchError();
     if (!equalBytes(bondScriptPubKey, requestScriptPubKey))
@@ -158,8 +165,9 @@ export function useBondProposalRoute({
       unlockHeight: bondMatch.unlockHeight,
       hash: bondMatch.hash,
       counterpartyKey: bondMatch.counterpartyKey,
+      vaultKind,
       vaultThreshold,
-      vaultKeyCount,
+      vaultKeyExpressions,
     };
   }, [policy, descriptor, psbtHex]);
 }

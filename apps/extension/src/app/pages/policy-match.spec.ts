@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest';
 
-import { getPolicyApprovalMode } from './policy-match';
+import { getBtcAddAccountApprovalMode, getPolicyApprovalMode, policyCallout } from './policy-match';
 
 const whitelistedOrigin = 'https://app.leather.io';
 const otherOrigin = 'https://evil.example.com';
@@ -26,5 +26,48 @@ describe(getPolicyApprovalMode.name, () => {
 
   test('returns verify when neither origin is whitelisted', () => {
     expect(getPolicyApprovalMode(otherOrigin, otherOrigin)).toBe('verify');
+  });
+});
+
+describe(getBtcAddAccountApprovalMode.name, () => {
+  test('follows the origin rules for a multisig', () => {
+    expect(getBtcAddAccountApprovalMode(whitelistedOrigin, whitelistedOrigin, 'multisig')).toBe(
+      'add'
+    );
+    expect(getBtcAddAccountApprovalMode(otherOrigin, otherOrigin, 'multisig')).toBe('verify');
+  });
+
+  test('always verifies a timelocked address, even from a whitelisted origin', () => {
+    expect(getBtcAddAccountApprovalMode(whitelistedOrigin, whitelistedOrigin, 'timelocked')).toBe(
+      'verify'
+    );
+    expect(getBtcAddAccountApprovalMode(otherOrigin, otherOrigin, 'timelocked')).toBe('verify');
+  });
+});
+
+describe(policyCallout.name, () => {
+  test('names the multisig account by default', () => {
+    expect(policyCallout('match', 'Bitcoin')).toEqual({
+      variant: 'info',
+      message: 'You need to use an account that is connected to this multisig account.',
+    });
+    expect(policyCallout('mismatch', 'Bitcoin')).toEqual({
+      variant: 'warning',
+      message:
+        "Your active Bitcoin account isn't connected to this multisig account. You need to use an account that is connected to this multisig account.",
+    });
+  });
+
+  test('names the given subject', () => {
+    expect(policyCallout('mismatch', 'Bitcoin', 'this vault')).toEqual({
+      variant: 'warning',
+      message:
+        "Your active Bitcoin account isn't connected to this vault. You need to use an account that is connected to this vault.",
+    });
+    expect(policyCallout('no-active-account', 'Bitcoin', 'this timelocked address')).toEqual({
+      variant: 'warning',
+      message:
+        'No active Bitcoin account. You need to use an account that is connected to this timelocked address.',
+    });
   });
 });

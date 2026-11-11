@@ -26,8 +26,11 @@ import {
   getWshDescriptorNetwork,
   getWshDescriptorThreshold,
   isExtendedPublicKeyExpression,
+  isValidMultisigThreshold,
   isWshDescriptor,
+  isWshMultisigDescriptor,
   makeWshDescriptorInstance,
+  maxMultisigKeys,
   toLedgerSignableDescriptor,
 } from './wsh-descriptor';
 
@@ -1259,5 +1262,67 @@ describe('getWshDescriptorThreshold', () => {
     expect(() => getWshDescriptorThreshold(descriptor)).toThrow(
       'does not start with a multisig threshold opcode'
     );
+  });
+});
+
+describe('isValidMultisigThreshold', () => {
+  it('accepts thresholds from 1 to the key count', () => {
+    expect(isValidMultisigThreshold(1, 3)).toBe(true);
+    expect(isValidMultisigThreshold(3, 3)).toBe(true);
+  });
+
+  it('caps the threshold at 16', () => {
+    expect(isValidMultisigThreshold(16, 20)).toBe(true);
+    expect(isValidMultisigThreshold(17, 20)).toBe(false);
+  });
+
+  it('rejects zero, non-integer and above-key-count thresholds', () => {
+    expect(isValidMultisigThreshold(0, 3)).toBe(false);
+    expect(isValidMultisigThreshold(1.5, 3)).toBe(false);
+    expect(isValidMultisigThreshold(4, 3)).toBe(false);
+  });
+});
+
+describe('isWshMultisigDescriptor', () => {
+  const multisig = `wsh(sortedmulti(2,${xpubA}/0/0,${xpubB}/0/0))`;
+
+  it('accepts multi and sortedmulti descriptors', () => {
+    expect(isWshMultisigDescriptor(multisig)).toBe(true);
+    expect(isWshMultisigDescriptor(`wsh(multi(1,${xpubA}/0/0,${bytesToHex(pubkeyA)}))`)).toBe(true);
+  });
+
+  it('tolerates a checksum and whitespace', () => {
+    expect(isWshMultisigDescriptor(`${multisig}#${checksum(multisig)}`)).toBe(true);
+    expect(isWshMultisigDescriptor(`wsh(sortedmulti(2, ${xpubA}/0/0, ${xpubB}/0/0))`)).toBe(true);
+  });
+
+  it('rejects miniscript that wraps a multi leaf', () => {
+    expect(
+      isWshMultisigDescriptor(`wsh(and_v(v:pk(${xpubA}/0/1),multi(1,${xpubA}/0/0,${xpubB}/0/0)))`)
+    ).toBe(false);
+    expect(isWshMultisigDescriptor(`wsh(pk(${xpubA}/0/0))`)).toBe(false);
+  });
+
+  it('rejects ranged keys', () => {
+    expect(isWshMultisigDescriptor(`wsh(sortedmulti(2,${xpubA}/0/*,${xpubB}/0/*))`)).toBe(false);
+  });
+
+  it('rejects out-of-range thresholds', () => {
+    expect(isWshMultisigDescriptor(`wsh(multi(0,${xpubA}/0/0,${xpubB}/0/0))`)).toBe(false);
+    expect(isWshMultisigDescriptor(`wsh(multi(3,${xpubA}/0/0,${xpubB}/0/0))`)).toBe(false);
+    expect(isWshMultisigDescriptor(`wsh(multi(x,${xpubA}/0/0,${xpubB}/0/0))`)).toBe(false);
+  });
+
+  it(`limits the key set to ${maxMultisigKeys} keys`, () => {
+    function keys(count: number) {
+      return Array.from({ length: count }, (_, index) => `${xpubA}/0/${index}`).join(',');
+    }
+    expect(isWshMultisigDescriptor(`wsh(multi(2,${keys(maxMultisigKeys)}))`)).toBe(true);
+    expect(isWshMultisigDescriptor(`wsh(multi(2,${keys(maxMultisigKeys + 1)}))`)).toBe(false);
+  });
+
+  it('rejects key expressions over 256 characters and empty keys', () => {
+    expect(isWshMultisigDescriptor(`wsh(multi(1,${'a'.repeat(257)},${xpubB}/0/0))`)).toBe(false);
+    expect(isWshMultisigDescriptor(`wsh(multi(1,,${xpubB}/0/0))`)).toBe(false);
   });
 });
