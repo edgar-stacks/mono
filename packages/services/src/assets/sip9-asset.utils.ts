@@ -79,12 +79,15 @@ function encodeIpfsPath(path: string) {
   );
 }
 
-function toLeatherIpfsUrl(url: string | undefined): string | undefined {
+const ipfsSchemePattern = /^ipfs:\/\//i;
+
+function toLeatherIpfsUrl(rawUrl: string | undefined): string | undefined {
+  const url = rawUrl?.trim();
   if (!url) return undefined;
 
   // Handle ipfs://<cid>/<path> and ipfs://ipfs/<cid>/<path>
-  if (url.startsWith('ipfs://')) {
-    const withoutScheme = url.replace(/^ipfs:\/\//, '');
+  if (ipfsSchemePattern.test(url)) {
+    const withoutScheme = url.replace(ipfsSchemePattern, '');
     const withoutPrefix = withoutScheme.startsWith('ipfs/')
       ? withoutScheme.slice('ipfs/'.length)
       : withoutScheme;
