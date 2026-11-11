@@ -124,6 +124,10 @@ export const keyframes = {
       maskPosition: 'left',
     },
   },
+  barberpole: {
+    from: { backgroundPosition: '0 0' },
+    to: { backgroundPosition: '45.26px 0' },
+  },
   drawCheckmark: {
     from: {
       strokeDashoffset: '30',

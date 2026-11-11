@@ -9,6 +9,10 @@ import {
 } from '@leather.io/models';
 import { createMoney } from '@leather.io/utils';
 
+import {
+  buildBlockchainActivityStatusHeadline,
+  interpolateActivityTemplate,
+} from './blockchain-activity-copy';
 import { createBlockchainActivityView } from './blockchain-activity-view';
 
 const sbtcAsset: Sip10Asset = {
@@ -414,5 +418,44 @@ describe('createBlockchainActivityView', () => {
     expect(view.chain).toBe('bitcoin');
     expect(view.timestamp).toBe(1727000000);
     expect(view.key).toBe('bitcoin:abc');
+  });
+});
+
+describe('buildBlockchainActivityStatusHeadline', () => {
+  it.each([
+    { action: 'send', status: 'pending', expected: 'Sending' },
+    { action: 'send', status: 'success', expected: 'Sent' },
+    { action: 'send', status: 'failed', expected: 'Failed to send' },
+    { action: 'receive', status: 'pending', expected: 'Receiving' },
+    { action: 'receive', status: 'success', expected: 'Received' },
+    { action: 'receive', status: 'failed', expected: 'Failed to receive' },
+    { action: 'swap', status: 'pending', expected: 'Swapping' },
+    { action: 'swap', status: 'success', expected: 'Swapped' },
+    { action: 'swap', status: 'failed', expected: 'Swap failed' },
+    { action: 'liquid-stack', status: 'pending', expected: 'Liquid stacking' },
+    { action: 'contract-deploy', status: 'pending', expected: 'Deploying' },
+    { action: 'contract-deploy', status: 'success', expected: 'Deployed' },
+  ] as const)('reads $expected for a $status $action', ({ action, status, expected }) => {
+    expect(
+      buildBlockchainActivityStatusHeadline({ action, status }, interpolateActivityTemplate)
+    ).toBe(expected);
+  });
+
+  it('falls back to the title for an unmapped contract call', () => {
+    expect(
+      buildBlockchainActivityStatusHeadline(
+        { action: 'contract-execution', status: 'success', fallbackTitle: 'supply' },
+        interpolateActivityTemplate
+      )
+    ).toBe('supply');
+  });
+
+  it('is empty for an unmapped contract call with no title', () => {
+    expect(
+      buildBlockchainActivityStatusHeadline(
+        { action: 'contract-execution', status: 'pending' },
+        interpolateActivityTemplate
+      )
+    ).toBe('');
   });
 });
