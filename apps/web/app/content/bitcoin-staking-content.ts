@@ -193,6 +193,18 @@ export const bitcoinStakingContent = {
     scheduledEnd: `Scheduled end`,
     confirmStake: `Confirm and start staking`,
   },
+  connectGate: {
+    installStep: `Install Leather to stake`,
+    connectStep: `Connect Leather to stake`,
+    installAction: `Install`,
+    connectAction: `Connect`,
+    installBalance: `Install Leather to see your balance`,
+    connectBalance: `Connect Leather to see your balance`,
+    updateTitle: `Connect Leather to update your staking`,
+    updateDescription: `Your current position and available balance come from your wallet, so this page needs a connection before it can load.`,
+    installRowDescription: `Add Leather extension to your browser`,
+    connectRowDescription: `Connect Leather to load your staking position`,
+  },
   switchSignerManager: {
     sectionLabel: `Signer manager`,
     helper: `Picking a different pool moves your whole position at the start of the next cycle. Review and acknowledge the staking details before confirming.`,
