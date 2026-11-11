@@ -6,7 +6,7 @@ import {
   makeNativeSegwitAccountDerivationPath,
   makeTaprootAccountDerivationPath,
 } from '@leather.io/bitcoin';
-import type { BitcoinNetworkModes } from '@leather.io/models';
+import type { BitcoinNetworkModes, SupportedBlockchains } from '@leather.io/models';
 
 import { isPopupMode } from '@app/common/utils';
 
@@ -36,6 +36,15 @@ function bitcoinAppNameForNetwork(network: BitcoinNetworkModes): string | null {
   if (network === 'mainnet') return LEDGER_APPS_MAP.BITCOIN_MAINNET;
   if (network === 'testnet') return LEDGER_APPS_MAP.BITCOIN_TESTNET;
   return null;
+}
+
+export function ledgerAppNameForChain(
+  chain: SupportedBlockchains,
+  bitcoinMode: BitcoinNetworkModes
+) {
+  if (chain === 'stacks') return LEDGER_APPS_MAP.STACKS;
+  if (bitcoinMode === 'mainnet') return LEDGER_APPS_MAP.BITCOIN_MAINNET;
+  return LEDGER_APPS_MAP.BITCOIN_TESTNET;
 }
 
 export function connectLedgerBitcoinApp(
