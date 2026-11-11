@@ -86,6 +86,30 @@ describe('appPermissionsSlice', () => {
     expect(result.entities['app-a.com']?.policyId).toBeUndefined();
   });
 
+  test('keeps separate entries for the http and https origins of one hostname', () => {
+    const httpsPermission = createPermission('https://app.example.com', fingerprintA);
+    const httpPermission = createPermission('http://app.example.com', fingerprintB);
+    const portPermission = createPermission('https://app.example.com:8443', fingerprintB);
+
+    const result = [httpsPermission, httpPermission, portPermission].reduce(
+      (state, permission) =>
+        appPermissionsSlice.reducer(
+          state,
+          appPermissionsSlice.actions.updatePermission(permission)
+        ),
+      createState([])
+    );
+
+    expect(result.ids).toEqual([
+      'https://app.example.com',
+      'http://app.example.com',
+      'https://app.example.com:8443',
+    ]);
+    expect(result.entities['https://app.example.com']).toEqual(httpsPermission);
+    expect(result.entities['http://app.example.com']).toEqual(httpPermission);
+    expect(result.entities['https://app.example.com:8443']).toEqual(portPermission);
+  });
+
   test('strips the policy binding only from origins bound to the removed policy', () => {
     const policyId = `${fingerprintA}/0/bc1qaddr/mainnet`;
     const otherPolicyId = `${fingerprintB}/0/bc1qother/mainnet`;
