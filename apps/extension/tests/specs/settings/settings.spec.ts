@@ -65,6 +65,29 @@ test.describe('Settings menu', () => {
     test.expect(currentNetwork).toContain('Testnet4');
   });
 
+  test('that the network list shows the default networks in order', async ({
+    networkPage,
+    page,
+  }) => {
+    await networkPage.openNetworkPage();
+    const networkListItems = page.getByTestId(SettingsSelectors.NetworkListItem);
+
+    await test.expect(networkListItems).toHaveCount(9);
+    await test
+      .expect(networkListItems)
+      .toContainText([
+        'Mainnet',
+        'Primary Hiro Testnet',
+        'BTC Staking Testnet',
+        'Signet',
+        'BTC Staking Testnet ',
+        'Testnet4',
+        'Testnet3',
+        'sBTC Devenv',
+        'Devnet',
+      ]);
+  });
+
   test('that menu item can toggle privacy', async ({ page, homePage }) => {
     const visibleBalanceText = homePage.page.getByTestId(
       SharedComponentsSelectors.AccountCardBalanceText

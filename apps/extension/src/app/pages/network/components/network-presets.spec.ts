@@ -37,8 +37,8 @@ describe('bitcoinNetworkPresets', () => {
       stacksUrl: 'https://api.testnet.hiro.so',
     });
     expect(bitcoinNetworkPresets.regtest).toEqual({
-      label: 'Regtest',
-      bitcoinUrl: `${MEMPOOL_BASE_URL}/testnet/api`,
+      label: 'Primary Hiro Testnet',
+      bitcoinUrl: 'https://mempool.bitcoin.regtest.hiro.so/api',
       stacksUrl: 'https://api.testnet.hiro.so',
     });
   });

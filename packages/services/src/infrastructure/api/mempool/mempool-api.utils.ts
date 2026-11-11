@@ -11,7 +11,7 @@ export function getMempoolUrlFromUserSettings(settings: UserSettings): string | 
   const isCustomNetwork =
     !defaultNetworkConfigurationsSchema.safeParse(networkConfigurationId).success;
   return isCustomNetwork ||
-    networkConfigurationId === defaultNetworkConfigurationsSchema.enum.sbtcTestnet ||
+    networkConfigurationId === defaultNetworkConfigurationsSchema.enum.testnet ||
     networkConfigurationId === defaultNetworkConfigurationsSchema.enum.sbtcDevenv ||
     networkConfigurationId === defaultNetworkConfigurationsSchema.enum['private-1'] ||
     networkConfigurationId === defaultNetworkConfigurationsSchema.enum.stakingTestnet
