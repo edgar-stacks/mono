@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router';
 
 import { bytesToHex } from '@noble/hashes/utils';
 import { base64 } from '@scure/base';
+import { styled } from 'leather-styles/jsx';
 
 import {
   compileWshDescriptor,
@@ -12,6 +13,7 @@ import {
 } from '@leather.io/bitcoin';
 import { createRpcSuccessResponse } from '@leather.io/rpc';
 import { buildUnsignedMultisigBtcTransfer } from '@leather.io/services';
+import { Button } from '@leather.io/ui';
 import { delay } from '@leather.io/utils';
 
 import { logger } from '@shared/logger';
@@ -21,7 +23,10 @@ import { closeWindow } from '@shared/utils';
 import { analytics } from '@shared/utils/analytics';
 
 import { getTransactionActions } from '@app/components/rpc-transaction-request/get-transaction-actions';
-import { useFeeEditorContext } from '@app/features/fee-editor/fee-editor.context';
+import {
+  type FeesErrorReason,
+  useFeeEditorContext,
+} from '@app/features/fee-editor/fee-editor.context';
 import { getPolicyAuthNetworkId } from '@app/features/multisig/multisig-network';
 import { useProposeMultisigTransaction } from '@app/features/multisig/use-propose-multisig-transaction';
 import { useBitcoinBroadcastTransaction } from '@app/query/bitcoin/transaction/use-bitcoin-broadcast-transaction';
@@ -57,7 +62,7 @@ export function useRpcSendTransferActions({
   tx: unsignedTx,
   error: unsignedTxError,
 }: RpcSendTransferTx) {
-  const { availableBalance, selectedFee } = useFeeEditorContext();
+  const { availableBalance, feesError, selectedFee } = useFeeEditorContext();
   const { amount, broadcast, frameId, isLoadingBalance, recipients, requestId, tabId } =
     useRpcSendTransferContext();
   const [isSubmitted, setIsSubmitted] = useState(false);
@@ -72,7 +77,11 @@ export function useRpcSendTransferActions({
   const { proposeMultisigTransaction } = useProposeMultisigTransaction();
   const isBitcoinPolicy = policy?.chain === 'bitcoin';
 
-  const isInsufficientBalance = availableBalance.amount.isLessThan(amount.amount);
+  const isInsufficientBalance =
+    !isLoadingBalance && availableBalance.amount.isLessThan(amount.amount);
+  const transferError: FeesErrorReason | undefined = isInsufficientBalance
+    ? 'insufficient-funds'
+    : feesError;
 
   const approverActions = useMemo(() => {
     function onCancel() {
@@ -205,9 +214,16 @@ export function useRpcSendTransferActions({
       }
     }
 
+    if (transferError && !isLoadingBalance)
+      return [
+        <Button key="cancel" onClick={onCancel} fullWidth variant="outline">
+          <styled.span textStyle="label.02">Cancel</styled.span>
+        </Button>,
+      ];
+
     return getTransactionActions({
       isLoading: isLoadingBalance,
-      isError: isInsufficientBalance,
+      isError: false,
       isBroadcasting,
       isSubmitted,
       onCancel,
@@ -216,7 +232,7 @@ export function useRpcSendTransferActions({
     });
   }, [
     isLoadingBalance,
-    isInsufficientBalance,
+    transferError,
     isBroadcasting,
     isSubmitted,
     navigate,
@@ -243,5 +259,6 @@ export function useRpcSendTransferActions({
     approverActions,
     isBroadcasting,
     isSubmitted,
+    transferError,
   };
 }

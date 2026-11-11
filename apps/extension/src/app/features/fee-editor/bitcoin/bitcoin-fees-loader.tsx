@@ -7,20 +7,39 @@ import type { TransferRecipient } from '@shared/models/form.model';
 
 import { useBitcoinTransactionFees } from '@app/query/bitcoin/fees/bitcoin-transaction-fees.hooks';
 
-import type { Fee, Fees } from '../fee-editor.context';
+import type { Fee, FeePriority, Fees, FeesErrorReason } from '../fee-editor.context';
 import { getBitcoinFee, getBitcoinSendMaxFee } from './bitcoin-fees.utils';
 import { useBitcoinFees } from './use-bitcoin-fees';
 
+function createZeroValueFee(priority: FeePriority): Fee {
+  return { priority, txFee: createMoney(0, 'BTC'), time: '' };
+}
+
+function createZeroValueFees(): Fees {
+  return {
+    slow: createZeroValueFee('slow'),
+    standard: createZeroValueFee('standard'),
+    fast: createZeroValueFee('fast'),
+    custom: createZeroValueFee('custom'),
+  };
+}
+
+function isInsufficientFundsError(error: unknown) {
+  return error instanceof BitcoinError && error.message === 'InsufficientFunds';
+}
+
 interface BitcoinFees {
   fees: Fees;
+  feesError?: FeesErrorReason;
   isLoading: boolean;
   getCustomFee(rate: number): Fee;
 }
 
 interface BitcoinFeesLoaderProps {
   account: AccountRequest;
-  children({ fees, isLoading, getCustomFee }: BitcoinFees): React.ReactNode;
+  children({ fees, feesError, isLoading, getCustomFee }: BitcoinFees): React.ReactNode;
   isSendingMax?: boolean;
+  loadingFallback: React.ReactNode;
   recipients: TransferRecipient[];
   utxos: OwnedUtxo[];
 }
@@ -28,6 +47,7 @@ export function BitcoinFeesLoader({
   account,
   children,
   isSendingMax,
+  loadingFallback,
   recipients,
   utxos,
 }: BitcoinFeesLoaderProps) {
@@ -59,10 +79,23 @@ export function BitcoinFeesLoader({
       time: '',
     };
   }
-  if (error instanceof BitcoinError && error.message === 'InsufficientFunds') {
-    throw error;
-  }
+  if (isInsufficientFundsError(error))
+    return children({
+      fees: fees ?? createZeroValueFees(),
+      feesError: 'insufficient-funds',
+      isLoading: false,
+      getCustomFee,
+    });
 
-  if (!fees) return null;
-  return children({ fees, isLoading, getCustomFee });
+  if (fees) return children({ fees, isLoading, getCustomFee });
+
+  if (error)
+    return children({
+      fees: createZeroValueFees(),
+      feesError: 'fee-estimation-failed',
+      isLoading: false,
+      getCustomFee,
+    });
+
+  return loadingFallback;
 }

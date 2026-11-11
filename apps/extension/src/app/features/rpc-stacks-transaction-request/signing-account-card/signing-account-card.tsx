@@ -2,7 +2,7 @@ import { AccountSelectors } from '@tests/selectors/account.selectors';
 import { Box, styled } from 'leather-styles/jsx';
 
 import type { Money } from '@leather.io/models';
-import { Approver, Caption, ItemLayout, SkeletonLoader } from '@leather.io/ui';
+import { Approver, Caption, ItemLayout, Pressable, SkeletonLoader } from '@leather.io/ui';
 import { truncateMiddle } from '@leather.io/utils';
 
 import { formatCurrency } from '@app/common/currency-formatter';
@@ -23,6 +23,7 @@ interface AccountApproverSectionProps {
   caption: React.ReactNode;
   titleRight?: React.ReactNode;
   captionRight?: React.ReactNode;
+  onSelectAccount?(): void;
 }
 function AccountApproverSection({
   subheader,
@@ -32,18 +33,29 @@ function AccountApproverSection({
   caption,
   titleRight,
   captionRight,
+  onSelectAccount,
 }: AccountApproverSectionProps) {
+  const itemLayout = (
+    <ItemLayout
+      img={avatar}
+      titleLeft={<AccountNameLayout isLoading={isLoadingName}>{name}</AccountNameLayout>}
+      captionLeft={caption}
+      titleRight={titleRight}
+      captionRight={captionRight}
+      showChevron={!!onSelectAccount}
+    />
+  );
   return (
     <Approver.Section>
       <Approver.Subheader>{subheader}</Approver.Subheader>
       <Box mb="space.03">
-        <ItemLayout
-          img={avatar}
-          titleLeft={<AccountNameLayout isLoading={isLoadingName}>{name}</AccountNameLayout>}
-          captionLeft={caption}
-          titleRight={titleRight}
-          captionRight={captionRight}
-        />
+        {onSelectAccount ? (
+          <Pressable data-testid={AccountSelectors.SigningAccountCard} onClick={onSelectAccount}>
+            {itemLayout}
+          </Pressable>
+        ) : (
+          itemLayout
+        )}
       </Box>
     </Approver.Section>
   );
@@ -56,6 +68,7 @@ interface SigningAccountCardProps {
   fiatBalance: Money;
   isLoadingBalance: boolean;
   showPolicyAccount?: boolean;
+  onSelectAccount?(): void;
 }
 export function SigningAccountCard({
   address,
@@ -64,6 +77,7 @@ export function SigningAccountCard({
   fiatBalance,
   isLoadingBalance,
   showPolicyAccount = false,
+  onSelectAccount,
 }: SigningAccountCardProps) {
   const account = useCurrentStacksAccount();
   const policy = useCurrentPolicy();
@@ -118,6 +132,7 @@ export function SigningAccountCard({
           caption={<Caption>{truncateMiddle(policy.address, 4)}</Caption>}
           titleRight={balanceTitleRight}
           captionRight={balanceCaptionRight}
+          onSelectAccount={onSelectAccount}
         />
         <AccountApproverSection
           subheader="Signing with account"
@@ -139,6 +154,7 @@ export function SigningAccountCard({
       caption={address}
       titleRight={balanceTitleRight}
       captionRight={balanceCaptionRight}
+      onSelectAccount={onSelectAccount}
     />
   );
 }

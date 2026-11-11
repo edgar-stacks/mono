@@ -21,7 +21,9 @@ import {
   getConnectedTestAppPermissionsState,
   testFingerprint,
 } from '@tests/page-object-models/onboarding.page';
+import { AccountSelectors } from '@tests/selectors/account.selectors';
 import { SendCryptoAssetSelectors } from '@tests/selectors/send.selectors';
+import { SettingsSelectors } from '@tests/selectors/settings.selectors';
 
 import { BITCOIN_API_BASE_URL_TESTNET4 } from '@leather.io/models';
 import { type RpcParams, type sendTransfer } from '@leather.io/rpc';
@@ -198,6 +200,94 @@ test.describe('RPC: sendTransfer', () => {
         message: 'User rejected request',
       },
     });
+  });
+});
+
+test.describe('RPC: sendTransfer with insufficient funds', () => {
+  const insufficientFundsMessage =
+    "This account doesn't have enough funds for this transfer. Switch account or cancel the request.";
+  const insufficientFundsParams = {
+    recipients: [{ address: TEST_TESTNET_ACCOUNT_2_BTC_ADDRESS, amount: '100000000' }],
+    network: 'testnet4',
+  };
+  const fundedUtxo = {
+    txid: '58d44000884f0ba4cdcbeb1ac082e6c802d300c16b0d3251738e8cf6a57397ce',
+    vout: 0,
+    value: '200000000',
+    height: 810183,
+    address: TEST_TESTNET_ACCOUNT_2_BTC_ADDRESS,
+    path: "m/84'/1'/1'/0/0",
+  };
+  let isFunded = false;
+
+  test.beforeEach(async ({ extensionId, globalPage, onboardingPage, page, context }) => {
+    isFunded = false;
+    await globalPage.setupAndUseApiCalls(extensionId);
+    await mockLeatherApiRequests(context);
+    await context.route('**/v1/utxos/**', route => {
+      const url = route.request().url();
+      const isNativeSegwitDescriptorRequest =
+        !url.includes('/v1/utxos/addresses/') && !url.includes(encodeURIComponent('tr('));
+      if (isFunded && isNativeSegwitDescriptorRequest) return route.fulfill({ json: [fundedUtxo] });
+      return route.fulfill({ json: [] });
+    });
+    await onboardingPage.signInWithTestAccount(extensionId, getConnectedTestAppPermissionsState());
+    await page.goto('localhost:3000');
+  });
+
+  test('that the approval explains the shortfall and can only be cancelled', async ({
+    page,
+    context,
+  }) => {
+    const resultPromise = openSendTransfer(page)(insufficientFundsParams);
+    const popup = await context.waitForEvent('page');
+
+    await test.expect(popup.getByText(insufficientFundsMessage)).toBeVisible({ timeout: 15_000 });
+    await test.expect(popup.getByText('Requested amount')).toBeVisible();
+    await test.expect(popup.getByText('Available to send')).toBeVisible();
+    await test.expect(popup.getByText('Something went wrong')).toHaveCount(0);
+    await test.expect(popup.getByRole('button', { name: 'Approve' })).toHaveCount(0);
+
+    await Promise.all([
+      popup.waitForEvent('close'),
+      popup
+        .getByRole('button', { name: 'Cancel' })
+        .click()
+        .catch(() => undefined),
+    ]);
+    const result = await resultPromise;
+
+    assertExistence(result, 'Expected result');
+    delete result.id;
+
+    test.expect(result).toEqual({
+      jsonrpc: '2.0',
+      error: {
+        code: 4001,
+        message: 'User rejected request',
+      },
+    });
+  });
+
+  test('that switching to a funded account enables approval', async ({ page, context }) => {
+    const resultPromise = openSendTransfer(page)(insufficientFundsParams);
+    const popup = await context.waitForEvent('page');
+
+    await test.expect(popup.getByText(insufficientFundsMessage)).toBeVisible({ timeout: 15_000 });
+
+    isFunded = true;
+    await popup.getByTestId(AccountSelectors.SigningAccountCard).click();
+    await popup
+      .getByTestId(SettingsSelectors.SwitchAccountItemIndex.replace('[index]', '1'))
+      .click();
+
+    await test
+      .expect(popup.getByRole('button', { name: 'Approve' }))
+      .toBeVisible({ timeout: 15_000 });
+    await test.expect(popup.getByText(insufficientFundsMessage)).toHaveCount(0);
+
+    await popup.close();
+    await test.expect(resultPromise).resolves.toBeDefined();
   });
 });
 
