@@ -162,7 +162,7 @@ getAddressesMethods.forEach(method => {
             context,
           }) => {
             await page.goto('localhost:3000');
-            const getAddressesPromise = initiateGetAddresses(page, method, { network: 'testnet' });
+            const getAddressesPromise = initiateGetAddresses(page, method, { network: 'testnet3' });
             const popup = await interceptRequestPopup(context);
             await clickConnectLeatherButton(popup);
 
@@ -170,6 +170,21 @@ getAddressesMethods.forEach(method => {
             test
               .expect(getResponseAddresses(result)[0].address)
               .toEqual('tb1q4qgnjewwun2llgken94zqjrx5kpqqycaz5522d');
+          });
+
+          test('it returns regtest addresses for the primary hiro testnet', async ({
+            page,
+            context,
+          }) => {
+            await page.goto('localhost:3000');
+            const getAddressesPromise = initiateGetAddresses(page, method, { network: 'testnet' });
+            const popup = await interceptRequestPopup(context);
+            await clickConnectLeatherButton(popup);
+
+            const result = await getAddressesPromise;
+            test
+              .expect(getResponseAddresses(result)[0].address)
+              .toEqual('bcrt1q4qgnjewwun2llgken94zqjrx5kpqqycaqad8ay');
           });
 
           test('it returns the second accounts data after changing account', async ({

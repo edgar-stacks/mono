@@ -34,7 +34,7 @@ describe(getMempoolUrlFromUserSettings.name, () => {
     expect(getMempoolUrlFromUserSettings(makeUserSettings(defaultNetworksKeyedById.mainnet))).toBe(
       null
     );
-    expect(getMempoolUrlFromUserSettings(makeUserSettings(defaultNetworksKeyedById.testnet))).toBe(
+    expect(getMempoolUrlFromUserSettings(makeUserSettings(defaultNetworksKeyedById.testnet3))).toBe(
       null
     );
     expect(getMempoolUrlFromUserSettings(makeUserSettings(defaultNetworksKeyedById.devnet))).toBe(
@@ -42,10 +42,13 @@ describe(getMempoolUrlFromUserSettings.name, () => {
     );
   });
 
-  it('returns the configured bitcoin url for sbtc networks', () => {
+  it('returns the configured bitcoin url for the primary hiro testnet', () => {
     expect(
-      getMempoolUrlFromUserSettings(makeUserSettings(defaultNetworksKeyedById.sbtcTestnet))
-    ).toEqual(defaultNetworksKeyedById.sbtcTestnet.chain.bitcoin.bitcoinUrl);
+      getMempoolUrlFromUserSettings(makeUserSettings(defaultNetworksKeyedById.testnet))
+    ).toEqual('https://mempool.bitcoin.regtest.hiro.so/api');
+  });
+
+  it('returns the configured bitcoin url for sbtc networks', () => {
     expect(
       getMempoolUrlFromUserSettings(makeUserSettings(defaultNetworksKeyedById.sbtcDevenv))
     ).toEqual(defaultNetworksKeyedById.sbtcDevenv.chain.bitcoin.bitcoinUrl);

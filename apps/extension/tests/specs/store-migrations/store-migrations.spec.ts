@@ -1,4 +1,5 @@
 import type { Page } from '@playwright/test';
+import { getTestSoftwareAccountDefaultWalletState } from '@tests/page-object-models/onboarding.page';
 
 import { assumedZeroFingerprint } from '@shared/utils';
 
@@ -15,6 +16,7 @@ interface MigratedPersistedState {
   wallets: { ids: string[]; entities: Record<string, unknown> };
   chains: { stx: Record<string, unknown> };
   accounts: { ids: string[] };
+  networks: { currentNetworkId: string };
   ledger?: unknown;
   onboarding?: unknown;
   ordinals?: unknown;
@@ -26,7 +28,7 @@ const demoEncryptedKey =
 
 const demoSalt = 'c4cccf33166051f7704cd877a2f03f93';
 
-const latestPersistedVersion = 4;
+const latestPersistedVersion = 5;
 
 function readPersistedState(page: Page) {
   return page.evaluate(async () => {
@@ -142,7 +144,7 @@ test.describe('Store migrations', () => {
 
     const result = await readMigratedPersistedState(page);
 
-    test.expect(result._persist.version).toEqual(4);
+    test.expect(result._persist.version).toEqual(latestPersistedVersion);
     test.expect(result.softwareKeys.salt).toEqual(demoSalt);
     test.expect(result.softwareKeys.entities.default).toBeUndefined();
     test.expect(result.softwareKeys.entities.ef7bfd66).toBeDefined();
@@ -178,5 +180,27 @@ test.describe('Store migrations', () => {
     test
       .expect(result.accounts.ids)
       .toEqual(['ef7bfd66/0', 'ef7bfd66/1', 'ef7bfd66/2', 'ef7bfd66/3']);
+  });
+
+  test('Migration 4 --> 5', async ({ extensionId, globalPage }) => {
+    const version4State = {
+      ...getTestSoftwareAccountDefaultWalletState(),
+      networks: { ids: [], entities: {}, currentNetworkId: 'sbtcTestnet' },
+      _persist: { version: 4, rehydrated: true },
+    };
+
+    const { page } = globalPage;
+
+    await page.evaluate(
+      async state => chrome.storage.local.set({ ['persist:root']: state }),
+      version4State
+    );
+
+    await globalPage.gotoNakedRoot(extensionId);
+
+    const result = await readMigratedPersistedState(page);
+
+    test.expect(result._persist.version).toEqual(latestPersistedVersion);
+    test.expect(result.networks.currentNetworkId).toEqual('mainnet');
   });
 });
