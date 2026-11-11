@@ -18,8 +18,8 @@ import { baseCurrencyAmountInQuote, createMoney, initBigNumber } from '@leather.
 
 import { FungibleAssetService } from '../../../assets/fungible-asset.service';
 import { HiroStacksApiClient } from '../../../infrastructure/api/hiro/hiro-stacks-api.client';
-import type {
-  LeatherApiBitflowPool,
+import {
+  type LeatherApiBitflowPool,
   LeatherApiClient,
 } from '../../../infrastructure/api/leather/leather-api.client';
 import { MarketDataService } from '../../../market/market-data.service';
