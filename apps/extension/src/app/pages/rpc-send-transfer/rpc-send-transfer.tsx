@@ -10,6 +10,7 @@ import { analytics } from '@shared/utils/analytics';
 import { formatCurrency } from '@app/common/currency-formatter';
 import { focusTabAndWindow } from '@app/common/focus-tab';
 import { useConvertCryptoCurrencyToFiatAmount } from '@app/common/hooks/use-convert-to-fiat-amount';
+import { useWalletType } from '@app/common/use-wallet-type';
 import { AccountBitcoinAddress } from '@app/components/account/account-bitcoin-address';
 import { BackgroundOverlay } from '@app/components/loading-overlay';
 import { NoBroadcastWarningLabel } from '@app/components/rpc-transaction-request/no-broadcast-warning-label';
@@ -22,6 +23,8 @@ import { SpendSourcesApproverRows } from '@app/components/spend-sources/spend-so
 import { SpendSourcesTaprootCallout } from '@app/components/spend-sources/spend-sources-taproot-callout';
 import { FeeEditor } from '@app/features/fee-editor/fee-editor';
 import { useFeeEditorContext } from '@app/features/fee-editor/fee-editor.context';
+import { LedgerBitcoinInputLimitCallout } from '@app/features/ledger/components/ledger-bitcoin-input-limit-callout';
+import { getLedgerBitcoinInputLimit } from '@app/features/ledger/utils/ledger-bitcoin-input-limit';
 import { SigningAccountCard } from '@app/features/rpc-stacks-transaction-request/signing-account-card/signing-account-card';
 import { useBreakOnNonCompliantEntity } from '@app/query/common/compliance-checker/compliance-checker.query';
 import { useCurrentAccountId } from '@app/store/accounts/account';
@@ -37,8 +40,17 @@ export function RpcSendTransfer() {
   const policy = useCurrentPolicy();
   const { availableBalance, isLoadingFees, marketData, onUserActivatesFeeEditor, selectedFee } =
     useFeeEditorContext();
-  const { recipients, recipientAddresses, amount, broadcast, origin, isLoadingBalance, tabId } =
-    useRpcSendTransferContext();
+  const {
+    recipients,
+    recipientAddresses,
+    amount,
+    broadcast,
+    origin,
+    isLoadingBalance,
+    tabId,
+    utxos,
+  } = useRpcSendTransferContext();
+  const { walletType } = useWalletType();
 
   const convertToFiatAmount = useConvertCryptoCurrencyToFiatAmount('BTC');
 
@@ -49,7 +61,22 @@ export function RpcSendTransfer() {
   const isSignOnly = !broadcast && !isBitcoinPolicy;
   const generatedTx = useRpcSendTransferTx();
   const unsignedTx = generatedTx.tx;
-  const { approverActions, isBroadcasting, isSubmitted } = useRpcSendTransferActions(generatedTx);
+  const feeRate = selectedFee?.feeRate;
+
+  const ledgerInputLimit = useMemo(() => {
+    if (walletType !== 'ledger' || isBitcoinPolicy) return null;
+    const limit = getLedgerBitcoinInputLimit({
+      recipient: recipients[0]?.address ?? '',
+      amount,
+      utxos,
+      feeRate,
+    });
+    return limit.exceedsLimit ? limit : null;
+  }, [walletType, isBitcoinPolicy, recipients, amount, utxos, feeRate]);
+
+  const { approverActions, isBroadcasting, isSubmitted } = useRpcSendTransferActions(generatedTx, {
+    isApproveDisabled: !!ledgerInputLimit,
+  });
   const showOverlay = isBroadcasting || isSubmitted;
 
   const spendSources = useMemo(() => {
@@ -81,6 +108,12 @@ export function RpcSendTransfer() {
           />
           {isSignOnly && <NoBroadcastWarningLabel origin={origin} />}
           {spendSources && <SpendSourcesTaprootCallout summary={spendSources.summary} />}
+          {ledgerInputLimit && (
+            <LedgerBitcoinInputLimitCallout
+              inputCount={ledgerInputLimit.inputCount}
+              maxAmountWithinLimit={ledgerInputLimit.maxAmountWithinLimit}
+            />
+          )}
           <SigningAccountCard
             address={<AccountBitcoinAddress accountId={currentAccount} />}
             availableBalance={availableBalance}

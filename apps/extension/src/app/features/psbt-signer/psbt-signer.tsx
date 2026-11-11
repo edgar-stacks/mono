@@ -11,8 +11,11 @@ import { RouteUrls } from '@shared/route-urls';
 import { closeWindow } from '@shared/utils';
 
 import { type SignPsbtArgs } from '@app/common/psbt/requests';
+import { useWalletType } from '@app/common/use-wallet-type';
 import { ButtonRow, Card } from '@app/components/layout';
 import { PopupHeader } from '@app/features/container/headers/popup.header';
+import { LedgerBitcoinInputLimitCallout } from '@app/features/ledger/components/ledger-bitcoin-input-limit-callout';
+import { isPsbtOverLedgerInputLimit } from '@app/features/ledger/utils/ledger-bitcoin-input-limit';
 import { useBreakOnNonCompliantEntity } from '@app/query/common/compliance-checker/compliance-checker.query';
 import { useOnOriginTabClose } from '@app/routes/hooks/use-on-tab-closed';
 import { useCurrentAccountNativeSegwitIndexZeroPayer } from '@app/store/accounts/blockchain/bitcoin/native-segwit-account.hooks';
@@ -60,6 +63,7 @@ export function PsbtSigner(props: PsbtSignerProps) {
   const { address: addressNativeSegwit } = useCurrentAccountNativeSegwitIndexZeroPayer();
   const { address: addressTaproot } = useCurrentAccountTaprootIndexZeroPayer();
   const { getRawPsbt, getPsbtAsTransaction } = usePsbtSigner();
+  const { walletType } = useWalletType();
 
   useOnOriginTabClose(() => closeWindow());
 
@@ -77,6 +81,11 @@ export function PsbtSigner(props: PsbtSignerProps) {
   const psbtTx = useMemo(() => getPsbtAsTransaction(psbtHex), [getPsbtAsTransaction, psbtHex]);
   const psbtTxInputs = useMemo(() => getPsbtTxInputs(psbtTx), [psbtTx]);
   const psbtTxOutputs = useMemo(() => getPsbtTxOutputs(psbtTx), [psbtTx]);
+  const exceedsLedgerInputLimit = isPsbtOverLedgerInputLimit({
+    walletType,
+    inputCount: psbtTxInputs.length,
+    isBondProposal: !!bondProposal,
+  });
 
   const {
     addressNativeSegwitTotal,
@@ -131,6 +140,7 @@ export function PsbtSigner(props: PsbtSignerProps) {
             <Button
               flexGrow={1}
               aria-busy={isBroadcasting}
+              disabled={exceedsLedgerInputLimit}
               onClick={() =>
                 onSignPsbt({
                   addressNativeSegwitTotal,
@@ -147,6 +157,12 @@ export function PsbtSigner(props: PsbtSignerProps) {
       >
         <Psbt.PsbtRequestHeader name={name} origin={origin} />
         <Psbt.PsbtRequestDetailsLayout>
+          {exceedsLedgerInputLimit ? (
+            <LedgerBitcoinInputLimitCallout
+              inputCount={psbtTxInputs.length}
+              maxAmountWithinLimit={null}
+            />
+          ) : null}
           {bondProposal ? (
             <PsbtBondAccounts policy={bondProposal.policy} signerAddress={addressNativeSegwit} />
           ) : null}
