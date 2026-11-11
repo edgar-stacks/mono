@@ -7,6 +7,8 @@ import { HDKey } from '@scure/bip32';
 import * as btc from '@scure/btc-signer';
 import { Psbt } from 'bitcoinjs-lib';
 
+import type { BitcoinNetworkModes, SupportedBlockchains } from '@leather.io/models';
+
 import {
   addNativeSegwitSignaturesToPsbt,
   addTaprootInputSignaturesToPsbt,
@@ -14,6 +16,7 @@ import {
   createTaprootWalletPolicyKey,
   displayNativeSegwitAddressOnDevice,
   displayTaprootAddressOnDevice,
+  ledgerAppNameForChain,
   makeNativeSegwitDefaultWallet,
   makeTaprootDefaultWallet,
 } from './bitcoin-ledger-utils';
@@ -200,5 +203,18 @@ describe(addTaprootInputSignaturesToPsbt.name, () => {
 
     expect(psbt.data.inputs[0].tapKeySig).toEqual(signature);
     expect(psbt.data.inputs[1].tapKeySig).toBeUndefined();
+  });
+});
+
+describe(ledgerAppNameForChain.name, () => {
+  test.each<[SupportedBlockchains, BitcoinNetworkModes, string]>([
+    ['bitcoin', 'mainnet', 'Bitcoin'],
+    ['bitcoin', 'testnet', 'Bitcoin Test'],
+    ['bitcoin', 'signet', 'Bitcoin Test'],
+    ['bitcoin', 'regtest', 'Bitcoin Test'],
+    ['stacks', 'mainnet', 'Stacks'],
+    ['stacks', 'testnet', 'Stacks'],
+  ])('names the %s app on %s as %s', (chain, bitcoinMode, appName) => {
+    expect(ledgerAppNameForChain(chain, bitcoinMode)).toBe(appName);
   });
 });
