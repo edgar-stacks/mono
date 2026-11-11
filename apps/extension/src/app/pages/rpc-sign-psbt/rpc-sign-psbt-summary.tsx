@@ -6,7 +6,6 @@ import { CheckmarkIcon, CopyIcon, ExternalLinkIcon } from '@leather.io/ui';
 import { analytics } from '@shared/utils/analytics';
 
 import { useBitcoinExplorerLink } from '@app/common/hooks/use-bitcoin-explorer-link';
-import { useClipboard } from '@app/common/hooks/use-copy-to-clipboard';
 import { useRouteState } from '@app/common/hooks/use-route-state';
 import {
   InfoCardAssetValue,
@@ -15,7 +14,7 @@ import {
   InfoCardRow,
 } from '@app/components/info-card/info-card';
 import { Card } from '@app/components/layout';
-import { useToast } from '@app/features/toasts/use-toast';
+import { useCopyTransactionId } from '@app/features/token/hooks/use-copy-transaction-id';
 
 const rpcSignPsbtSummaryStateSchema = z.object({
   fee: z.string(),
@@ -34,9 +33,7 @@ export function RpcSignPsbtSummary() {
     useRouteState(rpcSignPsbtSummaryStateSchema);
   const { handleOpenBitcoinTxLink: handleOpenTxLink } = useBitcoinExplorerLink();
 
-  const toast = useToast();
-
-  const { onCopy } = useClipboard(txId);
+  const copyTransactionId = useCopyTransactionId();
 
   function onClickLink() {
     analytics.track('view_rpc_sign_and_broadcast_psbt_confirmation', { symbol: 'BTC' });
@@ -44,8 +41,7 @@ export function RpcSignPsbtSummary() {
   }
 
   function onClickCopy() {
-    onCopy();
-    toast.success('ID copied!');
+    copyTransactionId(txId);
   }
 
   return (

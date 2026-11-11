@@ -8,7 +8,6 @@ import { type HasChildren, LoadingSpinner } from '@leather.io/ui';
 
 import { analytics } from '@shared/utils/analytics';
 
-import { useClipboard } from '@app/common/hooks/use-copy-to-clipboard';
 import { useStacksExplorerLink } from '@app/common/hooks/use-stacks-explorer-link';
 import { StacksAddressDisplayer } from '@app/components/address-displayer/stacks-address-displayer';
 import {
@@ -18,7 +17,7 @@ import {
 } from '@app/components/info-card/info-card';
 import { Card, Content, Page, SummaryFooter } from '@app/components/layout';
 import { PageHeader } from '@app/features/container/headers/page.header';
-import { useToast } from '@app/features/toasts/use-toast';
+import { useCopyTransactionId } from '@app/features/token/hooks/use-copy-transaction-id';
 
 import { TxDone } from '../../send-crypto-asset-form/components/tx-done';
 
@@ -34,9 +33,8 @@ function StacksChainTxSummaryContainerLayout({ children }: HasChildren) {
 }
 
 export function StacksChainTxSummaryLoading({ txid }: { txid: string }) {
-  const toast = useToast();
+  const copyTransactionId = useCopyTransactionId();
   const { handleOpenStacksTxLink } = useStacksExplorerLink();
-  const { onCopy } = useClipboard(txid);
 
   function onClickLink() {
     analytics.untypedTrack('view_transaction_confirmation_while_loading', { symbol: 'STX' });
@@ -44,8 +42,7 @@ export function StacksChainTxSummaryLoading({ txid }: { txid: string }) {
   }
 
   function onClickCopy() {
-    toast.success('ID copied!');
-    onCopy();
+    copyTransactionId(txid);
   }
   return (
     <StacksChainTxSummaryContainerLayout>
@@ -72,9 +69,8 @@ interface StacksChainTxSummaryLayoutProps {
 export function StacksChainTxSummaryLayout(props: StacksChainTxSummaryLayoutProps) {
   const { txid, token, recipient, value, txFiatValue, metadata } = props;
 
-  const { onCopy } = useClipboard(txid);
+  const copyTransactionId = useCopyTransactionId();
   const { handleOpenStacksTxLink } = useStacksExplorerLink();
-  const toast = useToast();
 
   function onClickLink() {
     analytics.track('view_transaction_confirmation', { symbol: 'STX' });
@@ -82,8 +78,7 @@ export function StacksChainTxSummaryLayout(props: StacksChainTxSummaryLayoutProp
   }
 
   function onClickCopy() {
-    toast.success('ID copied!');
-    onCopy();
+    copyTransactionId(txid);
   }
 
   return (

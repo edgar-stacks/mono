@@ -4,7 +4,6 @@ import { z } from 'zod';
 import { analytics } from '@shared/utils/analytics';
 
 import { useBitcoinExplorerLink } from '@app/common/hooks/use-bitcoin-explorer-link';
-import { useClipboard } from '@app/common/hooks/use-copy-to-clipboard';
 import { useRouteState } from '@app/common/hooks/use-route-state';
 import { FormAddressDisplayer } from '@app/components/address-displayer/form-address-displayer';
 import {
@@ -14,7 +13,7 @@ import {
 } from '@app/components/info-card/info-card';
 import { Card, Content, Page, SummaryFooter } from '@app/components/layout';
 import { PageHeader } from '@app/features/container/headers/page.header';
-import { useToast } from '@app/features/toasts/use-toast';
+import { useCopyTransactionId } from '@app/features/token/hooks/use-copy-transaction-id';
 
 import { TxDone } from '../send-crypto-asset-form/components/tx-done';
 
@@ -47,9 +46,7 @@ export function BtcSentSummary() {
     feeRowValue,
   } = useRouteState(btcSentSummaryStateSchema);
 
-  const toast = useToast();
-
-  const { onCopy } = useClipboard(txId);
+  const copyTransactionId = useCopyTransactionId();
   const { handleOpenBitcoinTxLink: handleOpenTxLink } = useBitcoinExplorerLink();
 
   function onClickLink() {
@@ -58,8 +55,7 @@ export function BtcSentSummary() {
   }
 
   function onClickCopy() {
-    onCopy();
-    toast.success('ID copied!');
+    copyTransactionId(txId);
   }
 
   return (
