@@ -274,7 +274,7 @@ export function AssetDetailModal({
               <styled.span color="ink.text-subdued"> {asset.symbol.toUpperCase()}</styled.span>
             </styled.div>
             <styled.div textStyle="label.01" color="ink.text-primary">
-              {formatCurrency(item.fiat)}
+              {item.fiat ? formatCurrency(item.fiat) : 'No price'}
             </styled.div>
           </Flex>
           <Flex gap="space.03" justifyContent="center" pt="space.02">
