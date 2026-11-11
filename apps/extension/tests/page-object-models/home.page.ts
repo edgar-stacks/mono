@@ -93,6 +93,16 @@ export class HomePage {
     return displayerAddress.replaceAll('\n', '');
   }
 
+  async openCopyAddressMenu() {
+    await this.page.getByTestId(HomePageSelectors.CopyAddressMenuBtn).click();
+    await this.page.getByTestId(HomePageSelectors.CopyAddressMenuTitle).waitFor();
+  }
+
+  async copyAddressFromMenu(optionId: string) {
+    await this.openCopyAddressMenu();
+    await this.page.getByTestId(`${HomePageSelectors.CopyAddressOption}${optionId}`).click();
+  }
+
   async clickTokensTab() {
     await this.page.getByTestId(HomePageSelectors.TokensTabBtn).click();
   }
