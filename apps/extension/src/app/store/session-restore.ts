@@ -21,10 +21,23 @@ export async function getWalletSessionKey() {
   return z.string().safeParse(key.encryptionKey);
 }
 
+function waitForStoreRehydration() {
+  return new Promise<void>(resolve => {
+    if (store.getState()._persist.rehydrated) return resolve();
+    const unsubscribe = store.subscribe(() => {
+      if (!store.getState()._persist.rehydrated) return;
+      unsubscribe();
+      resolve();
+    });
+  });
+}
+
 export async function restoreWalletSession() {
   const keyResult = await getWalletSessionKey();
 
   if (!keyResult.success) return;
+
+  await waitForStoreRehydration();
 
   try {
     const encryptedKeys = selectSoftwareKeys(store.getState());
