@@ -17,6 +17,8 @@ export const SettingsSelectors = {
   LockListItem: 'settings-lock',
   EnterPasswordInput: 'password-input',
   UnlockWalletBtn: 'unlock-wallet-btn',
+  BiometricUnlockBtn: 'biometric-unlock-btn',
+  BiometricRecoveryLink: 'biometric-recovery-link',
   AddNewNetworkBtn: 'add-new-network-btn',
   ShowSecretKeyBtn: 'show-secret-key-btn',
   GetSupportMenuItem: 'get-support-menu-item',

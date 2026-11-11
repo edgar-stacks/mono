@@ -1,6 +1,9 @@
+import { bytesToHex } from '@stacks/common';
+import { encryptMnemonic as encrypt } from '@stacks/encryption';
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 
 import type * as LeatherCrypto from '@leather.io/crypto';
+import { generateMnemonic, getMnemonicRootKeyFingerprint } from '@leather.io/crypto';
 import {
   type WalletStore,
   fingerprintMigration,
@@ -11,6 +14,9 @@ import {
 
 import { deriveEncryptionKey } from '@shared/crypto/generate-encryption-key';
 import { decryptMnemonic } from '@shared/crypto/mnemonic-encryption';
+import type * as PlatformAuthenticator from '@shared/crypto/platform-authenticator';
+import { getPlatformPrfOutput } from '@shared/crypto/platform-authenticator';
+import { encodeBase64Url } from '@shared/crypto/platform-unlock';
 import { assumedZeroFingerprint } from '@shared/utils';
 
 import { recurseAccountsForActivity } from '@app/common/account-restoration/account-restore';
@@ -24,6 +30,7 @@ import { stxChainSlice } from '../chains/stx-chain.slice';
 import * as inMemoryStore from '../in-memory-key/in-memory-storage';
 import { keyActions } from './software-key.actions';
 import { keyAdapter, keySlice } from './software-key.slice';
+import { enrollPlatformUnlock } from './wallet-authentication';
 
 vi.mock('@app/store/store', () => ({
   persistor: { flush: vi.fn(() => Promise.resolve()) },
@@ -78,6 +85,11 @@ vi.mock('@leather.io/services', () => ({
   getHiroStacksApiClient: vi.fn(),
   getBnsV2ApiClient: vi.fn(),
 }));
+
+vi.mock('@shared/crypto/platform-authenticator', async importOriginal => {
+  const actual = await importOriginal<typeof PlatformAuthenticator>();
+  return { ...actual, getPlatformPrfOutput: vi.fn() };
+});
 
 vi.mock('./utils', () => ({
   checkPassword: vi.fn(),
@@ -411,5 +423,68 @@ describe('probeNextAccountAndDiscoverAccounts', () => {
     });
     expect(recurseAccountsForActivity).not.toHaveBeenCalled();
     expect(dispatch).not.toHaveBeenCalled();
+  });
+});
+
+describe('unlockWalletWithBiometricsAction', () => {
+  const prfOutput = new Uint8Array(32).fill(1);
+
+  async function buildBiometricState() {
+    const { encryptionKey, platformUnlock } = await enrollPlatformUnlock({
+      createCredential: () =>
+        Promise.resolve({ credentialId: encodeBase64Url(new Uint8Array(32).fill(9)), prfOutput }),
+      getPrfOutput: () => Promise.resolve(prfOutput),
+    });
+    const mnemonic = generateMnemonic();
+    const fingerprint = getMnemonicRootKeyFingerprint(mnemonic);
+    const encryptedSecretKey = bytesToHex(await encrypt(mnemonic, encryptionKey));
+    const keys = keyAdapter.addMany(keyAdapter.getInitialState(), [
+      { type: 'software', id: fingerprint, encryptedSecretKey },
+    ]);
+    const softwareKeys = { ...keys, authenticationMode: 'biometric-only', platformUnlock };
+    return { encryptionKey, fingerprint, mnemonic, softwareKeys };
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(getPlatformPrfOutput).mockResolvedValue(prfOutput);
+  });
+
+  test('unwraps the key with the PRF output and starts a session', async () => {
+    const { encryptionKey, fingerprint, mnemonic, softwareKeys } = await buildBiometricState();
+    await chrome.storage.local.set({ 'persist:root': { softwareKeys } });
+    const getState = vi.fn().mockReturnValue({ softwareKeys });
+
+    await keyActions.unlockWalletWithBiometricsAction()(vi.fn(), getState, undefined);
+
+    expect(initalizeWalletSession).toHaveBeenCalledWith(encryptionKey);
+    expect(inMemoryStore.setKey).toHaveBeenCalledWith(fingerprint, mnemonic);
+  });
+
+  test('fails closed when persisted state does not match', async () => {
+    const { softwareKeys } = await buildBiometricState();
+    await chrome.storage.local.set({
+      'persist:root': { softwareKeys: { ...softwareKeys, salt: 'salt' } },
+    });
+    const getState = vi.fn().mockReturnValue({ softwareKeys });
+
+    await expect(
+      keyActions.unlockWalletWithBiometricsAction()(vi.fn(), getState, undefined)
+    ).rejects.toMatchObject({ category: 'wallet-validation' });
+    expect(getPlatformPrfOutput).not.toHaveBeenCalled();
+    expect(initalizeWalletSession).not.toHaveBeenCalled();
+  });
+
+  test('fails closed when the PRF output unwraps nothing', async () => {
+    const { softwareKeys } = await buildBiometricState();
+    await chrome.storage.local.set({ 'persist:root': { softwareKeys } });
+    vi.mocked(getPlatformPrfOutput).mockResolvedValue(new Uint8Array(32).fill(2));
+    const getState = vi.fn().mockReturnValue({ softwareKeys });
+
+    await expect(
+      keyActions.unlockWalletWithBiometricsAction()(vi.fn(), getState, undefined)
+    ).rejects.toMatchObject({ category: 'credential-mismatch' });
+    expect(initalizeWalletSession).not.toHaveBeenCalled();
+    expect(inMemoryStore.setKey).not.toHaveBeenCalled();
   });
 });

@@ -11,6 +11,7 @@ import { z } from 'zod';
 import { Button } from '@leather.io/ui';
 import { isUndefined } from '@leather.io/utils';
 
+import { isPlatformAuthenticatorSupported } from '@shared/crypto/platform-authenticator';
 import { requiredStringField } from '@shared/forms/field-schemas';
 import { RouteUrls } from '@shared/route-urls';
 import { analytics } from '@shared/utils/analytics';
@@ -29,9 +30,14 @@ import {
   DescriptionColumn,
   TwoColumnLayout,
 } from '@app/components/layout/layouts/two-column.layout';
+import { RequestBiometricUnlock } from '@app/components/request-biometric-unlock';
 import { useCheckPassword } from '@app/store/software-keys/software-key.hooks';
-import { selectSoftwareKeys } from '@app/store/software-keys/software-key.selectors';
+import {
+  selectSoftwareKeys,
+  useIsBiometricOnlyProfile,
+} from '@app/store/software-keys/software-key.selectors';
 
+import { BiometricSetup } from './components/biometric-setup';
 import { PasswordField } from './components/password-field';
 
 interface SetPasswordFormValues {
@@ -42,17 +48,41 @@ const setPasswordFormValues: SetPasswordFormValues = { password: '', confirmPass
 
 interface SetPasswordPageProps {
   mnemonicData: { mnemonic: string; fingerprint: string };
+  isRestore?: boolean;
   onBack?(): void;
 }
-export function SetPasswordPage({ mnemonicData, onBack }: SetPasswordPageProps) {
+export function SetPasswordPage({ mnemonicData, isRestore, onBack }: SetPasswordPageProps) {
   const [loading, setLoading] = useState(false);
+  const [isBiometricBusy, setIsBiometricBusy] = useState(false);
   const [strengthResult, setStrengthResult] = useState(blankPasswordValidation);
-  const { setPassword } = useKeyActions();
+  const { setPassword, createBiometricWallet, addWalletWithBiometrics } = useKeyActions();
   const softwareKeys = useSelector(selectSoftwareKeys);
   const hasSoftwareKeys = !!softwareKeys.length;
+  const isBiometricOnly = useIsBiometricOnlyProfile();
+  const [isBiometricSupported] = useState(isPlatformAuthenticatorSupported);
+  const canChooseBiometrics = !hasSoftwareKeys && isBiometricSupported;
   const checkPassword = useCheckPassword();
 
   const navigate = useNavigate();
+
+  const navigateHome = useCallback(() => {
+    void navigate(RouteUrls.Home, { replace: true, state: { fromOnboarding: true } });
+  }, [navigate]);
+
+  const enrollBiometrics = useCallback(async () => {
+    await createBiometricWallet({
+      mnemonic: mnemonicData.mnemonic,
+      fingerprint: mnemonicData.fingerprint,
+    });
+    navigateHome();
+  }, [createBiometricWallet, navigateHome, mnemonicData.fingerprint, mnemonicData.mnemonic]);
+
+  const addWalletWithBiometricConfirmation = useCallback(async () => {
+    await addWalletWithBiometrics({
+      mnemonic: mnemonicData.mnemonic,
+      fingerprint: mnemonicData.fingerprint,
+    });
+  }, [addWalletWithBiometrics, mnemonicData.fingerprint, mnemonicData.mnemonic]);
 
   const submit = useCallback(
     async (password: string) => {
@@ -123,10 +153,37 @@ export function SetPasswordPage({ mnemonicData, onBack }: SetPasswordPageProps) 
           ),
     })
   );
-  const title = hasSoftwareKeys ? 'Enter your Password' : 'Set a password';
-  const description = hasSoftwareKeys
-    ? 'Enter the password you set on this device.'
-    : "Your password protects your Secret Key on this device only. To access your wallet on another device, you'll need just your Secret Key.";
+  if (hasSoftwareKeys && isBiometricOnly) {
+    return (
+      <>
+        <Header px="space.04">
+          <HeaderGrid leftCol={<HeaderBackButton onBack={onBack} />} rightCol={null} />
+        </Header>
+        <Content>
+          <RequestBiometricUnlock
+            title="Confirm it's you"
+            description="Use your configured unlock method to continue."
+            authenticate={addWalletWithBiometricConfirmation}
+            onSuccess={navigateHome}
+          />
+        </Content>
+      </>
+    );
+  }
+
+  function getTitle() {
+    if (hasSoftwareKeys) return 'Enter your Password';
+    return canChooseBiometrics ? 'Choose how to unlock Leather' : 'Set a password';
+  }
+
+  function getDescription() {
+    if (hasSoftwareKeys) return 'Enter the password you set on this device.';
+    return canChooseBiometrics
+      ? 'Choose a password or biometrics. Your choice applies to every software wallet in this browser profile.'
+      : "Your password protects your Secret Key on this device only. To access your wallet on another device, you'll need just your Secret Key.";
+  }
+  const title = getTitle();
+  const description = getDescription();
 
   return (
     <>
@@ -159,18 +216,26 @@ export function SetPasswordPage({ mnemonicData, onBack }: SetPasswordPageProps) 
                   >
                     <PasswordField
                       strengthResult={strengthResult}
-                      isDisabled={loading}
+                      isDisabled={loading || isBiometricBusy}
                       showStrength={!hasSoftwareKeys}
                     />
                     <Button
                       data-testid={OnboardingSelectors.SetPasswordBtn}
-                      disabled={loading || !(dirty && isValid)}
+                      disabled={loading || isBiometricBusy || !(dirty && isValid)}
                       aria-busy={loading || isSubmitting}
                       mt="space.05"
                       type="submit"
                     >
                       Continue
                     </Button>
+                    {canChooseBiometrics && (
+                      <BiometricSetup
+                        label={isRestore ? 'Use biometrics instead' : 'Use biometrics'}
+                        isDisabled={loading}
+                        onBusyChange={setIsBiometricBusy}
+                        onEnroll={enrollBiometrics}
+                      />
+                    )}
                   </Stack>
                 }
               />
