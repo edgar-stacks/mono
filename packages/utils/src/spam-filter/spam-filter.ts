@@ -4,6 +4,7 @@ const tldRegex = tlds.join('|');
 const urlRegex = new RegExp(`\\b.*\\s*\\.\\s*(${tldRegex})\\b`, 'gi');
 
 const spamWords = ['won', 'win', 'click'];
+const spamWordRegex = new RegExp(`\\b(${spamWords.join('|')})\\b`, 'i');
 export const spamReplacement = 'Suspicious token';
 
 function spamUrlFilter(input: string) {
@@ -11,10 +12,7 @@ function spamUrlFilter(input: string) {
 }
 
 function spamWordFilter(input: string): boolean {
-  function containsSpam(element: string) {
-    return input.toLowerCase().includes(element);
-  }
-  return spamWords.some(containsSpam);
+  return spamWordRegex.test(input);
 }
 
 interface SpamFilterArgs {
