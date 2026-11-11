@@ -10,6 +10,9 @@ export default defineProject({
     },
   },
   ...defaultVitestUnitTestingConfig,
+  esbuild: {
+    jsx: 'automatic',
+  },
   test: {
     ...defaultVitestUnitTestingConfig.test,
     // While we don't need DOM in the mobile app, @testing-library/react requires this to be able to simply render isolated hooks in tests.
