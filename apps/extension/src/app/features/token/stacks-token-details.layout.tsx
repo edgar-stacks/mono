@@ -7,6 +7,7 @@ import type { Money } from '@leather.io/models';
 import { formatCurrency } from '@app/common/currency-formatter';
 
 import { type TokenBalanceEntry, TokenBalancesTab } from './components/token-balances-tab';
+import type { TokenDetailsMoreAction } from './components/token-details-actions';
 import { TokenDetailsLayout } from './token-details.layout';
 
 interface StacksTokenDetailsLayoutProps {
@@ -18,6 +19,7 @@ interface StacksTokenDetailsLayoutProps {
   balances: TokenBalanceEntry[];
   activity: BlockchainActivityItem[];
   isActivityLoading: boolean;
+  moreActions?: TokenDetailsMoreAction[];
 }
 
 export function StacksTokenDetailsLayout({
@@ -29,6 +31,7 @@ export function StacksTokenDetailsLayout({
   balances,
   activity,
   isActivityLoading,
+  moreActions,
 }: StacksTokenDetailsLayoutProps) {
   return (
     <TokenDetailsLayout
@@ -49,6 +52,7 @@ export function StacksTokenDetailsLayout({
       }
       activity={activity}
       isActivityLoading={isActivityLoading}
+      moreActions={moreActions}
     />
   );
 }

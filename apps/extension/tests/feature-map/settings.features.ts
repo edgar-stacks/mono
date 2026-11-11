@@ -1,7 +1,9 @@
 import { AllBalancesSelectors } from '@tests/selectors/all-balances.selectors';
+import { MoveToFreshAccountSelectors } from '@tests/selectors/move-to-fresh-account.selectors';
 import { OnboardingSelectors } from '@tests/selectors/onboarding.selectors';
 import { SettingsSelectors } from '@tests/selectors/settings.selectors';
 import { SharedComponentsSelectors } from '@tests/selectors/shared-component.selectors';
+import { TokenDetailsSelectors } from '@tests/selectors/token-details.selectors';
 
 import { RouteUrls } from '@shared/route-urls';
 
@@ -266,5 +268,38 @@ export const settingsFeatures = [
     ],
     description:
       'What locking does (useKeyActions.lockWallet in apps/extension/src/app/common/hooks/use-key-actions.ts): clear the wallet session in chrome.storage.session (the encryptionKey), the in-memory key store and the keychain selector caches, broadcast a wallet-lock message, call afterLock (both callers navigate to /unlock with a from route), then reload the window. Other open windows receive the message (useOnWalletLock in features/container/container.tsx), clear their in-memory keys and caches and reload, after which AccountGate shows /unlock; the window stays open (wallet-lock.spec). There is no idle timer: the wallet locks only on this action, on an extension update, or when the browser discards session storage. A locked wallet can still sign out from the settings menu. password-memory-leak.spec checks that the password is not left in the heap after locking.',
+  },
+  {
+    id: 'move-to-fresh-account',
+    anchor: { kind: 'route' },
+    routes: [RouteUrls.MoveToFreshAccount],
+    params: [],
+    entry: [
+      {
+        kind: 'nav',
+        steps: [
+          'Open STX token details (#/token/STX), click the round "..." button (TokenDetailsSelectors.TokenDetailsMoreButton, aria-label "More actions") and choose "Move to a fresh account" (MoveToFreshAccountSelectors.MoveToFreshAccountMenuItem); the button only renders on STX token details while the accountShuffle flag is on',
+        ],
+      },
+      { kind: 'deepLink', steps: ['Open #/move-to-fresh-account while the flag is on'] },
+    ],
+    gate: 'account',
+    flags: ['accountShuffle'],
+    preconditions: { session: 'signed-in', network: 'mainnet', mocks: [...defaultMocks] },
+    selectors: {
+      ready: MoveToFreshAccountSelectors.MoveToFreshAccountPage,
+      others: [
+        TokenDetailsSelectors.TokenDetailsMoreButton,
+        MoveToFreshAccountSelectors.MoveToFreshAccountMenuItem,
+        MoveToFreshAccountSelectors.MoveToFreshAccountNoFreshAccount,
+        MoveToFreshAccountSelectors.MoveToFreshAccountError,
+        MoveToFreshAccountSelectors.MoveToFreshAccountSubmitBtn,
+        SharedComponentsSelectors.HeaderBackBtn,
+      ],
+    },
+    actions: [],
+    specs: [],
+    description:
+      'Proof of concept that moves every Stacks asset of the active account to a fresh account in one action (pages/move-to-fresh-account). The route and the token-details menu item only exist while the accountShuffle LaunchDarkly flag is on; the E2E LaunchDarkly mock does not set it, so a spec must enable it with overrideLaunchDarklyFlags before signing in. The fresh account is the highest index + 1 for a software wallet and the current index + 1 for a Ledger wallet (useFreshStacksAccount); it is available only when it can be derived, its next nonce is 0 and no policy account is active, otherwise the "No fresh account available" warning (MoveToFreshAccountNoFreshAccount) shows. The page, headed "Move assets", lists the fresh address, the STX amount, each SIP-10 token and NFT that moves, a "Stays behind" group with reasons (BNS-V2 names listed in the market map or in a manager-transferable namespace, NFTs whose id is not a uint), the number of transactions and the total fee, plus a callout with only the lines that apply (Ledger approval per transaction, stacked STX staying behind, NFT contracts that may block transfers). "Move Stacks assets" (MoveToFreshAccountSubmitBtn) signs one transaction per SIP-10 token and NFT with sequential nonces, then STX last with the available unlocked balance minus every standard fee, and broadcasts them in order, stopping at the first failure. On success a software wallet creates the next account and a Ledger wallet switches to the next index, a toast confirms and the app navigates home. When the fees use the whole STX balance the "Not enough STX to pay the fees" warning (MoveToFreshAccountError) shows. No spec covers it.',
   },
 ] as const satisfies readonly ExtensionFeatureEntry[];
