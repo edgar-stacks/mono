@@ -1,6 +1,7 @@
+import { BTC_P2TR_DUST_AMOUNT, BTC_P2WPKH_DUST_AMOUNT } from '@leather.io/constants';
 import { createMoney } from '@leather.io/utils';
 
-import { recipientAddress } from '../mocks/mocks';
+import { recipientAddress, taprootAddress } from '../mocks/mocks';
 import {
   generateMockTaprootTransactions,
   generateMockTransactions,
@@ -10,6 +11,7 @@ import {
 import {
   countInputsByScriptType,
   filterUneconomicalUtxos,
+  getDustThresholdByAddress,
   getSizeInfo,
   getSpendableAmount,
 } from './coin-selection.utils';
@@ -71,6 +73,32 @@ describe(filterUneconomicalUtxos.name, () => {
       feeRate: fee,
     });
     expect(filteredUtxos.length).toEqual(2);
+  });
+
+  test('that taproot utxos below the taproot dust limit are filtered out', () => {
+    const [dustTaprootUtxo] = generateMockTaprootTransactions([300]);
+    const [taprootUtxo] = generateMockTaprootTransactions([10_000]);
+
+    const filteredUtxos = filterUneconomicalUtxos({
+      utxos: [dustTaprootUtxo, taprootUtxo],
+      feeRate: 1,
+      recipients,
+    });
+
+    expect(filteredUtxos).toEqual([taprootUtxo]);
+  });
+
+  test('that outputs of the same transaction are judged separately', () => {
+    const [utxo, uneconomicalUtxo] = generateMockTransactions([10_000, 400]);
+    const siblingUtxo = { ...uneconomicalUtxo, txid: utxo.txid, vout: 1 };
+
+    const filteredUtxos = filterUneconomicalUtxos({
+      utxos: [utxo, siblingUtxo],
+      feeRate: 10,
+      recipients,
+    });
+
+    expect(filteredUtxos).toEqual([utxo]);
   });
 
   describe('with taproot utxos', () => {
@@ -152,6 +180,20 @@ describe(filterUneconomicalUtxos.name, () => {
       expect(result.length).toEqual(1);
       expect(result[0].value).toEqual(50000000);
     });
+  });
+});
+
+describe(getDustThresholdByAddress.name, () => {
+  test('that taproot addresses use the taproot dust limit', () => {
+    expect(getDustThresholdByAddress(taprootAddress)).toEqual(BTC_P2TR_DUST_AMOUNT);
+  });
+
+  test('that native segwit addresses use the native segwit dust limit', () => {
+    expect(getDustThresholdByAddress(recipientAddress)).toEqual(BTC_P2WPKH_DUST_AMOUNT);
+  });
+
+  test('that unparseable addresses fall back to the native segwit dust limit', () => {
+    expect(getDustThresholdByAddress('not-an-address')).toEqual(BTC_P2WPKH_DUST_AMOUNT);
   });
 });
 
