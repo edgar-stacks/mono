@@ -17,7 +17,7 @@ export function RecipientAddressDisplayer({ address }: RecipientAddressDisplayer
   const toast = useToast();
 
   function copyToClipboard() {
-    toast.success('Copied to clipboard!');
+    toast.success('Address copied to clipboard');
 
     analytics.track('copy_recipient_bns_address_to_clipboard');
     onCopy();

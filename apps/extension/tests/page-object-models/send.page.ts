@@ -26,6 +26,7 @@ export class SendPage {
   readonly recipientSelectFieldBnsName: Locator;
   readonly recipientInput: Locator;
   readonly recipientBnsAddressLabel: Locator;
+  readonly recipientBnsAddressCopyButton: Locator;
   readonly sendMaxButton: Locator;
   readonly feesRow: Locator;
   readonly memoRow: Locator;
@@ -62,6 +63,9 @@ export class SendPage {
     this.recipientInput = this.page.getByTestId(SendCryptoAssetSelectors.RecipientFieldInput);
     this.recipientBnsAddressLabel = this.page.getByTestId(
       SendCryptoAssetSelectors.RecipientBnsAddressLabel
+    );
+    this.recipientBnsAddressCopyButton = this.page.getByTestId(
+      SendCryptoAssetSelectors.RecipientBnsAddressCopyToClipboard
     );
     this.feesRow = page.getByTestId(SendCryptoAssetSelectors.ConfirmationDetailsFee);
     this.memoRow = page.getByTestId(SendCryptoAssetSelectors.ConfirmationDetailsMemo);

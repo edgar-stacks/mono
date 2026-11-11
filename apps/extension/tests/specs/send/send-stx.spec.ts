@@ -237,6 +237,10 @@ test.describe('send stx: tests on mainnet', () => {
       await sendPage.recipientBnsAddressLabel.waitFor();
       const bnsResolvedAddress = sendPage.page.getByText(TEST_BNS_RESOLVED_ADDRESS);
       await test.expect(bnsResolvedAddress).toBeVisible();
+      await sendPage.recipientBnsAddressCopyButton.click();
+      await test
+        .expect(sendPage.page.getByText('Address copied to clipboard', { exact: true }))
+        .toBeVisible();
     });
 
     test('that fee row defaults to middle fee estimation', async ({ sendPage }) => {
