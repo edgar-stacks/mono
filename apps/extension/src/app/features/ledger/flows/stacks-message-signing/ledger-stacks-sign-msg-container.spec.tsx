@@ -276,6 +276,28 @@ describe(LedgerSignMsgContainer.name, () => {
     expect(mocks.disconnect).toHaveBeenCalledWith({ sessionId: fakeLedgerSessionId });
   });
 
+  test('shows the rejected step with the reason without settling and closes the transport once when the payload is blocked', async () => {
+    const { context } = setupSignMessage();
+    const error =
+      'Ledger messages cannot contain control characters, including tabs and line breaks.';
+    mocks.signUtf8Message.mockReturnValue(() => Promise.resolve({ error }));
+
+    await act(async () => {
+      await context.signMessage();
+    });
+
+    expect(mocks.toOperationRejectedStep).toHaveBeenCalledOnce();
+    expect(mocks.toOperationRejectedStep).toHaveBeenCalledWith(error);
+    expect(mocks.settleLedgerAction).not.toHaveBeenCalled();
+    expect(mocks.messageSignedOnLedgerSuccessfully).not.toHaveBeenCalled();
+    expect(mocks.messageSignedOnLedgerRejected).not.toHaveBeenCalled();
+    expect(mocks.toAwaitingDeviceOperation).not.toHaveBeenCalledWith({
+      hasApprovedOperation: true,
+    });
+    expect(mocks.disconnect).toHaveBeenCalledOnce();
+    expect(mocks.disconnect).toHaveBeenCalledWith({ sessionId: fakeLedgerSessionId });
+  });
+
   test('resolves without signing or navigating when the connection is cancelled', async () => {
     const { context } = setupSignMessage();
     mocks.prepareConnection.mockRejectedValue(new Error('Unable to initiate Ledger app'));
