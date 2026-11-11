@@ -1,7 +1,7 @@
 import type { TransactionOutput } from '@scure/btc-signer/psbt';
 
 import { type BitcoinAddress, type BitcoinNetworkModes } from '@leather.io/models';
-import { isDefined, isUndefined } from '@leather.io/utils';
+import { isUndefined } from '@leather.io/utils';
 
 import { getBtcSignerLibNetworkConfigByMode } from '../utils/bitcoin.network';
 import { getAddressFromOutScript, getOutputScriptType } from '../utils/bitcoin.utils';
@@ -16,6 +16,16 @@ export interface PsbtOutput {
 
 export interface PsbtOutputWithAddress extends PsbtOutput {
   address: BitcoinAddress;
+}
+
+export class PsbtOutputMissingScriptError extends Error {
+  public outputIndex: number;
+  constructor(outputIndex: number) {
+    super(`PSBT output ${outputIndex} has no script`);
+    this.name = 'PsbtOutputMissingScriptError';
+    this.outputIndex = outputIndex;
+    Object.setPrototypeOf(this, new.target.prototype);
+  }
 }
 
 interface GetParsedOutputsArgs {
@@ -33,24 +43,18 @@ export function getParsedOutputs({
 }: GetParsedOutputsArgs): PsbtOutput[] {
   const bitcoinNetwork = getBtcSignerLibNetworkConfigByMode(networkMode);
 
-  return outputs
-    .map(output => {
-      if (isUndefined(output.script)) {
-        // TODO: handle error here
-        // logger.error('Output has no script');
-        return;
-      }
-      const outputAddress = getAddressFromOutScript(output.script, bitcoinNetwork);
+  return outputs.map((output, index) => {
+    if (isUndefined(output.script)) throw new PsbtOutputMissingScriptError(index);
+    const outputAddress = getAddressFromOutScript(output.script, bitcoinNetwork);
 
-      const isCurrentAddress = !!outputAddress && psbtAddresses.includes(outputAddress);
+    const isCurrentAddress = !!outputAddress && psbtAddresses.includes(outputAddress);
 
-      return {
-        address: outputAddress,
-        isMutable: isPsbtMutable,
-        toSign: isCurrentAddress,
-        value: Number(output.amount),
-        scriptType: getOutputScriptType(output.script),
-      };
-    })
-    .filter(isDefined);
+    return {
+      address: outputAddress,
+      isMutable: isPsbtMutable,
+      toSign: isCurrentAddress,
+      value: Number(output.amount),
+      scriptType: getOutputScriptType(output.script),
+    };
+  });
 }

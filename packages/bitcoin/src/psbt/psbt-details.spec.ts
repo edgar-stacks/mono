@@ -1,10 +1,14 @@
 import { bytesToHex, hexToBytes } from '@noble/hashes/utils';
 import * as btc from '@scure/btc-signer';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { expectDefined } from '../test-utils/expect-defined';
+import { getPsbtTxOutputs } from '../utils/bitcoin.utils';
 import { createBitcoinAddress } from '../validation/bitcoin-address';
 import { getPsbtDetails } from './psbt-details';
+import { PsbtOutputMissingScriptError } from './psbt-outputs';
+
+vi.mock('../utils/bitcoin.utils', { spy: true });
 
 const NETWORK = btc.NETWORK;
 const ownerPubKey = hexToBytes('02'.padEnd(66, '3'));
@@ -64,5 +68,35 @@ describe('getPsbtDetails isPsbtMutable', () => {
       networkMode: 'mainnet',
     });
     expect(details.isPsbtMutable).toBe(false);
+  });
+});
+
+describe('getPsbtDetails outputs', () => {
+  it('parses a psbt whose outputs all have scripts', () => {
+    const details = getPsbtDetails({
+      psbtHex: buildPsbtHex(),
+      psbtAddresses: [ownerAddress],
+      networkMode: 'mainnet',
+    });
+    expect(details.psbtOutputs).toEqual([
+      {
+        address: recipientAddress,
+        isMutable: false,
+        toSign: false,
+        value: 99_900_000,
+        scriptType: 'wpkh',
+      },
+    ]);
+  });
+
+  it('throws a typed error for an output without a script', () => {
+    vi.mocked(getPsbtTxOutputs).mockReturnValueOnce([{ amount: 99_900_000n }]);
+    expect(() =>
+      getPsbtDetails({
+        psbtHex: buildPsbtHex(),
+        psbtAddresses: [ownerAddress],
+        networkMode: 'mainnet',
+      })
+    ).toThrow(PsbtOutputMissingScriptError);
   });
 });

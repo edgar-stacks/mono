@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 
 import { getOutputScriptType } from '../utils/bitcoin.utils';
 import { getPsbtDetails } from './psbt-details';
+import { PsbtOutputMissingScriptError, getParsedOutputs } from './psbt-outputs';
 
 const NETWORK = btc.NETWORK;
 const ownerPayment = btc.p2wpkh(hexToBytes('02'.padEnd(66, '3')), NETWORK);
@@ -58,5 +59,43 @@ describe('getPsbtDetails output parsing', () => {
     const wpkhOutput = details.psbtOutputs.find(output => output.value === 10_000);
     expect(wpkhOutput?.address).toBe(recipientAddress);
     expect(wpkhOutput?.scriptType).toBe('wpkh');
+  });
+});
+
+describe('getParsedOutputs', () => {
+  const recipientScript = btc.OutScript.encode(btc.Address(NETWORK).decode(recipientAddress));
+
+  it('parses every output when all outputs have a script', () => {
+    const parsedOutputs = getParsedOutputs({
+      isPsbtMutable: false,
+      outputs: [
+        { script: recipientScript, amount: 10_000n },
+        { script: p2aScript, amount: 985_000n },
+      ],
+      networkMode: 'mainnet',
+      psbtAddresses: [],
+    });
+
+    expect(parsedOutputs).toEqual([
+      {
+        address: recipientAddress,
+        isMutable: false,
+        toSign: false,
+        value: 10_000,
+        scriptType: 'wpkh',
+      },
+      { address: null, isMutable: false, toSign: false, value: 985_000, scriptType: 'p2a' },
+    ]);
+  });
+
+  it('throws a typed error naming the output without a script', () => {
+    expect(() =>
+      getParsedOutputs({
+        isPsbtMutable: false,
+        outputs: [{ script: recipientScript, amount: 10_000n }, { amount: 985_000n }],
+        networkMode: 'mainnet',
+        psbtAddresses: [],
+      })
+    ).toThrow(new PsbtOutputMissingScriptError(1));
   });
 });
