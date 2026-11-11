@@ -53,10 +53,14 @@ function getSendTransferActionLabels({
   return {};
 }
 
-export function useRpcSendTransferActions({
-  tx: unsignedTx,
-  error: unsignedTxError,
-}: RpcSendTransferTx) {
+interface UseRpcSendTransferActionsOptions {
+  isApproveDisabled?: boolean;
+}
+
+export function useRpcSendTransferActions(
+  { tx: unsignedTx, error: unsignedTxError }: RpcSendTransferTx,
+  { isApproveDisabled = false }: UseRpcSendTransferActionsOptions = {}
+) {
   const { availableBalance, selectedFee } = useFeeEditorContext();
   const { amount, broadcast, frameId, isLoadingBalance, recipients, requestId, tabId } =
     useRpcSendTransferContext();
@@ -210,6 +214,7 @@ export function useRpcSendTransferActions({
       isError: isInsufficientBalance,
       isBroadcasting,
       isSubmitted,
+      isApproveDisabled,
       onCancel,
       onApprove,
       ...getSendTransferActionLabels({ broadcast, isBitcoinPolicy }),
@@ -219,6 +224,7 @@ export function useRpcSendTransferActions({
     isInsufficientBalance,
     isBroadcasting,
     isSubmitted,
+    isApproveDisabled,
     navigate,
     selectedFee?.feeRate,
     unsignedTx,
