@@ -10,6 +10,7 @@ import { SelectedAssetField } from '../../components/selected-asset-field';
 import { SendFiatValue } from '../../components/send-fiat-value';
 import { SendMaxButton } from '../../components/send-max-button';
 import { StacksCommonSendForm } from '../stacks/stacks-common-send-form';
+import { SendAndRotateField } from './send-and-rotate-field';
 import { useStxSendForm } from './use-stx-send-form';
 
 const symbol = 'STX' satisfies CryptoCurrency;
@@ -18,6 +19,9 @@ export function StxSendForm() {
   const stxMarketData = useCryptoCurrencyMarketData(symbol);
   const {
     availableBalance,
+    canRotate,
+    isRotationEnabled,
+    setIsRotationEnabled,
     initialValues,
     previewTransaction,
     sendMaxBalance,
@@ -51,6 +55,11 @@ export function StxSendForm() {
           selectedAssetField={selectedAssetField}
           fees={fees}
           availableTokenBalance={availableBalance}
+          additionalFields={
+            canRotate && (
+              <SendAndRotateField isEnabled={isRotationEnabled} onChange={setIsRotationEnabled} />
+            )
+          }
         />
       </Content>
     </>

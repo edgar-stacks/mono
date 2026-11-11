@@ -1,8 +1,14 @@
+import { useCallback, useRef } from 'react';
 import { useParams } from 'react-router';
 
-import { deserializeTransaction, isTokenTransferPayload } from '@stacks/transactions';
+import {
+  type StacksTransactionWire,
+  deserializeTransaction,
+  isTokenTransferPayload,
+} from '@stacks/transactions';
 import { Box, Stack } from 'leather-styles/jsx';
 
+import type { AccountId } from '@leather.io/models';
 import { BasicTooltip, InfoCircleIcon } from '@leather.io/ui';
 import { baseCurrencyAmountInQuote, convertAmountToBaseUnit, sumMoney } from '@leather.io/utils';
 
@@ -22,30 +28,64 @@ import {
 import { useStacksBroadcastTransaction } from '@app/common/transactions/stacks/use-stacks-broadcast-transaction';
 import { Content, Page } from '@app/components/layout';
 import { PageHeader } from '@app/features/container/headers/page.header';
+import { isLedgerSigningCancelledError } from '@app/features/ledger/flow/unwrap-ledger-signing-outcome';
+import { useToast } from '@app/features/toasts/use-toast';
 import { useCryptoCurrencyMarketData } from '@app/query/common/market-data/market-data.hooks';
+import { useStacksRotationTargetAccount } from '@app/store/accounts/blockchain/stacks/stacks-account.hooks';
+import { useSignStacksTransaction } from '@app/store/transactions/transaction.hooks';
 
 import type { ProposalSentSummaryState } from '../../../sent-summary/proposal-sent-summary';
 import { stacksConfirmationRouteStateSchema } from '../../hooks/use-send-form-navigate';
 import { SendFormConfirmationLayout } from '../send-form-confirmation.layout';
+import { StxRotationDetails } from './stx-rotation-details';
+import { useBroadcastRotationTransaction } from './use-broadcast-rotation-transaction';
 import { useProposeStacksSendTransaction } from './use-propose-stacks-send-transaction';
+
+const signingCancelled = 'cancelled';
+const signingFailed = 'failed';
+
+interface PendingRotation {
+  signedRotationTx: StacksTransactionWire;
+  targetAccountId: AccountId;
+}
 
 export function StacksSendFormConfirmation() {
   const {
     tx: txHex,
     decimals,
     showFeeChangeWarning = false,
+    rotationTx: rotationTxHex,
   } = useRouteState(stacksConfirmationRouteStateSchema);
   const tokenMarketData = useCryptoCurrencyMarketData('STX');
+  const toast = useToast();
 
   const { symbol = 'STX' } = useParams();
 
-  const { stacksBroadcastTransaction, isBroadcasting } = useStacksBroadcastTransaction({
-    token: symbol.toUpperCase(),
-    redirectToSuccessPage: true,
-  });
+  const signStacksTransaction = useSignStacksTransaction();
+  const rotationTargetAccount = useStacksRotationTargetAccount();
+  const broadcastRotationTransaction = useBroadcastRotationTransaction();
+  const pendingRotationRef = useRef<PendingRotation | null>(null);
+
+  const onBroadcastSuccess = useCallback(() => {
+    const pendingRotation = pendingRotationRef.current;
+    if (!pendingRotation) return;
+    pendingRotationRef.current = null;
+    void broadcastRotationTransaction(
+      pendingRotation.signedRotationTx,
+      pendingRotation.targetAccountId
+    );
+  }, [broadcastRotationTransaction]);
+
+  const { stacksBroadcastTransaction, stacksBroadcastSignedTransaction, isBroadcasting } =
+    useStacksBroadcastTransaction({
+      token: symbol.toUpperCase(),
+      redirectToSuccessPage: true,
+      onBroadcastSuccess,
+    });
   const { proposeSendTransaction, isProposing } = useProposeStacksSendTransaction();
 
   const tx = deserializeTransaction(txHex);
+  const rotationTx = rotationTxHex ? deserializeTransaction(rotationTxHex) : null;
   const sip10Payload = getSip10TransferPayload(tx);
   const isMultisigProposal = isNonSequentialMultisigTransaction(tx);
 
@@ -91,7 +131,45 @@ export function StacksSendFormConfirmation() {
 
   const proposalSummary = getProposalSummary();
 
+  async function signRotationTransaction(unsignedTx: StacksTransactionWire) {
+    try {
+      const signedTx = await signStacksTransaction(unsignedTx);
+      return signedTx ?? signingCancelled;
+    } catch (error) {
+      return isLedgerSigningCancelledError(error) ? signingCancelled : signingFailed;
+    }
+  }
+
+  async function onConfirmRotation(unsignedRotationTx: StacksTransactionWire) {
+    if (
+      !rotationTargetAccount ||
+      getRecipientFromStacksTransaction(unsignedRotationTx) !== rotationTargetAccount.address
+    )
+      return toast.error('Your accounts changed. Go back and review this transaction again.');
+
+    const signedSendTx = await signRotationTransaction(tx);
+    if (signedSendTx === signingCancelled)
+      return toast.error('Signing was cancelled. Nothing was sent.');
+    if (signedSendTx === signingFailed) return;
+
+    const signedRotationTx = await signRotationTransaction(unsignedRotationTx);
+    if (signedRotationTx === signingCancelled)
+      return toast.error('Signing was cancelled. Nothing was sent.');
+    if (signedRotationTx === signingFailed)
+      return toast.error('Unable to sign the second transaction');
+
+    pendingRotationRef.current = {
+      signedRotationTx,
+      targetAccountId: {
+        fingerprint: rotationTargetAccount.fingerprint,
+        accountIndex: rotationTargetAccount.accountIndex,
+      },
+    };
+    return stacksBroadcastSignedTransaction(signedSendTx);
+  }
+
   function onConfirmTransaction() {
+    if (rotationTx) return void onConfirmRotation(rotationTx);
     if (isMultisigProposal) {
       if (!proposalSummary)
         throw new Error('Unsupported payload for a multisig transaction proposal');
@@ -128,6 +206,7 @@ export function StacksSendFormConfirmation() {
               )}
               sendingValue={formatCurrency(getTokenTransferAmount(tx.payload))}
               memoDisplayText={getTokenTransferMemoDisplayText(tx.payload) || 'No memo'}
+              additionalContent={rotationTx && <StxRotationDetails rotationTx={rotationTx} />}
               {...sharedProps}
             />
           )}
