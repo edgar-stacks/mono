@@ -37,6 +37,29 @@ describe('isValidUrl', () => {
       expect(isValidUrl(url)).toEqual(false);
     });
   });
+
+  test('rejects protocol-relative, non-web and markdown-shaped links', () => {
+    const rejected = [
+      '//leather.io/guides',
+      '<ftp://host/x>',
+      'ftp://host/x',
+      'javascript:alert(1)',
+      '[guides](//leather.io/guides)',
+      'www.leather.io',
+    ];
+
+    rejected.forEach(url => {
+      expect(isValidUrl(url)).toEqual(false);
+    });
+  });
+
+  test('accepts http and https links', () => {
+    const accepted = ['https://leather.io/guides', 'http://localhost:3000'];
+
+    accepted.forEach(url => {
+      expect(isValidUrl(url)).toEqual(true);
+    });
+  });
 });
 
 describe('getHostnameFromUrl', () => {
