@@ -6,7 +6,11 @@ import type { AccountId } from '@leather.io/models';
 import type { WalletType } from '@app/store/common/wallet-type.selectors';
 import type { PolicyStore } from '@app/store/policy/policy-store.utils';
 
-import { buildWalletRows, canHideAccount } from './switch-account-sheet.utils';
+import {
+  buildWalletRows,
+  canHideAccount,
+  filterWalletTreeToBitcoinAccounts,
+} from './switch-account-sheet.utils';
 
 const fingerprint = 'a1b2c3d4';
 function account(accountIndex: number): AccountId {
@@ -99,5 +103,49 @@ describe(canHideAccount.name, () => {
         hiddenAccountIds: [],
       })
     ).toBe(true);
+  });
+});
+
+describe(filterWalletTreeToBitcoinAccounts.name, () => {
+  const ledgerFingerprint = 'e5f6a7b8';
+  function ledgerWallet(accountCount: number): { type: WalletType; accounts: AccountId[] } {
+    return {
+      type: 'ledger',
+      accounts: Array.from({ length: accountCount }, (_, accountIndex) => ({
+        fingerprint: ledgerFingerprint,
+        accountIndex,
+      })),
+    };
+  }
+
+  test('software wallets keep every account', () => {
+    const tree = filterWalletTreeToBitcoinAccounts([walletGroup('software', 3)], []);
+    expect(tree).toEqual([walletGroup('software', 3)]);
+  });
+
+  test('ledger wallets keep only accounts with a bitcoin keychain', () => {
+    const tree = filterWalletTreeToBitcoinAccounts(
+      [ledgerWallet(3)],
+      [makeAccountIdentifer(ledgerFingerprint, 0), makeAccountIdentifer(ledgerFingerprint, 2)]
+    );
+    expect(tree).toHaveLength(1);
+    expect(tree[0].accounts.map(acc => acc.accountIndex)).toEqual([0, 2]);
+  });
+
+  test('drops ledger wallets left without accounts', () => {
+    const tree = filterWalletTreeToBitcoinAccounts(
+      [walletGroup('software', 1), ledgerWallet(2)],
+      [idOf(account(0))]
+    );
+    expect(tree.map(wallet => wallet.type)).toEqual(['software']);
+  });
+
+  test('keeps extra wallet fields', () => {
+    const wallet = { ...ledgerWallet(1), name: 'Ledger' };
+    const tree = filterWalletTreeToBitcoinAccounts(
+      [wallet],
+      [makeAccountIdentifer(ledgerFingerprint, 0)]
+    );
+    expect(tree).toEqual([wallet]);
   });
 });

@@ -194,6 +194,7 @@ export const rpcBitcoinFeatures = [
         SendCryptoAssetSelectors.SpendSourcesTaprootRow,
         SendCryptoAssetSelectors.TaprootUtxoWarningDialog,
         AccountSelectors.LedgerIndicator,
+        AccountSelectors.SigningAccountCard,
       ],
     },
     actions: [
@@ -209,7 +210,7 @@ export const rpcBitcoinFeatures = [
       rawParamsNote +
       ' ' +
       connectedOriginNote +
-      ' The LedgerBitcoinGate asks a Ledger wallet without Bitcoin keys to connect first. rpc-send-transfer.spec.ts registers mockTestAccountBtcBroadcastTransaction on the popup page after waitForEvent("page"), records broadcasts for the broadcast: false tests with an inline popup.route on the testnet4 /tx endpoint, registers mockMixedUtxosForSend for the spend-source and taproot tests (the native segwit and taproot spend source rows render for any generated transaction; taproot UTXOs bring up the callout), mockNativeSegwitOnlyUtxosForSend for the native-segwit-only tests, and mockFundedBitcoinAddressUtxos(context, bitcoinPolicy.address) to fund the multisig for the propose test. ' +
+      ' The LedgerBitcoinGate asks a Ledger wallet without Bitcoin keys to connect first. The signing account card (AccountSelectors.SigningAccountCard) opens the account switcher limited to Bitcoin-capable accounts. When the account cannot cover the request, the screen stays up with "Requested amount" and "Available to send" rows, the copy "This account doesn\'t have enough funds for this transfer. Switch account or cancel the request." and only a "Cancel" button; when fees cannot be estimated it shows "Unable to estimate network fees for this request" (bitcoin-fees-loader.tsx). Switching to a funded account brings back "Approve". rpc-send-transfer.spec.ts registers mockTestAccountBtcBroadcastTransaction on the popup page after waitForEvent("page"), records broadcasts for the broadcast: false tests with an inline popup.route on the testnet4 /tx endpoint, registers mockMixedUtxosForSend for the spend-source and taproot tests (the native segwit and taproot spend source rows render for any generated transaction; taproot UTXOs bring up the callout), mockNativeSegwitOnlyUtxosForSend for the native-segwit-only tests, and mockFundedBitcoinAddressUtxos(context, bitcoinPolicy.address) to fund the multisig for the propose test, and an inline context.route on **/v1/utxos/** in the insufficient funds tests that returns no UTXOs until the test turns funding on. ' +
       ledgerIndicatorNote +
       ' The mixed-wallets test connects the software wallet, so the indicator does not render there.',
   },
