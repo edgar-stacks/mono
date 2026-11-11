@@ -247,6 +247,18 @@ describe(flattenObject.name, () => {
       expect(flattenObject(input)).toEqual(expected);
     });
 
+    test('keeps nested empty objects and arrays', () => {
+      expect(flattenObject({ error: 'rejected', reason_data: {}, hints: [] })).toEqual({
+        error: 'rejected',
+        reason_data: '{}',
+        hints: '[]',
+      });
+    });
+
+    test('keeps empty objects inside arrays', () => {
+      expect(flattenObject({ a: [{}] })).toEqual({ 'a[0]': '{}' });
+    });
+
     test('handles sparse arrays', () => {
       const input: string[] = [];
       input[0] = 'first';
