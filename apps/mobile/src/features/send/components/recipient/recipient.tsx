@@ -10,7 +10,7 @@ import { RecipientToggle } from '@/features/send/components/recipient/recipient-
 import { useRecipientState } from '@/features/send/components/recipient/use-recipient-state';
 import { matchRelevantActivityResult } from '@/features/send/components/recipient/use-relevant-activity';
 import { SendFormLoadingSpinner } from '@/features/send/components/send-form-layout';
-import { analytics } from '@/utils/analytics';
+import { analytics } from '@/store/analytics';
 import { type ZodSchema } from 'zod';
 
 import { type AccountId, type FungibleCryptoAsset } from '@leather.io/models';
