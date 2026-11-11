@@ -55,7 +55,7 @@ interface UsePox5AvailableUnlockedBalanceResult {
 // network, so it cannot be reused here; the plain unlocked balance from the
 // pinned pox-5 chain is used instead.
 export function usePox5AvailableUnlockedBalance(
-  address: string
+  address: string | undefined
 ): UsePox5AvailableUnlockedBalanceResult {
   const client = usePox5StacksClient();
 
