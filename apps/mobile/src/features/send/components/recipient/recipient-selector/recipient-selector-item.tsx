@@ -7,8 +7,8 @@ import {
   type InternalRecipientSuggestionEntry,
   type RecipientSuggestionEntry,
 } from '@/features/send/components/recipient/recipient.types';
+import { analytics } from '@/store/analytics';
 import { useWalletByFingerprint } from '@/store/wallets/wallets.read';
-import { analytics } from '@/utils/analytics';
 import dayjs from 'dayjs';
 
 import { type FungibleCryptoAsset } from '@leather.io/models';

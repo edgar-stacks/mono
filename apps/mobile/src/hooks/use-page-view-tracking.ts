@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 
-import { analytics } from '@/utils/analytics';
+import { analytics } from '@/store/analytics';
 import { useGlobalSearchParams, usePathname } from 'expo-router';
 
 export function usePageViewTracking() {

@@ -1,7 +1,7 @@
-import { type BtcFormSchema } from '@/features/send/forms/btc/btc-form-schema';
-import { type StxFormSchema } from '@/features/send/forms/stx/stx-form-schema';
+import type { BtcFormSchema } from '@/features/send/forms/btc/btc-form-schema';
+import type { StxFormSchema } from '@/features/send/forms/stx/stx-form-schema';
+import { analytics } from '@/store/analytics';
 import { type PayerLookupFn } from '@/store/keychains/bitcoin/bitcoin-keychains.read';
-import { analytics } from '@/utils/analytics';
 import { bytesToHex } from '@noble/hashes/utils';
 import { type PublicKey } from '@stacks/common';
 import { type StacksNetwork } from '@stacks/network';
