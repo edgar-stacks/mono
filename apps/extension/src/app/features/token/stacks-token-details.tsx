@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router';
 
+import { MoveToFreshAccountSelectors } from '@tests/selectors/move-to-fresh-account.selectors';
 import { TokenDetailsSelectors } from '@tests/selectors/token-details.selectors';
 
 import { LEATHER_STACKING_URL, stxAsset } from '@leather.io/constants';
@@ -19,6 +20,7 @@ import {
   subtractMoneyFloor,
   sumBondStx,
 } from '@app/features/bonds/bond-position.utils';
+import { useFlags } from '@app/features/feature-flags';
 import { tooltipTextMap } from '@app/pages/all-balances/all-balances.utils';
 import { useBlockchainActivityByAssetId } from '@app/query/activity/blockchain-activity.query';
 import { useCurrentBtcStakingPositions } from '@app/query/bitcoin/staking/bitcoin-staking.hooks';
@@ -49,6 +51,7 @@ export function StacksTokenDetails({ account }: StacksTokenDetailsProps) {
   const marketData = useMarketData(stxAsset);
   const activityQuery = useBlockchainActivityByAssetId(account, stxAsset);
   const positions = useCurrentBtcStakingPositions();
+  const { accountShuffle } = useFlags();
 
   const isLoading = balance.state === 'loading' || marketInfo.isLoading;
   const hasError = balance.state === 'error' || marketInfo.hasError;
@@ -138,6 +141,20 @@ export function StacksTokenDetails({ account }: StacksTokenDetailsProps) {
       balances={balances}
       activity={activityQuery.data ?? []}
       isActivityLoading={activityQuery.isLoading}
+      moreActions={
+        accountShuffle
+          ? [
+              {
+                label: 'Move to a fresh account',
+                description: 'Moves your Stacks assets to a new address',
+                testId: MoveToFreshAccountSelectors.MoveToFreshAccountMenuItem,
+                onClick() {
+                  void navigate(RouteUrls.MoveToFreshAccount);
+                },
+              },
+            ]
+          : undefined
+      }
     />
   );
 }

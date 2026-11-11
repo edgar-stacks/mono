@@ -25,6 +25,7 @@ import { BondHistoryPage } from '@app/pages/all-balances/bond-history';
 import { FundPage } from '@app/pages/fund/fund';
 import { Home } from '@app/pages/home/home';
 import { ManageTokensPage } from '@app/pages/manage-tokens/manage-tokens';
+import { MoveToFreshAccount } from '@app/pages/move-to-fresh-account/move-to-fresh-account';
 import { AddNetwork as CurrentAddNetwork } from '@app/pages/network/add-network';
 import { EditNetwork as CurrentEditNetwork } from '@app/pages/network/edit-network';
 import { SelectNetwork } from '@app/pages/network/select-network';
@@ -58,7 +59,7 @@ export function AppRoutes() {
 const sentryCreateBrowserRouter = Sentry.wrapCreateBrowserRouterV7(createHashRouter);
 
 function useAppRoutes() {
-  const { releaseOnramperBuy, releaseOnramperSell } = useFlags();
+  const { releaseOnramperBuy, releaseOnramperSell, accountShuffle } = useFlags();
 
   return sentryCreateBrowserRouter(
     createRoutesFromElements(
@@ -284,6 +285,17 @@ function useAppRoutes() {
               </AccountGate>
             }
           />
+
+          {accountShuffle && (
+            <Route
+              path={RouteUrls.MoveToFreshAccount}
+              element={
+                <AccountGate>
+                  <MoveToFreshAccount />
+                </AccountGate>
+              }
+            />
+          )}
 
           {/* Popup Routes */}
           {rpcRequestRoutes}

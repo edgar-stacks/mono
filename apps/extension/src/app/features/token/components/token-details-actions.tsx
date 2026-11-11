@@ -1,7 +1,10 @@
 import { useNavigate } from 'react-router';
 
-import { Flex, styled } from 'leather-styles/jsx';
+import { TokenDetailsSelectors } from '@tests/selectors/token-details.selectors';
+import { css } from 'leather-styles/css';
+import { Flex, Stack, styled } from 'leather-styles/jsx';
 
+import { DropdownMenu, EllipsisHIcon } from '@leather.io/ui';
 import type { SerializedCryptoAssetId } from '@leather.io/utils';
 
 import { RouteUrls } from '@shared/route-urls';
@@ -11,6 +14,7 @@ import { useNavigateToSendForm } from '@app/common/hooks/use-navigate-to-send-fo
 import { useSwapAvailability } from '@app/common/hooks/use-swap-availability';
 import type { ReceiveView } from '@app/common/receive/receive';
 import { useReceiveDialog } from '@app/common/receive/use-receive-dialog-context';
+import { useThemeSwitcher } from '@app/common/theme-provider';
 import { whenPageMode } from '@app/common/utils';
 import { openIndexPageInNewTab } from '@app/common/utils/open-in-new-tab';
 import { useFlags } from '@app/features/feature-flags';
@@ -49,6 +53,73 @@ function TokenDetailsPillButton({ label, onClick, disabled, testId }: TokenDetai
   );
 }
 
+export interface TokenDetailsMoreAction {
+  label: string;
+  description: string;
+  testId?: string;
+  onClick(): void;
+}
+
+interface TokenDetailsMoreActionsMenuProps {
+  actions: TokenDetailsMoreAction[];
+}
+
+function TokenDetailsMoreActionsMenu({ actions }: TokenDetailsMoreActionsMenuProps) {
+  const { theme } = useThemeSwitcher();
+  return (
+    <DropdownMenu.Root>
+      <DropdownMenu.Trigger asChild>
+        <styled.button
+          type="button"
+          aria-label="More actions"
+          display="inline-flex"
+          alignItems="center"
+          justifyContent="center"
+          flexShrink={0}
+          width="36px"
+          height="36px"
+          bg="ink.background-primary"
+          border="default"
+          borderRadius="999px"
+          color="ink.text-primary"
+          _hover={{ bg: 'ink.component-background-hover', cursor: 'pointer' }}
+          data-testid={TokenDetailsSelectors.TokenDetailsMoreButton}
+        >
+          <EllipsisHIcon variant="small" />
+        </styled.button>
+      </DropdownMenu.Trigger>
+      <DropdownMenu.Portal>
+        <DropdownMenu.Content
+          align="end"
+          side="bottom"
+          sideOffset={8}
+          className={css({
+            width: 'settingsMenuWidth',
+            boxShadow: theme === 'dark' ? 'elevationDark' : 'elevationLight',
+          })}
+        >
+          <DropdownMenu.Group>
+            {actions.map(action => (
+              <DropdownMenu.Item
+                key={action.label}
+                onClick={() => action.onClick()}
+                data-testid={action.testId}
+              >
+                <Stack gap="space.00">
+                  <styled.span textStyle="label.02">{action.label}</styled.span>
+                  <styled.span textStyle="caption.01" color="ink.text-subdued">
+                    {action.description}
+                  </styled.span>
+                </Stack>
+              </DropdownMenu.Item>
+            ))}
+          </DropdownMenu.Group>
+        </DropdownMenu.Content>
+      </DropdownMenu.Portal>
+    </DropdownMenu.Root>
+  );
+}
+
 export type SwapChain = 'bitcoin' | 'stacks';
 
 interface TokenDetailsActionsRowProps {
@@ -58,6 +129,7 @@ interface TokenDetailsActionsRowProps {
   swapChain: SwapChain;
   isBuyEnabled?: boolean;
   isSwapEnabled?: boolean;
+  moreActions?: TokenDetailsMoreAction[];
 }
 
 export function TokenDetailsActionsRow({
@@ -67,6 +139,7 @@ export function TokenDetailsActionsRow({
   swapChain,
   isBuyEnabled = true,
   isSwapEnabled = true,
+  moreActions,
 }: TokenDetailsActionsRowProps) {
   const navigate = useNavigate();
   const navigateToSendForm = useNavigateToSendForm();
@@ -129,6 +202,9 @@ export function TokenDetailsActionsRow({
         }
         testId="token-details-swap-btn"
       />
+      {moreActions && moreActions.length > 0 && (
+        <TokenDetailsMoreActionsMenu actions={moreActions} />
+      )}
     </Flex>
   );
 }

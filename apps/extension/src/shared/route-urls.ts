@@ -23,6 +23,7 @@ export const RouteUrls = {
   AllBalances: '/all-balances',
   AllBalancesDetail: '/all-balances/:category',
   AllBalancesBondHistory: '/all-balances/bonded/history',
+  MoveToFreshAccount: '/move-to-fresh-account',
   AddWallet: '/add-wallet',
   CreateWallet: '/create-wallet',
 
