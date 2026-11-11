@@ -7,7 +7,10 @@ import { whenTheme } from '@app/common/utils/when-theme';
 import { LedgerTitle } from '@app/features/ledger/components/ledger-title';
 import { LedgerWrapper } from '@app/features/ledger/components/ledger-wrapper';
 import { useLedgerStep, useLedgerSteps } from '@app/features/ledger/flow/ledger-flow.context';
-import { LEDGER_LIVE_MANAGER_URL } from '@app/features/ledger/utils/generic-ledger-utils';
+import {
+  LEDGER_LIVE_MANAGER_URL,
+  LEDGER_WALLET_DOWNLOAD_URL,
+} from '@app/features/ledger/utils/generic-ledger-utils';
 
 interface OutdatedStacksAppWarningBaseProps {
   onTryAgain(): void | Promise<void>;
@@ -62,7 +65,7 @@ export function OutdatedStacksAppWarningBase({
           }
         >
           <styled.span textStyle="body.01">
-            Open Ledger Wallet → My Ledger and{' '}
+            Open Ledger Wallet (formerly Ledger Live) → My Ledger and{' '}
             <Tooltip.Root delayDuration={0}>
               <Tooltip.Trigger asChild>
                 <styled.span
@@ -132,6 +135,16 @@ export function OutdatedStacksAppWarningBase({
             width="20"
           />
           Open Ledger Wallet <ExternalLinkIcon color="ink.background-primary" />
+        </styled.a>
+        <styled.a
+          alignSelf="center"
+          href={LEDGER_WALLET_DOWNLOAD_URL}
+          rel="noopener noreferrer"
+          target="_blank"
+          textDecoration="underline"
+          textStyle="label.02"
+        >
+          Not installed? Download Ledger Wallet
         </styled.a>
         <HStack gap="space.03" width="100%">
           <Button flex={1} onClick={() => void onTryAgain()} variant="outline">

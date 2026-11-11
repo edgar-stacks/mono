@@ -16,6 +16,7 @@ export const LEDGER_APPS_MAP = {
 } as const;
 
 export const LEDGER_LIVE_MANAGER_URL = 'ledgerlive://manager';
+export const LEDGER_WALLET_DOWNLOAD_URL = 'https://www.ledger.com/ledger-live/download';
 
 export type LatestDeviceResponse = null | LedgerDeviceLockState;
 
