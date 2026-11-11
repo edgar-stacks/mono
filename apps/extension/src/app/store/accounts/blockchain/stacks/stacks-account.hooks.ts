@@ -1,8 +1,10 @@
-import { useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
 import { useSelector } from 'react-redux';
 
 import type { AccountId } from '@leather.io/models';
 
+import { selectStacksChain } from '@app/store/chains/stx-chain.selectors';
+import { useActiveWalletType } from '@app/store/common/wallet-type.selectors';
 import { useInMemoryKeys } from '@app/store/in-memory-key/use-in-memory-keys';
 import { type RootState } from '@app/store/store';
 
@@ -30,4 +32,30 @@ export function useCurrentStacksAccount() {
 
 export function useCurrentStacksAccountAddress() {
   return useCurrentStacksAccount()?.address ?? '';
+}
+
+function useStacksRotationTargetAccountId(): AccountId | undefined {
+  const currentAccountId = useCurrentAccountId();
+  const walletType = useActiveWalletType();
+  const stacksChain = useSelector(selectStacksChain);
+  const highestAccountIndex = stacksChain[currentAccountId.fingerprint]?.highestAccountIndex;
+
+  return useMemo(() => {
+    const { fingerprint, accountIndex } = currentAccountId;
+    if (walletType === 'ledger') return { fingerprint, accountIndex: accountIndex + 1 };
+    if (walletType === 'software' && highestAccountIndex !== undefined)
+      return { fingerprint, accountIndex: highestAccountIndex + 1 };
+    return undefined;
+  }, [currentAccountId, walletType, highestAccountIndex]);
+}
+
+export function useStacksRotationTargetAccount() {
+  const { version } = useInMemoryKeys();
+  const targetAccountId = useStacksRotationTargetAccountId();
+  const selector = useCallback(
+    (state: RootState) =>
+      targetAccountId ? selectStacksAccountById(state, version, targetAccountId) : undefined,
+    [targetAccountId, version]
+  );
+  return useSelector(selector);
 }
