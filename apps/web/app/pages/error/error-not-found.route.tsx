@@ -4,7 +4,7 @@ import { NotFound } from './not-found';
 
 export function meta() {
   return [
-    { title: '404 · Page Not Found – Leather' },
+    { title: 'Page not found – Leather' },
     {
       name: 'description',
       content: `The page you're looking for doesn't exist`,

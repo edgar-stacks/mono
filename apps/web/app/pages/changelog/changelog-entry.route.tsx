@@ -20,7 +20,7 @@ export async function loader({ params }: Route.LoaderArgs) {
 export function meta({ loaderData }: Route.MetaArgs) {
   if (!loaderData?.entry) {
     return [
-      { title: 'Leather Changelog Not Found – Leather' },
+      { title: 'Changelog entry not found – Leather' },
       { name: 'description', content: 'Changelog entry not found' },
     ];
   }
