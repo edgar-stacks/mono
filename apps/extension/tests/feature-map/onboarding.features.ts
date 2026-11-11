@@ -11,6 +11,7 @@ const walletLockSpec = 'apps/extension/tests/specs/settings/wallet-lock.spec.ts'
 const signOutMultiwalletSpec = 'apps/extension/tests/specs/settings/sign-out-multiwallet.spec.ts';
 const signOutRecreateWalletSpec =
   'apps/extension/tests/specs/settings/sign-out-recreate-wallet.spec.ts';
+const biometricUnlockSpec = 'apps/extension/tests/specs/onboarding/biometric-unlock.spec.ts';
 
 export const onboardingFeatures = [
   {
@@ -79,12 +80,18 @@ export const onboardingFeatures = [
         SettingsSelectors.CopyKeyToClipboardBtn,
         OnboardingSelectors.NewPasswordInput,
         OnboardingSelectors.SetPasswordBtn,
+        OnboardingSelectors.BiometricSetupBtn,
       ],
     },
-    actions: ['OnboardingPage.signUpNewUser', 'OnboardingPage.setPassword'],
-    specs: [onboardingSpec, signOutRecreateWalletSpec, signOutMultiwalletSpec],
+    actions: [
+      'OnboardingPage.signUpNewUser',
+      'OnboardingPage.setPassword',
+      'OnboardingPage.signUpNewUserWithBiometrics',
+      'OnboardingPage.chooseBiometricUnlock',
+    ],
+    specs: [onboardingSpec, signOutRecreateWalletSpec, signOutMultiwalletSpec, biometricUnlockSpec],
     description:
-      'Shows a freshly generated 24-word Secret Key (generated when the page mounts, back-up-secret-key.tsx, so every visit makes a new key; generateMnemonic uses 256 bits, packages/crypto/src/keychain.ts) with reveal and copy controls, then "I\'ve backed it up" opens the set-password step on the same route; with no existing software keys the step is titled "Set a password" and validates strength. Setting a password encrypts the key and navigates to /, where the multi-wallet feature introducer shows (on Home, not on this page; OnboardingPage.dismissFeatureIntroducer closes it there). The same page is reused at /create-wallet (AccountGate) when adding a wallet from the account switcher. The specs that sign up here (onboarding.spec "Activity tab", sign-out-recreate-wallet.spec, sign-out-multiwallet.spec) override the Stacks balance endpoints with inline page.route zero balances to stop account discovery, and onboarding.spec also registers mockLeatherBitcoinTransactions(page, []) for an empty activity list.',
+      'Shows a freshly generated 24-word Secret Key (generated when the page mounts, back-up-secret-key.tsx, so every visit makes a new key; generateMnemonic uses 256 bits, packages/crypto/src/keychain.ts) with reveal and copy controls, then "I\'ve backed it up" opens the set-password step on the same route; with no existing software keys the step is titled "Set a password" and validates strength; on Chromium (PublicKeyCredential present) it is titled "Choose how to unlock Leather" instead and adds "or" and a "Use biometrics" button (BiometricSetupBtn), disabled with "Biometric unlock isn\'t available in this browser context." when no PRF-capable platform authenticator is available. biometric-unlock.spec adds a CDP virtual authenticator (tests/fixtures/biometric-authenticator.ts) to enroll. In a biometric-only profile the step shows "Confirm it\'s you" with "Unlock with biometrics" (BiometricUnlockBtn) instead of the password form. Setting a password encrypts the key and navigates to /, where the multi-wallet feature introducer shows (on Home, not on this page; OnboardingPage.dismissFeatureIntroducer closes it there). The same page is reused at /create-wallet (AccountGate) when adding a wallet from the account switcher. The specs that sign up here (onboarding.spec "Activity tab", sign-out-recreate-wallet.spec, sign-out-multiwallet.spec) override the Stacks balance endpoints with inline page.route zero balances to stop account discovery, and onboarding.spec also registers mockLeatherBitcoinTransactions(page, []) for an empty activity list.',
   },
   {
     id: 'sign-in',
@@ -104,6 +111,7 @@ export const onboardingFeatures = [
         OnboardingSelectors.SignInSeedError,
         OnboardingSelectors.NewPasswordInput,
         OnboardingSelectors.SetPasswordBtn,
+        OnboardingSelectors.BiometricSetupBtn,
       ],
     },
     actions: [
@@ -111,10 +119,11 @@ export const onboardingFeatures = [
       'OnboardingPage.signInMnemonicKey',
       'OnboardingPage.enterMnemonicKey',
       'OnboardingPage.setPassword',
+      'OnboardingPage.chooseBiometricUnlock',
     ],
-    specs: [onboardingSpec],
+    specs: [onboardingSpec, biometricUnlockSpec],
     description:
-      'Restores a wallet from a 12 or 24 word Secret Key. Each word has its own input (data-testid mnemonic-input-1 … mnemonic-input-24). The grid defaults to 24 inputs; click "Have a 12-word Secret Key?" for a 12-word key (enter-mnemonic.tsx). OnboardingPage.enterMnemonicKey does not click that link and fills only as many inputs as the key has words; SwitchAccountPage.restoreWallet does click it. Pasting a whole phrase into an input fills them all and submits immediately, without "Continue" (mnemonic-form.tsx). Invalid words show an inline error and disable the "Continue" button. After the key is accepted the set-password step runs on the same route and the app lands on /.',
+      'Restores a wallet from a 12 or 24 word Secret Key. Each word has its own input (data-testid mnemonic-input-1 … mnemonic-input-24). The grid defaults to 24 inputs; click "Have a 12-word Secret Key?" for a 12-word key (enter-mnemonic.tsx). OnboardingPage.enterMnemonicKey does not click that link and fills only as many inputs as the key has words; SwitchAccountPage.restoreWallet does click it. Pasting a whole phrase into an input fills them all and submits immediately, without "Continue" (mnemonic-form.tsx). Invalid words show an inline error and disable the "Continue" button. After the key is accepted the set-password step runs on the same route and the app lands on /; for a first software wallet on Chromium that step offers "Use biometrics instead" (BiometricSetupBtn).',
   },
   {
     id: 'unlock',
@@ -145,11 +154,14 @@ export const onboardingFeatures = [
         SettingsSelectors.UnlockWalletBtn,
         SettingsSelectors.SettingsMenuBtn,
         OnboardingSelectors.LogoRouteToHome,
+        SettingsSelectors.BiometricUnlockBtn,
+        SettingsSelectors.BiometricRecoveryLink,
       ],
     },
-    actions: ['HomePage.lock', 'HomePage.unlock'],
+    actions: ['HomePage.lock', 'HomePage.unlock', 'HomePage.unlockWithBiometrics'],
     specs: [
       walletLockSpec,
+      biometricUnlockSpec,
       onboardingSpec,
       settingsSpec,
       signOutRecreateWalletSpec,
@@ -159,6 +171,6 @@ export const onboardingFeatures = [
       'apps/extension/tests/specs/rpc-get-addresses/get-addresses.spec.ts',
     ],
     description:
-      'Password prompt for a locked software wallet ("Enter your password", button "Continue"). A correct password derives the encryption key (slow on CI) and then, in full-page mode, navigates to the route in the from route state or / when there is none, and in popup mode goes to the previous page (navigate(-1), unlock.tsx). The header settings-menu "Lock" item passes the current router path as from; the /settings "Lock App" button passes window.location.pathname (sticky-buttons.tsx), which under the hash router is the HTML file path, so unlocking after "Lock App" lands on Home instead of /settings; the AccountGate redirect passes nothing. A wrong password shows "The password you entered is invalid" and disables "Continue" until the input changes (request-password.tsx). The header settings menu shows only "Sign out" while locked. The header logo (LogoRouteToHome) navigates home and is hidden from the sm breakpoint up, so full-page runs do not show it. rpc-open/open.spec and rpc-get-addresses/get-addresses.spec cover the popup branch: they lock, start a request and unlock in the popup.',
+      'Password prompt for a locked software wallet ("Enter your password", button "Continue"). A correct password derives the encryption key (slow on CI) and then, in full-page mode, navigates to the route in the from route state or / when there is none, and in popup mode goes to the previous page (navigate(-1), unlock.tsx). The header settings-menu "Lock" item passes the current router path as from; the /settings "Lock App" button passes window.location.pathname (sticky-buttons.tsx), which under the hash router is the HTML file path, so unlocking after "Lock App" lands on Home instead of /settings; the AccountGate redirect passes nothing. A wrong password shows "The password you entered is invalid" and disables "Continue" until the input changes (request-password.tsx). The header settings menu shows only "Sign out" while locked. The header logo (LogoRouteToHome) navigates home and is hidden from the sm breakpoint up, so full-page runs do not show it. rpc-open/open.spec and rpc-get-addresses/get-addresses.spec cover the popup branch: they lock, start a request and unlock in the popup. A biometric-only profile shows "Unlock Leather" with "Unlock with biometrics" (BiometricUnlockBtn, "Try biometric unlock again" after a failure) and a "Can\'t use biometrics?" link instead of the password field (wallet-authentication-prompt.tsx); only a real toolbar action popup prompts automatically, once per open, so specs that open action-popup.html in a tab never auto-prompt.',
   },
 ] as const satisfies readonly ExtensionFeatureEntry[];

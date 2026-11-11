@@ -1,11 +1,13 @@
+import { useState } from 'react';
 import { Outlet, useNavigate } from 'react-router';
 
 import { z } from 'zod';
 
+import { isCurrentWindowActionPopup } from '@app/common/biometric-unlock/action-popup-classifier';
 import { useRouteState } from '@app/common/hooks/use-route-state';
 import { whenPageMode } from '@app/common/utils';
 import { Content } from '@app/components/layout';
-import { RequestPassword } from '@app/components/request-password';
+import { WalletAuthenticationPrompt } from '@app/components/wallet-authentication-prompt';
 import { UnlockHeader } from '@app/features/container/headers/unlock.header';
 
 const unlockRouteStateSchema = z.object({ from: z.string().optional() }).nullish();
@@ -13,6 +15,7 @@ const unlockRouteStateSchema = z.object({ from: z.string().optional() }).nullish
 export function Unlock() {
   const navigate = useNavigate();
   const routeState = useRouteState(unlockRouteStateSchema);
+  const [isActionPopup] = useState(isCurrentWindowActionPopup);
   // Here we want to return to the previous route. The user could land on any
   // page when the wallet is locked, so we can't assume as single route.
   function returnToPreviousRoute() {
@@ -26,7 +29,11 @@ export function Unlock() {
     <>
       <UnlockHeader />
       <Content>
-        <RequestPassword onSuccess={returnToPreviousRoute} />
+        <WalletAuthenticationPrompt
+          biometricTitle="Unlock Leather"
+          isActionPopup={isActionPopup}
+          onSuccess={returnToPreviousRoute}
+        />
         <Outlet />
       </Content>
     </>

@@ -9,7 +9,7 @@ import { Content } from '@app/components/layout';
 import { Header } from '@app/components/layout/headers/header';
 import { HeaderBackButton } from '@app/components/layout/headers/header-back-button';
 import { HeaderGrid } from '@app/components/layout/headers/header-grid';
-import { RequestPassword } from '@app/components/request-password';
+import { WalletAuthenticationPrompt } from '@app/components/wallet-authentication-prompt';
 
 interface LockedViewSecretKeyProps {
   onUnlock(): void;
@@ -25,7 +25,10 @@ export function LockedViewSecretKey({ onUnlock }: LockedViewSecretKeyProps) {
         <HeaderGrid leftCol={<HeaderBackButton />} rightCol={null} />
       </Header>
       <Content>
-        <RequestPassword onSuccess={onUnlock} />
+        <WalletAuthenticationPrompt
+          biometricTitle="Confirm it's you to view your Secret Key"
+          onSuccess={onUnlock}
+        />
         <Outlet />
       </Content>
     </Flex>

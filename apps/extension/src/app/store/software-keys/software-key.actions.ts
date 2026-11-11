@@ -1,6 +1,10 @@
+import { decryptMnemonic as decrypt } from '@stacks/encryption';
 import { AddressVersion } from '@stacks/transactions';
 
-import { deriveRootKeychainFromMnemonicSync } from '@leather.io/crypto';
+import {
+  deriveRootKeychainFromMnemonicSync,
+  getMnemonicRootKeyFingerprint,
+} from '@leather.io/crypto';
 import {
   type getBnsV2ApiClient,
   type getHiroStacksApiClient,
@@ -10,7 +14,12 @@ import { fingerprintMigration, userAddsWallet, userRemovesWallet } from '@leathe
 import { isDefined, secondsInMs } from '@leather.io/utils';
 
 import { deriveEncryptionKey } from '@shared/crypto/generate-encryption-key';
-import { decryptMnemonic, encryptMnemonic } from '@shared/crypto/mnemonic-encryption';
+import {
+  decryptMnemonic,
+  encryptMnemonic,
+  encryptMnemonicWithEncryptionKey,
+} from '@shared/crypto/mnemonic-encryption';
+import { PlatformUnlockError } from '@shared/crypto/platform-authenticator';
 import { logger } from '@shared/logger';
 import { broadcastWalletListChanged } from '@shared/messages';
 import { assumedZeroFingerprint } from '@shared/utils';
@@ -28,9 +37,20 @@ import { selectStacksChain } from '../chains/stx-chain.selectors';
 import { stxChainSlice } from '../chains/stx-chain.slice';
 import * as inMemoryStore from '../in-memory-key/in-memory-storage';
 import { selectAllWallets, selectWalletEntities } from '../wallets/wallet.selectors';
+import { parseSoftwareKeyAuthentication } from './software-key-state';
 import { selectSoftwareKeys, selectWalletSalt } from './software-key.selectors';
 import { keySlice } from './software-key.slice';
 import { checkPassword } from './utils';
+import {
+  assertNoPersistedSoftwareKeys,
+  assertPersistedSoftwareKeysMatch,
+  enrollPlatformUnlock,
+  getBiometricPlatformUnlock,
+  isSameSoftwareKeysState,
+  readPersistedSoftwareKeys,
+  unlockPlatformEncryptionKey,
+} from './wallet-authentication';
+import { withWalletWriteLock } from './wallet-write-lock';
 
 interface AccountDiscoveryClients {
   leatherApiClient: Pick<
@@ -227,86 +247,95 @@ function setWalletEncryptionPassword(
 ): AppThunk {
   const { password, mnemonic, fingerprint, leatherApiClient, hiroClient, bnsClient } = args;
 
-  return async (dispatch, getState) => {
-    const softwareKeys = selectSoftwareKeys(getState());
-    const hasSoftwareKeys = softwareKeys.length > 0;
+  return async (dispatch, getState) =>
+    withWalletWriteLock(async () => {
+      if (parseSoftwareKeyAuthentication(getState().softwareKeys)?.mode === 'biometric-only')
+        throw new Error('Password unlock is not enabled for this profile');
+      const persistedSoftwareKeys = await readPersistedSoftwareKeys();
+      if (parseSoftwareKeyAuthentication(persistedSoftwareKeys)?.mode === 'biometric-only')
+        throw new Error('Password unlock is not enabled for this profile');
 
-    const existingSalt = hasSoftwareKeys ? selectWalletSalt(getState()) : undefined;
+      const softwareKeys = selectSoftwareKeys(getState());
+      const hasSoftwareKeys = softwareKeys.length > 0;
 
-    const existingEncryptionKey = hasSoftwareKeys ? (await getWalletSessionKey()).data : undefined;
+      const existingSalt = hasSoftwareKeys ? selectWalletSalt(getState()) : undefined;
 
-    if (hasSoftwareKeys) {
-      if (!existingSalt || !existingEncryptionKey)
-        throw new Error("Can't find salt or encryption key");
+      const existingEncryptionKey = hasSoftwareKeys
+        ? (await getWalletSessionKey()).data
+        : undefined;
 
-      const isCorrectPassword = await checkPassword({
+      if (hasSoftwareKeys) {
+        if (!existingSalt || !existingEncryptionKey)
+          throw new Error("Can't find salt or encryption key");
+
+        const isCorrectPassword = await checkPassword({
+          password,
+          salt: existingSalt,
+          encryptionKey: existingEncryptionKey,
+        });
+
+        if (!isCorrectPassword) {
+          throw new Error("The password doesn't match");
+        }
+      }
+
+      const { encryptedSecretKey, encryptionKey, salt } = await encryptMnemonic({
+        secretKey: mnemonic,
         password,
-        salt: existingSalt,
-        encryptionKey: existingEncryptionKey,
+        existingEncryptionKey,
+        existingSalt,
       });
 
-      if (!isCorrectPassword) {
-        throw new Error("The password doesn't match");
-      }
-    }
+      await initalizeWalletSession(encryptionKey);
 
-    const { encryptedSecretKey, encryptionKey, salt } = await encryptMnemonic({
-      secretKey: mnemonic,
-      password,
-      existingEncryptionKey,
-      existingSalt,
+      inMemoryStore.setKey(fingerprint, mnemonic);
+
+      // Multi-wallet structure
+      dispatch(
+        userAddsWallet({
+          wallet: {
+            createdOn: new Date().toISOString(),
+            fingerprint,
+            type: 'software',
+          },
+          accountKeychains: [],
+        })
+      );
+
+      // Single wallet key slice structure
+      dispatch(
+        keySlice.actions.createSoftwareWalletComplete({
+          salt,
+          key: {
+            type: 'software',
+            id: fingerprint,
+            encryptedSecretKey,
+          },
+        })
+      );
+
+      dispatch(walletKeyGenerated(fingerprint));
+
+      await persistor.flush();
+      void broadcastWalletListChanged({});
+
+      // Performs a recursive check for account activity. When activity is found
+      // at a higher index than what is found on Gaia (long-term wallet users), we
+      // update the highest known account index that the wallet generates. This
+      // action is performed outside this Promise's execution, as it may be slow,
+      // and the user shouldn't have to wait before being directed to homepage.
+      startRecursiveAccountDiscovery({
+        dispatch,
+        doesAddressHaveActivityFn: createAccountActivityChecker({
+          bnsClient,
+          hiroClient,
+          leatherApiClient,
+          mnemonic,
+        }),
+        fingerprint,
+        fromAccountIndex: 0,
+      });
     });
-
-    await initalizeWalletSession(encryptionKey);
-
-    inMemoryStore.setKey(fingerprint, mnemonic);
-
-    // Multi-wallet structure
-    dispatch(
-      userAddsWallet({
-        wallet: {
-          createdOn: new Date().toISOString(),
-          fingerprint,
-          type: 'software',
-        },
-        accountKeychains: [],
-      })
-    );
-
-    // Single wallet key slice structure
-    dispatch(
-      keySlice.actions.createSoftwareWalletComplete({
-        salt,
-        key: {
-          type: 'software',
-          id: fingerprint,
-          encryptedSecretKey,
-        },
-      })
-    );
-
-    dispatch(walletKeyGenerated(fingerprint));
-
-    await persistor.flush();
-    void broadcastWalletListChanged({});
-
-    // Performs a recursive check for account activity. When activity is found
-    // at a higher index than what is found on Gaia (long-term wallet users), we
-    // update the highest known account index that the wallet generates. This
-    // action is performed outside this Promise's execution, as it may be slow,
-    // and the user shouldn't have to wait before being directed to homepage.
-    startRecursiveAccountDiscovery({
-      dispatch,
-      doesAddressHaveActivityFn: createAccountActivityChecker({
-        bnsClient,
-        hiroClient,
-        leatherApiClient,
-        mnemonic,
-      }),
-      fingerprint,
-      fromAccountIndex: 0,
-    });
-  };
 }
 
 function unlockWalletAction(password: string): AppThunk {
@@ -387,9 +416,174 @@ function unlockWalletAction(password: string): AppThunk {
   };
 }
 
+interface BiometricWalletArgs extends AccountDiscoveryClients {
+  mnemonic: string;
+  fingerprint: string;
+}
+
+async function decryptSoftwareKeysWithEncryptionKey(
+  softwareKeys: ReturnType<typeof selectSoftwareKeys>,
+  encryptionKey: string
+) {
+  try {
+    return await Promise.all(
+      softwareKeys.map(async softwareKey => {
+        const secretKey = await decrypt(softwareKey.encryptedSecretKey, encryptionKey);
+        if (getMnemonicRootKeyFingerprint(secretKey) !== softwareKey.id)
+          throw new Error('Decrypted secret key does not match its wallet');
+        return { fingerprint: softwareKey.id, secretKey };
+      })
+    );
+  } catch {
+    throw new PlatformUnlockError('wallet-validation');
+  }
+}
+
+function buildSoftwareWalletAddedAction(fingerprint: string) {
+  return userAddsWallet({
+    wallet: {
+      createdOn: new Date().toISOString(),
+      fingerprint,
+      type: 'software',
+    },
+    accountKeychains: [],
+  });
+}
+
+function createBiometricWallet(args: BiometricWalletArgs): AppThunk {
+  const { mnemonic, fingerprint, leatherApiClient, hiroClient, bnsClient } = args;
+
+  return async (dispatch, getState) =>
+    withWalletWriteLock(async () => {
+      if (parseSoftwareKeyAuthentication(getState().softwareKeys)?.mode !== 'none')
+        throw new PlatformUnlockError('wallet-validation');
+      await assertNoPersistedSoftwareKeys();
+
+      const { encryptionKey, platformUnlock } = await enrollPlatformUnlock();
+      const encryptedSecretKey = await encryptMnemonicWithEncryptionKey(mnemonic, encryptionKey);
+
+      if (parseSoftwareKeyAuthentication(getState().softwareKeys)?.mode !== 'none')
+        throw new PlatformUnlockError('wallet-validation');
+      await assertNoPersistedSoftwareKeys();
+
+      await initalizeWalletSession(encryptionKey);
+      inMemoryStore.setKey(fingerprint, mnemonic);
+
+      dispatch(buildSoftwareWalletAddedAction(fingerprint));
+      dispatch(
+        keySlice.actions.createBiometricSoftwareWalletComplete({
+          platformUnlock,
+          key: { type: 'software', id: fingerprint, encryptedSecretKey },
+        })
+      );
+      dispatch(walletKeyGenerated(fingerprint));
+
+      await persistor.flush();
+      void broadcastWalletListChanged({});
+
+      startRecursiveAccountDiscovery({
+        dispatch,
+        doesAddressHaveActivityFn: createAccountActivityChecker({
+          bnsClient,
+          hiroClient,
+          leatherApiClient,
+          mnemonic,
+        }),
+        fingerprint,
+        fromAccountIndex: 0,
+      });
+    });
+}
+
+function unlockWalletWithBiometricsAction(): AppThunk {
+  return async (_dispatch, getState) => {
+    const softwareKeysBefore = getState().softwareKeys;
+    const platformUnlock = getBiometricPlatformUnlock(softwareKeysBefore);
+    await assertPersistedSoftwareKeysMatch(softwareKeysBefore);
+
+    const encryptionKey = await unlockPlatformEncryptionKey(platformUnlock);
+    const decryptedKeys = await decryptSoftwareKeysWithEncryptionKey(
+      selectSoftwareKeys(getState()),
+      encryptionKey
+    );
+
+    const softwareKeysAfter = getState().softwareKeys;
+    if (!isSameSoftwareKeysState(softwareKeysBefore, softwareKeysAfter))
+      throw new PlatformUnlockError('wallet-validation');
+    await assertPersistedSoftwareKeysMatch(softwareKeysAfter);
+
+    await initalizeWalletSession(encryptionKey);
+    for (const { fingerprint, secretKey } of decryptedKeys) {
+      inMemoryStore.setKey(fingerprint, secretKey);
+    }
+
+    const firstDecryptedKey = decryptedKeys[0];
+    if (firstDecryptedKey) {
+      const rootKey = deriveRootKeychainFromMnemonicSync(firstDecryptedKey.secretKey);
+      if (rootKey.publicKey) void identifyUser(rootKey.publicKey);
+    }
+  };
+}
+
+function addWalletWithBiometrics(args: BiometricWalletArgs): AppThunk {
+  const { mnemonic, fingerprint, leatherApiClient, hiroClient, bnsClient } = args;
+
+  return async (dispatch, getState) =>
+    withWalletWriteLock(async () => {
+      const softwareKeysBefore = getState().softwareKeys;
+      const platformUnlock = getBiometricPlatformUnlock(softwareKeysBefore);
+      await assertPersistedSoftwareKeysMatch(softwareKeysBefore);
+
+      const encryptionKey = await unlockPlatformEncryptionKey(platformUnlock);
+      await decryptSoftwareKeysWithEncryptionKey(selectSoftwareKeys(getState()), encryptionKey);
+
+      const sessionKey = await getWalletSessionKey();
+      if (sessionKey.success && sessionKey.data !== encryptionKey)
+        throw new PlatformUnlockError('wallet-validation');
+
+      const encryptedSecretKey = await encryptMnemonicWithEncryptionKey(mnemonic, encryptionKey);
+
+      const softwareKeysAfter = getState().softwareKeys;
+      if (!isSameSoftwareKeysState(softwareKeysBefore, softwareKeysAfter))
+        throw new PlatformUnlockError('wallet-validation');
+      await assertPersistedSoftwareKeysMatch(softwareKeysAfter);
+
+      await initalizeWalletSession(encryptionKey);
+      inMemoryStore.setKey(fingerprint, mnemonic);
+
+      dispatch(buildSoftwareWalletAddedAction(fingerprint));
+      dispatch(
+        keySlice.actions.biometricSoftwareWalletAdded({
+          type: 'software',
+          id: fingerprint,
+          encryptedSecretKey,
+        })
+      );
+      dispatch(walletKeyGenerated(fingerprint));
+
+      await persistor.flush();
+      void broadcastWalletListChanged({});
+
+      startRecursiveAccountDiscovery({
+        dispatch,
+        doesAddressHaveActivityFn: createAccountActivityChecker({
+          bnsClient,
+          hiroClient,
+          leatherApiClient,
+          mnemonic,
+        }),
+        fingerprint,
+        fromAccountIndex: 0,
+      });
+    });
+}
+
 export const keyActions = {
   ...keySlice.actions,
+  addWalletWithBiometrics,
+  createBiometricWallet,
   probeNextAccountAndDiscoverAccounts,
   setWalletEncryptionPassword,
   unlockWalletAction,
+  unlockWalletWithBiometricsAction,
 };

@@ -62,3 +62,12 @@ export const selectSoftwareKeys = selectors.selectAll;
 export function useHasSoftwareWallets() {
   return useSelector(selectSoftwareKeys).length > 0;
 }
+
+const selectIsBiometricOnlyProfile = createSelector(
+  selectKeysSlice,
+  state => state.authenticationMode === 'biometric-only' && state.ids.length > 0
+);
+
+export function useIsBiometricOnlyProfile() {
+  return useSelector(selectIsBiometricOnlyProfile);
+}

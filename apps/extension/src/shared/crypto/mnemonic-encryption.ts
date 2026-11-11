@@ -30,6 +30,10 @@ export async function encryptMnemonic({
   };
 }
 
+export async function encryptMnemonicWithEncryptionKey(secretKey: string, encryptionKey: string) {
+  return bytesToHex(await encrypt(secretKey, encryptionKey));
+}
+
 /**
  * Decrypt an encrypted secret key. If no salt is present, then this encrypted key was
  * generated before introducing Argon2 hashing. If that is true, then

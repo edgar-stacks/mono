@@ -3,6 +3,7 @@ import { type PayloadAction, createEntityAdapter, createSlice } from '@reduxjs/t
 import { resetWallet } from '@leather.io/state';
 import { fingerprintMigration, userRemovesWallet } from '@leather.io/state/wallet';
 
+import type { PlatformUnlockConfig } from '@shared/crypto/platform-unlock';
 import { assumedZeroFingerprint } from '@shared/utils';
 
 import { migrateVaultReducerStoreToNewStateStructure } from '../utils/vault-reducer-migration';
@@ -14,7 +15,21 @@ interface SoftwareKeyConfig {
 }
 export const keyAdapter = createEntityAdapter<SoftwareKeyConfig>();
 
-export const initialKeysState = keyAdapter.getInitialState<{ salt?: string }>({});
+type SoftwareKeyAuthenticationMode = 'biometric-only' | 'password';
+
+interface SoftwareKeysAuthenticationState {
+  salt?: string;
+  authenticationMode?: SoftwareKeyAuthenticationMode;
+  platformUnlock?: PlatformUnlockConfig;
+}
+
+export const initialKeysState = keyAdapter.getInitialState<SoftwareKeysAuthenticationState>({});
+
+function clearAuthentication(state: SoftwareKeysAuthenticationState) {
+  delete state.salt;
+  delete state.authenticationMode;
+  delete state.platformUnlock;
+}
 
 export const keySlice = createSlice({
   name: 'softwareKeys',
@@ -26,6 +41,22 @@ export const keySlice = createSlice({
     ) {
       keyAdapter.upsertOne(state, action.payload.key);
       state.salt = action.payload.salt;
+      state.authenticationMode = 'password';
+      delete state.platformUnlock;
+    },
+
+    createBiometricSoftwareWalletComplete(
+      state,
+      action: PayloadAction<{ platformUnlock: PlatformUnlockConfig; key: SoftwareKeyConfig }>
+    ) {
+      keyAdapter.upsertOne(state, action.payload.key);
+      state.authenticationMode = 'biometric-only';
+      state.platformUnlock = action.payload.platformUnlock;
+      delete state.salt;
+    },
+
+    biometricSoftwareWalletAdded(state, action: PayloadAction<SoftwareKeyConfig>) {
+      keyAdapter.upsertOne(state, action.payload);
     },
 
     addNewWallet(state, action: PayloadAction<SoftwareKeyConfig>) {
@@ -52,11 +83,12 @@ export const keySlice = createSlice({
           keyAdapter.addOne(state, { ...existingKey, id: newFingerprint });
         }
       })
-      .addCase(userRemovesWallet, (state, action) =>
-        keyAdapter.removeOne(state, action.payload.fingerprint)
-      )
+      .addCase(userRemovesWallet, (state, action) => {
+        keyAdapter.removeOne(state, action.payload.fingerprint);
+        if (state.ids.length === 0) clearAuthentication(state);
+      })
       .addCase(resetWallet, state => {
-        if (state.salt) delete state.salt;
-        return keyAdapter.removeAll(state);
+        clearAuthentication(state);
+        keyAdapter.removeAll(state);
       }),
 });

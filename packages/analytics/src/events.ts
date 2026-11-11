@@ -147,6 +147,13 @@ export interface Events extends HistoricalEvents {
   network_added: undefined;
   network_edited: undefined;
   taproot_utxo_warning_dialog_displayed: undefined;
+  biometric_unlock_enrollment_started: undefined;
+  biometric_unlock_enrollment_completed: undefined;
+  biometric_unlock_enrollment_failed: { category: string };
+  biometric_unlock_attempt_started: undefined;
+  biometric_unlock_attempt_completed: undefined;
+  biometric_unlock_attempt_canceled: undefined;
+  biometric_unlock_attempt_failed: { category: string };
 }
 
 // These are historical events that we'll maintain but that do not follow the object-action framework.

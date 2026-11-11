@@ -8,11 +8,13 @@ import {
   getLeatherApiClient,
 } from '@leather.io/services';
 import { resetWallet } from '@leather.io/state';
+import { noop } from '@leather.io/utils';
 
 import { broadcastSignOut, broadcastWalletLock } from '@shared/messages';
 import { clearChromeStorage } from '@shared/storage/redux-persist';
 import { analytics } from '@shared/utils/analytics';
 
+import { clearAutomaticPromptSuppression } from '@app/common/biometric-unlock/biometric-auto-prompt';
 import { queryClient } from '@app/common/persistence';
 import { partiallyClearLocalStorage } from '@app/common/store-utils';
 import { useAppDispatch } from '@app/store';
@@ -52,6 +54,36 @@ export function useKeyActions() {
         );
       },
 
+      createBiometricWallet({ mnemonic, fingerprint }: { mnemonic: string; fingerprint: string }) {
+        return dispatch(
+          keyActions.createBiometricWallet({
+            mnemonic,
+            fingerprint,
+            leatherApiClient: getLeatherApiClient(),
+            hiroClient: getHiroStacksApiClient(),
+            bnsClient: getBnsV2ApiClient(),
+          })
+        );
+      },
+
+      addWalletWithBiometrics({
+        mnemonic,
+        fingerprint,
+      }: {
+        mnemonic: string;
+        fingerprint: string;
+      }) {
+        return dispatch(
+          keyActions.addWalletWithBiometrics({
+            mnemonic,
+            fingerprint,
+            leatherApiClient: getLeatherApiClient(),
+            hiroClient: getHiroStacksApiClient(),
+            bnsClient: getBnsV2ApiClient(),
+          })
+        );
+      },
+
       generateWalletKey() {
         const mnemonic = generateMnemonic();
         const fingerprint = getMnemonicRootKeyFingerprint(mnemonic);
@@ -62,8 +94,13 @@ export function useKeyActions() {
         return dispatch(keyActions.unlockWalletAction(password));
       },
 
+      unlockWalletWithBiometrics() {
+        return dispatch(keyActions.unlockWalletWithBiometricsAction());
+      },
+
       switchAccount(accountId: AccountId) {
         dispatch(userSwitchesAccount(accountId));
+        void clearAutomaticPromptSuppression().catch(noop);
       },
 
       switchAccountToPolicy(policyId: string) {
