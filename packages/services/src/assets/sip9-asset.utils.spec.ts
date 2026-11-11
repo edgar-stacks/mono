@@ -157,6 +157,27 @@ describe('createSip9Asset', () => {
     expect(asset.content.contentUrl).toBe(`${LEATHER_IPFS_GATEWAY_URL}QmHiroCid/path/to/image.png`);
   });
 
+  it.each(['IPFS://', 'Ipfs://', ' ipfs://', 'ipfs://'])(
+    'should transform hiro image %j URLs to the Leather IPFS gateway',
+    scheme => {
+      const hiroIpfs: HiroMetadata = { sip: 16, image: `${scheme}bafybeigdyrzt5examplecid/1.png` };
+
+      const asset = createSip9Asset(assetIdentifier, tokenId, hiroIpfs, undefined);
+      expect(asset.content.contentUrl).toBe(
+        `${LEATHER_IPFS_GATEWAY_URL}bafybeigdyrzt5examplecid/1.png`
+      );
+    }
+  );
+
+  it('should transform ipfs://ipfs/ URLs to the Leather IPFS gateway', () => {
+    const hiroIpfs: HiroMetadata = { sip: 16, image: 'ipfs://ipfs/bafybeigdyrzt5examplecid/1.png' };
+
+    const asset = createSip9Asset(assetIdentifier, tokenId, hiroIpfs, undefined);
+    expect(asset.content.contentUrl).toBe(
+      `${LEATHER_IPFS_GATEWAY_URL}bafybeigdyrzt5examplecid/1.png`
+    );
+  });
+
   it('should fallback to mockHiroMetadata when mockGammaMetadata is absent', () => {
     const asset = createSip9Asset(assetIdentifier, tokenId, mockHiroMetadata, undefined);
     expect(asset.name).toBe('Hiro NFT');
