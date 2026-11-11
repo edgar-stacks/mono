@@ -1,6 +1,10 @@
 import BigNumber from 'bignumber.js';
 
+import { STX_DECIMALS } from '@leather.io/constants';
+
 import { isBigInt } from '../type-guards';
+
+const oneMicroStx = new BigNumber(1).shiftedBy(-STX_DECIMALS);
 
 export function initBigNumber(num: string | number | BigNumber | bigint) {
   if (BigNumber.isBigNumber(num)) return num;
@@ -20,13 +24,9 @@ export function isEven(num: number) {
 }
 
 export function countDecimals(num: string | number | BigNumber) {
-  const LARGE_NUMBER_OF_DECIMALS = 100;
-  BigNumber.config({ DECIMAL_PLACES: LARGE_NUMBER_OF_DECIMALS });
-  const amount = initBigNumber(num);
-  const decimals = amount.toString(10).split('.')[1];
-  return decimals ? decimals.length : 0;
+  return initBigNumber(num).decimalPlaces() ?? 0;
 }
 
 export function increaseValueByOneMicroStx(value: string | number | BigNumber) {
-  return new BigNumber(value).plus(0.000001).toNumber();
+  return new BigNumber(value).plus(oneMicroStx).toNumber();
 }

@@ -1,4 +1,3 @@
-import { BigNumber } from 'bignumber.js';
 import { keys } from 'remeda';
 
 import { KEBAB_REGEX } from '@leather.io/constants';
@@ -101,10 +100,6 @@ export function createNumArrayOfRange(fromIndex: number, toIndex: number) {
     result.push(i);
   }
   return result;
-}
-
-export function sumNumbers(nums: number[]) {
-  return nums.reduce((acc, num) => acc.plus(num), new BigNumber(0));
 }
 
 export function isFulfilled<T>(p: PromiseSettledResult<T>) {
