@@ -25,6 +25,14 @@ export interface StacksSendFormValues {
   symbol?: string;
 }
 
+export interface RecipientFormValues {
+  recipient: string;
+  recipientBnsName: string;
+  symbol?: string;
+}
+
+export type RecipientFieldName = 'recipient' | 'recipientBnsName';
+
 export interface StacksTransactionFormValues {
   fee: number | string;
   feeCurrency: string;

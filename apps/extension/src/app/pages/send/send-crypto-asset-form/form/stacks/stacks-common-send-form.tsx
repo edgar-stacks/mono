@@ -1,7 +1,7 @@
+import { FormProvider, type Resolver } from 'react-hook-form';
 import { Outlet, useNavigate } from 'react-router';
 
 import { SendCryptoAssetSelectors } from '@tests/selectors/send.selectors';
-import { Form, Formik, type FormikHelpers } from 'formik';
 import { Box, Flex } from 'leather-styles/jsx';
 
 import { HIGH_FEE_WARNING_LEARN_MORE_URL_STX } from '@leather.io/constants';
@@ -12,7 +12,7 @@ import { type StacksSendFormValues } from '@shared/models/form.model';
 import { RouteUrls } from '@shared/route-urls';
 
 import { formatCurrency } from '@app/common/currency-formatter';
-import type { FormikValidationSchema } from '@app/common/validation/formik-validation-schema';
+import { useLatestCallback } from '@app/common/hooks/use-latest-callback';
 import { FeesRow } from '@app/components/fees-row/fees-row';
 import { AvailableBalance, ButtonRow, Card, Page } from '@app/components/layout';
 import { NonceSetter } from '@app/components/nonce-setter';
@@ -23,15 +23,12 @@ import { useIsPrivateMode } from '@app/store/settings/settings.selectors';
 
 import { MemoField } from '../../components/memo-field';
 import { StacksRecipientField } from '../../family/stacks/components/stacks-recipient-field';
-import { defaultSendFormFormikProps } from '../../send-form.utils';
+import { useSendForm } from '../../hooks/use-send-form';
 
 interface StacksCommonSendFormProps {
-  onSubmit(
-    values: StacksSendFormValues,
-    formikHelpers: FormikHelpers<StacksSendFormValues>
-  ): Promise<void>;
+  onSubmit(values: StacksSendFormValues): Promise<void>;
   initialValues: StacksSendFormValues;
-  validationSchema: FormikValidationSchema;
+  resolver: Resolver<StacksSendFormValues>;
   amountField: React.JSX.Element;
   selectedAssetField: React.JSX.Element;
   availableTokenBalance: Money;
@@ -41,7 +38,7 @@ interface StacksCommonSendFormProps {
 export function StacksCommonSendForm({
   onSubmit,
   initialValues,
-  validationSchema,
+  resolver,
   amountField,
   selectedAssetField,
   fees,
@@ -52,69 +49,67 @@ export function StacksCommonSendForm({
   const isPrivate = useIsPrivateMode();
   const policy = useCurrentPolicy();
   const isStacksPolicy = policy?.chain === 'stacks';
+  const { form, onBlur } = useSendForm<StacksSendFormValues>({
+    defaultValues: initialValues,
+    resolver,
+  });
+  const { isValidating } = form.formState;
+  const values = form.watch();
+  const onValidSubmit = useLatestCallback(onSubmit);
+  const submit = form.handleSubmit(onValidSubmit);
+
+  onFormStateChange(values);
+
   return (
     <Page>
-      <Formik
-        initialValues={initialValues}
-        onSubmit={onSubmit}
-        validationSchema={validationSchema}
-        {...defaultSendFormFormikProps}
-      >
-        {props => {
-          onFormStateChange(props.values);
-          return (
-            <>
-              <NonceSetter />
-              <Form>
-                <Card
-                  dataTestId={SendCryptoAssetSelectors.SendForm}
-                  footer={
-                    <ButtonRow>
-                      <Button
-                        aria-busy={props.isValidating}
-                        data-testid={SendCryptoAssetSelectors.PreviewSendTxBtn}
-                        type="submit"
-                        fullWidth
-                      >
-                        Continue
-                      </Button>
-                      <AvailableBalance
-                        balance={formatCurrency(availableTokenBalance)}
-                        isPrivate={isPrivate}
-                      />
-                    </ButtonRow>
-                  }
+      <FormProvider {...form}>
+        <NonceSetter />
+        <form onBlur={onBlur} onSubmit={e => void submit(e)}>
+          <Card
+            dataTestId={SendCryptoAssetSelectors.SendForm}
+            footer={
+              <ButtonRow>
+                <Button
+                  aria-busy={isValidating}
+                  data-testid={SendCryptoAssetSelectors.PreviewSendTxBtn}
+                  type="submit"
+                  fullWidth
                 >
-                  <Flex
-                    width="100%"
-                    flexDirection="column"
-                    marginBottom={{ base: 'unset', sm: '33px' }}
-                  >
-                    {amountField}
-                    {selectedAssetField}
-                    <StacksRecipientField />
-                    <MemoField />
-                    <Box mt="space.04" width="100%">
-                      <FeesRow fees={fees} isSponsored={false} />
-                    </Box>
-                    {!isStacksPolicy && (
-                      <Link
-                        alignSelf="flex-end"
-                        mt="space.04"
-                        onClick={() => void navigate(RouteUrls.EditNonce)}
-                      >
-                        Edit nonce
-                      </Link>
-                    )}
-                  </Flex>
-                </Card>
-                <HighFeeSheet learnMoreUrl={HIGH_FEE_WARNING_LEARN_MORE_URL_STX} />
-                <Outlet />
-              </Form>
-            </>
-          );
-        }}
-      </Formik>
+                  Continue
+                </Button>
+                <AvailableBalance
+                  balance={formatCurrency(availableTokenBalance)}
+                  isPrivate={isPrivate}
+                />
+              </ButtonRow>
+            }
+          >
+            <Flex width="100%" flexDirection="column" marginBottom={{ base: 'unset', sm: '33px' }}>
+              {amountField}
+              {selectedAssetField}
+              <StacksRecipientField />
+              <MemoField />
+              <Box mt="space.04" width="100%">
+                <FeesRow fees={fees} isSponsored={false} />
+              </Box>
+              {!isStacksPolicy && (
+                <Link
+                  alignSelf="flex-end"
+                  mt="space.04"
+                  onClick={() => void navigate(RouteUrls.EditNonce)}
+                >
+                  Edit nonce
+                </Link>
+              )}
+            </Flex>
+          </Card>
+          <HighFeeSheet
+            learnMoreUrl={HIGH_FEE_WARNING_LEARN_MORE_URL_STX}
+            onSubmit={() => void submit()}
+          />
+          <Outlet />
+        </form>
+      </FormProvider>
     </Page>
   );
 }
