@@ -170,6 +170,7 @@ export function PlaygroundDock() {
         direction="column"
         alignItems="center"
         gap="space.02"
+        data-playground-dock
       >
         {open ? (
           <Flex
