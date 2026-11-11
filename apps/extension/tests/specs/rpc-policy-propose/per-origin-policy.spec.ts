@@ -93,7 +93,7 @@ function readPersistedPermission(page: Page, extensionId: string) {
       const state = await chrome.storage.local.get<{ 'persist:root': PersistedRootState }>([
         'persist:root',
       ]);
-      return state['persist:root'].appPermissions?.entities?.['localhost:3000'];
+      return state['persist:root'].appPermissions?.entities?.['http://localhost:3000'];
     });
     if (!permission) throw new Error('Expected persisted permission');
     return permission;

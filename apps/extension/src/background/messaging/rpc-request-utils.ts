@@ -19,6 +19,7 @@ import {
 import {
   getPermissionsByOrigin,
   isConnectedToExistingWallet,
+  parseAppPermission,
 } from '@shared/permissions/permission.helpers';
 import { type RouteUrls } from '@shared/route-urls';
 import {
@@ -27,7 +28,7 @@ import {
   validateRpcParams,
 } from '@shared/rpc/methods/validation.utils';
 import { getRootState, sendMissingStateErrorToTab } from '@shared/storage/get-root-state';
-import { getHostnameFromUrl } from '@shared/utils/urls';
+import { getOriginFromUrl } from '@shared/utils/urls';
 
 import type { RootState } from '@app/store';
 import { popup } from '@background/popup';
@@ -46,9 +47,16 @@ export function getOriginatingFrameFromPort(port: chrome.runtime.Port): Originat
   return { frameId: getFrameIdFromPort(port), tabId: getTabIdFromPort(port) };
 }
 
+const opaqueOrigin = 'null';
+
+function toOrigin(origin: string) {
+  return origin === opaqueOrigin ? undefined : origin;
+}
+
 export function getOriginFromPort(port: chrome.runtime.Port) {
-  if (port.sender?.url) return new URL(port.sender.url).origin;
-  return port.sender?.origin;
+  if (port.sender?.origin) return toOrigin(port.sender.origin);
+  if (port.sender?.url) return toOrigin(new URL(port.sender.url).origin);
+  return undefined;
 }
 
 function getTopOriginFromPort(port: chrome.runtime.Port) {
@@ -61,10 +69,14 @@ function getTopOriginFromPort(port: chrome.runtime.Port) {
   }
 }
 
-function getHostnameFromPort(port: chrome.runtime.Port) {
+function getPermissionOriginFromPort(port: chrome.runtime.Port) {
   const origin = getOriginFromPort(port);
-  if (!origin) throw new Error('No URL found in port sender');
-  return getHostnameFromUrl(origin);
+  if (!origin) return undefined;
+  try {
+    return getOriginFromUrl(origin);
+  } catch {
+    return undefined;
+  }
 }
 
 //
@@ -157,8 +169,9 @@ export async function createConnectingAppSearchParamsWithLastKnownAccount(
     port,
     otherParams
   );
-  if (origin) {
-    const appPermissions = await getPermissionsByOrigin(getHostnameFromPort(port));
+  const permissionOrigin = getPermissionOriginFromPort(port);
+  if (permissionOrigin) {
+    const appPermissions = await getPermissionsByOrigin(permissionOrigin);
     if (appPermissions) {
       const hasRequestScopedAccount = urlParams.has('accountIndex');
       if (!hasRequestScopedAccount)
@@ -253,8 +266,10 @@ async function checkConnectedWalletExists(
   const walletEntities = state.wallets?.entities;
   if (!walletEntities) return { status: 'failure', reason: 'missing-state', frameId, tabId };
 
-  const hostname = getHostnameFromPort(port);
-  const originPermissions = state.appPermissions.entities[hostname];
+  const permissionOrigin = getPermissionOriginFromPort(port);
+  const originPermissions = permissionOrigin
+    ? parseAppPermission(state.appPermissions.entities[permissionOrigin], permissionOrigin)
+    : null;
 
   if (!isConnectedToExistingWallet(originPermissions, walletEntities))
     return { status: 'failure', reason: 'wallet-unavailable', frameId, tabId };

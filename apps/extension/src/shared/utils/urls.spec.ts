@@ -3,7 +3,7 @@ import bigListOfNaughtyStrings from 'blns';
 
 import { isString } from '@leather.io/utils';
 
-import { getHostnameFromUrl, isValidUrl } from './urls';
+import { getOriginFromUrl, isValidUrl } from './urls';
 
 describe('isValidUrl', () => {
   test('accepts normal URLs', () => {
@@ -39,46 +39,52 @@ describe('isValidUrl', () => {
   });
 });
 
-describe('getHostnameFromUrl', () => {
-  test('returns hostname for valid URLs', () => {
+describe('getOriginFromUrl', () => {
+  test('returns the canonical origin for web URLs', () => {
     const urls = [
       'http://example.com',
-      'https://leather.io',
-      'https://blockstack.com',
-      'https://blockstack.org/asdf#anchor',
-      'https://subdomain.leather.io',
+      'https://leather.io/',
+      'https://blockstack.org/asdf?hey=true#anchor',
+      'https://Subdomain.Leather.io',
+      'https://example.com:443/path',
+      'http://example.com:80',
     ];
 
     const expected = [
-      'example.com',
-      'leather.io',
-      'blockstack.com',
-      'blockstack.org',
-      'subdomain.leather.io',
+      'http://example.com',
+      'https://leather.io',
+      'https://blockstack.org',
+      'https://subdomain.leather.io',
+      'https://example.com',
+      'http://example.com',
     ];
 
-    urls.forEach((url, index) => expect(getHostnameFromUrl(url)).toEqual(expected[index]));
+    urls.forEach((url, index) => expect(getOriginFromUrl(url)).toEqual(expected[index]));
   });
 
-  test('returns hostname with port for localhost URLs', () => {
-    const localhostUrls = [
-      'http://localhost:3000',
-      'https://localhost:8080',
-      'http://localhost:1234',
+  test('keeps the scheme and a non-default port', () => {
+    expect(getOriginFromUrl('http://app.example.com')).toEqual('http://app.example.com');
+    expect(getOriginFromUrl('https://app.example.com')).toEqual('https://app.example.com');
+    expect(getOriginFromUrl('https://app.example.com:8443/')).toEqual(
+      'https://app.example.com:8443'
+    );
+    expect(getOriginFromUrl('http://localhost:3000')).toEqual('http://localhost:3000');
+  });
+
+  test('throws for non-web and invalid URLs', () => {
+    const invalidUrls = [
+      'about:blank',
+      'javascript:void(0)',
+      'data:text/html,<p>hi</p>',
+      'file:////path/name',
+      'chrome-extension://abcdef/index.html',
+      'not-a-url',
+      'http://',
+      'localhost:3000',
     ];
-
-    const expected = ['localhost:3000', 'localhost:8080', 'localhost:1234'];
-
-    localhostUrls.forEach((url, index) => {
-      expect(getHostnameFromUrl(url)).toEqual(expected[index]);
-    });
-  });
-
-  test('throws error for invalid URLs', () => {
-    const invalidUrls = ['not-a-url', 'file:////path/name', 'http://', 'localhost:3000'];
 
     invalidUrls.forEach(url => {
-      expect(() => getHostnameFromUrl(url)).toThrowError();
+      expect(() => getOriginFromUrl(url)).toThrowError();
     });
   });
 });
