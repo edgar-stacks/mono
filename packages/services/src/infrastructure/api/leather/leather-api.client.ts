@@ -1040,6 +1040,7 @@ export class LeatherApiClient {
         }),
       {
         priority: leatherApiPriorities.compliance,
+        throwOnTimeout: true,
         signal,
       }
     );

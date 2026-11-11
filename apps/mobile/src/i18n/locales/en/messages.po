@@ -1995,9 +1995,9 @@ msgstr "Total balance"
 msgid "Total spend"
 msgstr "Total spend"
 
-#: src/features/send/forms/btc/use-btc-form.ts:73
-#: src/features/send/forms/stx/use-sip10-form.ts:79
-#: src/features/send/forms/stx/use-stx-form.ts:78
+#: src/features/send/forms/btc/use-btc-form.ts:76
+#: src/features/send/forms/stx/use-sip10-form.ts:82
+#: src/features/send/forms/stx/use-stx-form.ts:81
 msgid "Transaction failed due to an unexpected error"
 msgstr "Transaction failed due to an unexpected error"
 

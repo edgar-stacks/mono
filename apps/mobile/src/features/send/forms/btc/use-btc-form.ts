@@ -9,6 +9,7 @@ import { useCalculateBtcMaxSpend } from '@/features/send/hooks/use-calculate-btc
 import { useSendMax } from '@/features/send/hooks/use-send-max';
 import { useSendNavigation } from '@/features/send/navigation';
 import { btcFormValuesToPsbtHex } from '@/features/send/utils';
+import { useUserSettings } from '@/hooks/use-user-settings';
 import {
   useBitcoinAccounts,
   useBitcoinPayerFromKeyOrigin,
@@ -36,9 +37,11 @@ export function useBtcForm({ account, feeRates, utxos }: UseBtcFormProps) {
     accountIndex
   );
   const calculateMaxBtcSpend = useCalculateBtcMaxSpend(feeRates, utxos);
+  const settings = useUserSettings();
   const schema = useBtcSendFormSchema({
     networkMode: networkPreference.chain.bitcoin.mode,
     calculateBtcMaxSpend: calculateMaxBtcSpend,
+    settings,
   });
   const form = useForm<BtcFormSchema>({
     resolver: zodResolver(schema),

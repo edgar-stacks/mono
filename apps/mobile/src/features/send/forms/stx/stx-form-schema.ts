@@ -7,6 +7,7 @@ import { type ChainId } from '@stacks/network';
 import * as z from 'zod';
 
 import { STX_DECIMALS } from '@leather.io/constants';
+import { type UserSettings } from '@leather.io/services';
 import {
   isValidAddressChain,
   isValidStacksAddress,
@@ -20,6 +21,7 @@ interface SchemaCreationParams {
   payerAddress: string;
   chainId: number;
   assetDecimals?: number;
+  settings: UserSettings;
 }
 
 export function useStxSendFormSchema({
@@ -27,10 +29,18 @@ export function useStxSendFormSchema({
   payerAddress,
   chainId,
   assetDecimals,
+  settings,
 }: SchemaCreationParams) {
   return useMemo(
-    () => createStxSendFormSchema({ calculateStxMaxSpend, payerAddress, chainId, assetDecimals }),
-    [calculateStxMaxSpend, payerAddress, chainId, assetDecimals]
+    () =>
+      createStxSendFormSchema({
+        calculateStxMaxSpend,
+        payerAddress,
+        chainId,
+        assetDecimals,
+        settings,
+      }),
+    [calculateStxMaxSpend, payerAddress, chainId, assetDecimals, settings]
   );
 }
 
@@ -39,6 +49,7 @@ function createStxSendFormSchema({
   payerAddress,
   chainId,
   assetDecimals,
+  settings,
 }: SchemaCreationParams) {
   const errorMessages = getErrorMessages();
 
@@ -53,7 +64,7 @@ function createStxSendFormSchema({
       .refine(isValidStacksAddress, errorMessages.invalidAddress)
       .refine(stxAddressNetworkValidator(chainId), errorMessages.incorrectNetworkAddress)
       .refine(stxNotCurrentAddressValidator(payerAddress), errorMessages.recipientIsPayer)
-      .refine(stxComplianceValidator(), errorMessages.nonCompliantAddress),
+      .refine(stxComplianceValidator(settings), errorMessages.nonCompliantAddress),
 
     memo: z.string().refine(isValidStacksMemo, errorMessages.memoExceedsLimit),
     nonce: z.number(),
@@ -70,12 +81,13 @@ function stxNotCurrentAddressValidator(payerAddress: string) {
   return (address: string) => validatePayerNotRecipient(payerAddress, address);
 }
 
-function stxComplianceValidator() {
+function stxComplianceValidator(settings: UserSettings) {
   return (address: string) =>
     addressComplianceValidator({
       address,
       shouldCheckCompliance: isValidStacksAddress(address),
       screeningPoint: 'send_form_stx',
+      settings,
     });
 }
 

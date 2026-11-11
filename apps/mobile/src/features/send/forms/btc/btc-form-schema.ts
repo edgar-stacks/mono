@@ -13,21 +13,31 @@ import {
 } from '@leather.io/bitcoin';
 import { BTC_DECIMALS } from '@leather.io/constants';
 import { type BitcoinNetworkModes } from '@leather.io/models';
+import { type UserSettings } from '@leather.io/services';
 import { countDecimals, createMoneyFromDecimal } from '@leather.io/utils';
 
 interface SchemaCreationParams {
   networkMode: BitcoinNetworkModes;
   calculateBtcMaxSpend: CalculateBtcMaxSpend;
+  settings: UserSettings;
 }
 
-export function useBtcSendFormSchema({ networkMode, calculateBtcMaxSpend }: SchemaCreationParams) {
+export function useBtcSendFormSchema({
+  networkMode,
+  calculateBtcMaxSpend,
+  settings,
+}: SchemaCreationParams) {
   return useMemo(
-    () => createBtcSendFormSchema({ networkMode, calculateBtcMaxSpend }),
-    [networkMode, calculateBtcMaxSpend]
+    () => createBtcSendFormSchema({ networkMode, calculateBtcMaxSpend, settings }),
+    [networkMode, calculateBtcMaxSpend, settings]
   );
 }
 
-function createBtcSendFormSchema({ networkMode, calculateBtcMaxSpend }: SchemaCreationParams) {
+function createBtcSendFormSchema({
+  networkMode,
+  calculateBtcMaxSpend,
+  settings,
+}: SchemaCreationParams) {
   const errorMessages = getErrorMessages();
 
   return (
@@ -44,7 +54,7 @@ function createBtcSendFormSchema({ networkMode, calculateBtcMaxSpend }: SchemaCr
           .string()
           .refine(isValidBitcoinAddress, errorMessages.invalidAddress)
           .refine(btcAddressNetworkValidator(networkMode), errorMessages.incorrectNetworkAddress)
-          .refine(btcComplianceValidator(), errorMessages.nonCompliantAddress),
+          .refine(btcComplianceValidator(settings), errorMessages.nonCompliantAddress),
         feeRate: z.number(),
         isSendingMax: z.boolean(),
       })
@@ -65,12 +75,13 @@ function btcAddressNetworkValidator(networkMode: BitcoinNetworkModes) {
   return (address: string) => isValidBitcoinNetworkAddress(address, networkMode);
 }
 
-function btcComplianceValidator() {
+function btcComplianceValidator(settings: UserSettings) {
   return (address: string) =>
     addressComplianceValidator({
       address,
       shouldCheckCompliance: isValidBitcoinAddress(address),
       screeningPoint: 'send_form_btc',
+      settings,
     });
 }
 
