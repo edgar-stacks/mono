@@ -25,6 +25,7 @@ export * from './market-data';
 export * from './currency-formatter/currency-formatter';
 export * from './flatten-object';
 export * from './special-char';
+export * from './graphemes';
 
 export { spamFilter } from './spam-filter/spam-filter';
 export { extractPhraseFromString } from './extract-phrase-from-string/extract-phrase-from-string';
