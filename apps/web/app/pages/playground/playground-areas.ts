@@ -84,4 +84,20 @@ export const playgroundAreas: PlaygroundArea[] = [
     issue: 2643,
     appShell: true,
   },
+  {
+    slug: 'compliance-ui',
+    title: 'Compliance gate: handoff board',
+    description:
+      'Every compliance screening gate screen for extension and mobile: lockout, why Leather is locked, refusals, screening, no answer and the copy deck.',
+    status: 'exploration',
+    section: 'extension',
+  },
+  {
+    slug: 'compliance-states',
+    title: 'Compliance gate: walkthrough',
+    description:
+      'A clickable, timed walkthrough of the compliance screening gate, from restore and home to lockout, key backup, dispute and gated reviews.',
+    status: 'exploration',
+    section: 'extension',
+  },
 ];
