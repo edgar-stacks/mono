@@ -18,6 +18,8 @@ import {
 } from '../../utils/pool-payout';
 import { estimateDateFromBurnBlocks } from '../../utils/pox5-cycle-clock';
 
+type PayoutPreferenceStatus = 'pending' | 'error' | 'success';
+
 export interface ActiveStakingDetails {
   endCycle: number;
   unlockDate: Date | null;
@@ -27,6 +29,7 @@ export interface ActiveStakingDetails {
   daysUntilNextCycle: number | null;
   claimable: Pox5ClaimableRewards;
   payoutPreference: Pox5PayoutPreference | null;
+  payoutPreferenceStatus: PayoutPreferenceStatus;
 }
 
 interface UseActiveStakingInfoResult {
@@ -82,6 +85,7 @@ export function useActiveStakingInfo(): UseActiveStakingInfoResult {
           : null,
       claimable,
       payoutPreference: payoutPreferenceQuery.data?.preference ?? null,
+      payoutPreferenceStatus: canPayoutInBtc(payoutMode) ? payoutPreferenceQuery.status : 'success',
     },
   };
 }

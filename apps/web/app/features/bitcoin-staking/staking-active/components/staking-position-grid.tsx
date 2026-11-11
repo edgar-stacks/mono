@@ -16,12 +16,20 @@ import { toHumanReadableMicroStx } from '~/utils/unit-convert';
 import { PoolTvlValue } from '../../components/pool-tvl-value';
 import { type Pox5StakerInfo } from '../../queries/create-get-pox5-staker-info-query-options';
 import {
+  type PoolPayoutMode,
   getPoolPayoutMode,
   getRewardsTokenSymbol,
   isBtcPayoutRequired,
 } from '../../utils/pool-payout';
 import { type ActiveStakingDetails } from '../hooks/use-active-staking-info';
 import { StakingActionButtons } from './staking-action-buttons';
+
+function getRewardsTokenValue(payoutMode: PoolPayoutMode, details: ActiveStakingDetails) {
+  if (isBtcPayoutRequired(payoutMode)) return getRewardsTokenSymbol(payoutMode);
+  if (details.payoutPreferenceStatus !== 'success') return EM_DASH;
+  if (details.payoutPreference) return 'BTC';
+  return getRewardsTokenSymbol(payoutMode);
+}
 
 interface StakingPositionGridProps {
   poolSlug: StakingPoolSlug;
@@ -41,7 +49,10 @@ export function StakingPositionGrid({ poolSlug, pool, info, details }: StakingPo
     ? poolSignerManagerContractIds
     : [info.signerManagerContractId];
   const payoutMode = getPoolPayoutMode(pool);
-  const defaultPayoutLabel = isBtcPayoutRequired(payoutMode) ? EM_DASH : 'sBTC on Stacks';
+  const defaultPayoutLabel =
+    isBtcPayoutRequired(payoutMode) || details.payoutPreferenceStatus !== 'success'
+      ? EM_DASH
+      : 'sBTC on Stacks';
 
   return (
     <StackingInfoGridLayout
@@ -126,7 +137,7 @@ export function StakingPositionGrid({ poolSlug, pool, info, details }: StakingPo
           <ValueDisplayer
             gap="space.04"
             name="Rewards token"
-            value={getRewardsTokenSymbol(payoutMode)}
+            value={getRewardsTokenValue(payoutMode, details)}
           />
         ),
         poolAddress: (
@@ -141,7 +152,7 @@ export function StakingPositionGrid({ poolSlug, pool, info, details }: StakingPo
             gap="space.04"
             name="Rewards payout"
             value={
-              details.payoutPreference ? (
+              details.payoutPreferenceStatus === 'success' && details.payoutPreference ? (
                 <CopyAddress
                   addr={details.payoutPreference.btcRewardAddress}
                   emphasis
