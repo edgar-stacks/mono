@@ -2,6 +2,7 @@ import { bytesToHex } from '@noble/hashes/utils';
 import * as btc from '@scure/btc-signer';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 
+import { makeNativeSegwitAddressPubkeyHex } from '@leather.io/bitcoin';
 import { RpcErrorCode } from '@leather.io/rpc';
 
 import { createMockPort } from '../create-mock-port';
@@ -56,7 +57,10 @@ function makePsbtHex() {
   return bytesToHex(tx.toPSBT());
 }
 
-const bondDescriptor = 'wsh(and_v(v:after(1000),multi(1,unimportant)))';
+const pubkeyHex = makeNativeSegwitAddressPubkeyHex(1);
+const bondDescriptor = `wsh(and_v(v:after(1000),multi(1,${pubkeyHex})))`;
+const malformedDescriptor = 'wsh(and_v(v:after(1000),multi(1,unimportant)))';
+const p2wpkhScriptCodeDescriptor = `wsh(pkh(${pubkeyHex}))`;
 
 function makeRequest(params: SignPsbtRequest['params']): SignPsbtRequest {
   return {
@@ -141,5 +145,34 @@ describe('signPsbtHandler', () => {
     expect(mocks.sendMessage).not.toHaveBeenCalled();
     expect(mocks.triggerRequestPopupWindowOpen).toHaveBeenCalled();
     expect(mocks.sendErrorResponseOnUserPopupClose).toHaveBeenCalled();
+  });
+
+  test('rejects a descriptor that compiles to a p2wpkh script code before opening the popup', async () => {
+    await invokeHandler(
+      makeRequest({ hex: makePsbtHex(), descriptor: p2wpkhScriptCodeDescriptor })
+    );
+
+    expect(mocks.trackRpcRequestError).toHaveBeenCalledWith({
+      endpoint: 'signPsbt',
+      error: 'Invalid descriptor',
+    });
+    expect(mocks.sendMessage).toHaveBeenCalledWith(
+      tabId,
+      expect.objectContaining({
+        error: objectContaining({
+          code: RpcErrorCode.INVALID_PARAMS,
+          message: 'Descriptor is not supported for signing',
+        }),
+      }),
+      { frameId }
+    );
+    expect(mocks.triggerRequestPopupWindowOpen).not.toHaveBeenCalled();
+  });
+
+  test('opens the popup for a descriptor that does not compile', async () => {
+    await invokeHandler(makeRequest({ hex: makePsbtHex(), descriptor: malformedDescriptor }));
+
+    expect(mocks.sendMessage).not.toHaveBeenCalled();
+    expect(mocks.triggerRequestPopupWindowOpen).toHaveBeenCalled();
   });
 });
