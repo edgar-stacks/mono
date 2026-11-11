@@ -76,4 +76,34 @@ describe(extractPhraseFromString.name, () => {
     const key = extractPhraseFromString(SECRET_KEY_COPIED_FROM_v3);
     expect(key).toEqual(SECRET_KEY_COPIED_FROM_V3_FORMATTED);
   });
+
+  test('drops numbered list markers', () => {
+    expect(extractPhraseFromString('1. alpha\n2.\tbravo\r\n3) charlie')).toEqual(
+      'alpha bravo charlie'
+    );
+  });
+
+  test('drops bullet list markers', () => {
+    expect(extractPhraseFromString('- alpha\n- bravo')).toEqual('alpha bravo');
+  });
+
+  test('drops colon and hash list markers', () => {
+    expect(extractPhraseFromString('1: alpha\n#2 bravo\n* charlie')).toEqual('alpha bravo charlie');
+  });
+
+  test('splits on next line characters', () => {
+    expect(extractPhraseFromString('alpha\u0085bravo\u0085charlie')).toEqual('alpha bravo charlie');
+  });
+
+  test('splits on zero width spaces', () => {
+    expect(extractPhraseFromString('alpha\u200Bbravo')).toEqual('alpha bravo');
+  });
+
+  test('splits on word joiners and byte order marks', () => {
+    expect(extractPhraseFromString('alpha\u2060bravo\uFEFFcharlie')).toEqual('alpha bravo charlie');
+  });
+
+  test('splits on vertical tabs and form feeds', () => {
+    expect(extractPhraseFromString('alpha\u000Bbravo\fcharlie')).toEqual('alpha bravo charlie');
+  });
 });
