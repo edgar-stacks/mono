@@ -10,6 +10,8 @@ import { ButtonRow } from '@app/components/layout/card/components/button-row';
 import { useAppDispatch } from '@app/store';
 import { userClearsAccountName, userRenamesAccount } from '@app/store/accounts/accounts.slice';
 
+import { hasVisibleCharacter } from './rename-validation';
+
 interface RenameEntityDialogProps {
   id: string;
   currentName: string;
@@ -34,8 +36,10 @@ export function RenameEntityDialog({
   const dispatch = useAppDispatch();
   const [draftName, setDraftName] = useState<string>();
   const name = draftName ?? currentName;
+  const isInvisibleName = name.trim() !== '' && !hasVisibleCharacter(name);
 
   function handleSave() {
+    if (isInvisibleName) return;
     if (name !== currentName) {
       const trimmed = name.trim().substring(0, ACCOUNT_MAX_NAME_LENGTH);
       if (trimmed) {
@@ -59,7 +63,12 @@ export function RenameEntityDialog({
           <Button variant="outline" flexGrow={1} onClick={onClose}>
             Cancel
           </Button>
-          <Button data-testid={saveTestId} flexGrow={1} onClick={handleSave}>
+          <Button
+            data-testid={saveTestId}
+            flexGrow={1}
+            onClick={handleSave}
+            disabled={isInvisibleName}
+          >
             Save
           </Button>
         </ButtonRow>

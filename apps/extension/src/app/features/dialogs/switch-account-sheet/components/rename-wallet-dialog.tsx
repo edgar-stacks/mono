@@ -9,6 +9,8 @@ import { Button, Input, Sheet, SheetHeader } from '@leather.io/ui';
 import { ButtonRow } from '@app/components/layout/card/components/button-row';
 import { useAppDispatch } from '@app/store';
 
+import { hasVisibleCharacter } from './rename-validation';
+
 const WALLET_MAX_NAME_LENGTH = 40;
 
 interface RenameWalletDialogProps {
@@ -29,7 +31,7 @@ export function RenameWalletDialog({
 
   function handleSave() {
     const trimmed = name.trim().substring(0, WALLET_MAX_NAME_LENGTH);
-    if (!trimmed) return;
+    if (!hasVisibleCharacter(trimmed)) return;
     dispatch(userRenamesWallet({ fingerprint, name: trimmed }));
     onClose();
   }
@@ -50,7 +52,7 @@ export function RenameWalletDialog({
             data-testid={SwitchAccountSelectors.RenameWalletSaveBtn}
             flexGrow={1}
             onClick={handleSave}
-            disabled={!name.trim()}
+            disabled={!hasVisibleCharacter(name)}
           >
             Save
           </Button>
