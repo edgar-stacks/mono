@@ -1,5 +1,6 @@
 import { useMemo, useRef, useState } from 'react';
 
+import { Error as ErrorScreen } from '@/components/error/error';
 import { useToastContext } from '@/components/toast/toast-context';
 import { ApproverAccountCard } from '@/features/approver/components/approver-account-card';
 import { BitcoinOutcome } from '@/features/approver/components/bitcoin-outcome';
@@ -21,6 +22,7 @@ import BigNumber from 'bignumber.js';
 import * as Clipboard from 'expo-clipboard';
 
 import {
+  PsbtOutputMissingScriptError,
   getBitcoinFees,
   getPsbtAsTransaction,
   getPsbtDetails,
@@ -69,8 +71,24 @@ interface PsbtSignerProps extends AccountId {
   onResult(result: { hex: string; txid?: string }): void;
   onClose(): void;
 }
+function getPsbtOutputMissingScriptError(psbtHex: string, networkMode: BitcoinNetworkModes) {
+  try {
+    getPsbtDetails({ psbtHex, psbtAddresses: [], networkMode });
+    return null;
+  } catch (e) {
+    return e instanceof PsbtOutputMissingScriptError ? e : null;
+  }
+}
+
 export function PsbtSigner(props: PsbtSignerProps) {
   const feeRatesQuery = useAverageBitcoinFeeRates();
+  const currentNetwork = useCurrentNetworkState();
+  const networkMode = props.network ?? currentNetwork.chain.bitcoin.mode;
+  const outputMissingScriptError = useMemo(
+    () => getPsbtOutputMissingScriptError(props.psbtHex, networkMode),
+    [props.psbtHex, networkMode]
+  );
+  if (outputMissingScriptError) return <ErrorScreen error={outputMissingScriptError} />;
   if (feeRatesQuery.isPending) return null;
   return <BasePsbtSigner feeRates={feeRatesQuery.data} {...props} />;
 }

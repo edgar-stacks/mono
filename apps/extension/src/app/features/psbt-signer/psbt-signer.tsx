@@ -1,11 +1,15 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router';
 
 import { PsbtSelectors } from '@tests/selectors/requests.selectors';
 
-import { getPsbtTxInputs, getPsbtTxOutputs } from '@leather.io/bitcoin';
+import {
+  PsbtOutputMissingScriptError,
+  getPsbtTxInputs,
+  getPsbtTxOutputs,
+} from '@leather.io/bitcoin';
 import { Button } from '@leather.io/ui';
-import { isError } from '@leather.io/utils';
+import { isError, isUndefined } from '@leather.io/utils';
 
 import { RouteUrls } from '@shared/route-urls';
 import { closeWindow } from '@shared/utils';
@@ -77,6 +81,18 @@ export function PsbtSigner(props: PsbtSignerProps) {
   const psbtTx = useMemo(() => getPsbtAsTransaction(psbtHex), [getPsbtAsTransaction, psbtHex]);
   const psbtTxInputs = useMemo(() => getPsbtTxInputs(psbtTx), [psbtTx]);
   const psbtTxOutputs = useMemo(() => getPsbtTxOutputs(psbtTx), [psbtTx]);
+  const outputWithoutScriptIndex = psbtTxOutputs.findIndex(output => isUndefined(output.script));
+  const hasOutputWithoutScript = outputWithoutScriptIndex !== -1;
+
+  useEffect(() => {
+    if (!hasOutputWithoutScript) return;
+    void navigate(RouteUrls.RequestError, {
+      state: {
+        message: new PsbtOutputMissingScriptError(outputWithoutScriptIndex).message,
+        title: 'Failed request',
+      },
+    });
+  }, [hasOutputWithoutScript, navigate, outputWithoutScriptIndex]);
 
   const {
     addressNativeSegwitTotal,
@@ -110,6 +126,8 @@ export function PsbtSigner(props: PsbtSignerProps) {
     psbtOutputs,
     shouldDefaultToAdvancedView,
   };
+
+  if (hasOutputWithoutScript) return null;
 
   if (shouldDefaultToAdvancedView && psbtRaw) return <Psbt.PsbtRequestRaw psbt={psbtRaw} />;
 
