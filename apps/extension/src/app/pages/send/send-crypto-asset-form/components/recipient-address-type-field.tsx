@@ -1,16 +1,16 @@
 import { useEffect } from 'react';
+import { useController, useFormContext } from 'react-hook-form';
 
 import { SendCryptoAssetSelectors } from '@tests/selectors/send.selectors';
-import { useField, useFormikContext } from 'formik';
 import { Box } from 'leather-styles/jsx';
 
 import { Input } from '@leather.io/ui';
 
-import { type BitcoinSendFormValues, type StacksSendFormValues } from '@shared/models/form.model';
+import { type RecipientFieldName, type RecipientFormValues } from '@shared/models/form.model';
 
 interface RecipientAddressTypeFieldProps {
   label?: string;
-  name: string;
+  name: RecipientFieldName;
   onBlur?(): void;
   placeholder: string;
   topInputOverlay?: React.JSX.Element;
@@ -23,12 +23,12 @@ export function RecipientAddressTypeField({
   onBlur,
   placeholder,
 }: RecipientAddressTypeFieldProps) {
-  const [field] = useField<string>(name);
-  const { setFieldValue } = useFormikContext<BitcoinSendFormValues | StacksSendFormValues>();
+  const { setValue } = useFormContext<RecipientFormValues>();
+  const { field } = useController<RecipientFormValues, RecipientFieldName>({ name });
 
   useEffect(() => {
-    void setFieldValue(name, field.value.trim());
-  }, [name, field.value, setFieldValue]);
+    setValue(name, field.value.trim());
+  }, [name, field.value, setValue]);
 
   return (
     <Box width="100%" position="relative" mb="space.02">
@@ -42,9 +42,11 @@ export function RecipientAddressTypeField({
         <Input.Field
           data-testid={SendCryptoAssetSelectors.RecipientFieldInput}
           placeholder={placeholder}
-          {...field}
-          onBlur={e => {
-            field.onBlur(e);
+          name={field.name}
+          value={field.value}
+          onChange={field.onChange}
+          onBlur={() => {
+            field.onBlur();
             onBlur?.();
           }}
         />

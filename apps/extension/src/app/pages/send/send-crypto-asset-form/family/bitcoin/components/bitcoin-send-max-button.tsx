@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
+import { useFormContext, useWatch } from 'react-hook-form';
 
 import { SendCryptoAssetSelectors } from '@tests/selectors/send.selectors';
-import { useFormikContext } from 'formik';
 import { Box } from 'leather-styles/jsx';
 
 import type { Money } from '@leather.io/models';
@@ -27,10 +27,11 @@ export function BitcoinSendMaxButton({
   onSetIsSendingMax,
   ...props
 }: BitcoinSendMaxButtonProps) {
-  const { setFieldValue, values } = useFormikContext<BitcoinSendFormValues>();
+  const { control, setValue } = useFormContext<BitcoinSendFormValues>();
+  const [amount, fee, recipient] = useWatch({ control, name: ['amount', 'fee', 'recipient'] });
   const calcMaxSpend = useCalculateMaxBitcoinSpend();
   const { utxos } = useCurrentUtxos();
-  const sendMaxCalculation = calcMaxSpend(values.recipient, utxos.available);
+  const sendMaxCalculation = calcMaxSpend(recipient, utxos.available);
   const sendMaxBalance = sendMaxCalculation.spendableBitcoin.toString();
   const sendMaxFee = sendMaxCalculation.spendAllFee.toString();
 
@@ -45,10 +46,10 @@ export function BitcoinSendMaxButton({
   // whenever recipient changes, update the fees
   useEffect(() => {
     if (isSendingMax) {
-      if (values.amount !== sendMaxBalance) void setFieldValue('amount', sendMaxBalance);
-      if (values.fee !== sendMaxFee) void setFieldValue('fee', sendMaxFee);
+      if (amount !== sendMaxBalance) setValue('amount', sendMaxBalance, { shouldDirty: true });
+      if (fee !== sendMaxFee) setValue('fee', sendMaxFee, { shouldDirty: true });
     }
-  }, [isSendingMax, setFieldValue, sendMaxBalance, sendMaxFee, values.fee, values.amount]);
+  }, [amount, fee, isSendingMax, sendMaxBalance, sendMaxFee, setValue]);
 
   // Hide send max button if lowest fee calc is greater
   // than available balance which will default to zero

@@ -1,5 +1,3 @@
-import { type FormikHelpers } from 'formik';
-
 import { FeeTypes, type Money } from '@leather.io/models';
 
 import { FormErrorMessages } from '@shared/error-messages';
@@ -47,13 +45,8 @@ export function useStacksCommonSendForm({
     ...routeState,
   });
 
-  async function checkFormValidation(
-    values: StacksSendFormValues,
-    formikHelpers: FormikHelpers<StacksSendFormValues>
-  ) {
-    const formErrors = await formikHelpers.validateForm();
-
-    if (isHighFeeWithNoFormErrors(formErrors, values.fee)) {
+  function checkFormValidation(values: StacksSendFormValues) {
+    if (isHighFeeWithNoFormErrors(values.fee)) {
       setShowHighFeeWarningSheet(true);
       return false;
     }
