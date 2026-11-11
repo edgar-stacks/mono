@@ -129,6 +129,11 @@ function LedgerSignStacksMsg({ account, request }: LedgerSignMsgProps) {
         },
       });
 
+      if ('error' in resp) {
+        ledgerNavigate.toOperationRejectedStep(resp.error);
+        return;
+      }
+
       // Assuming here that public keys are wrong. Alternatively, we may want
       // to proactively check the key before signing
       if (hasLedgerReturnCode(resp, LedgerError.DataIsInvalid)) {
