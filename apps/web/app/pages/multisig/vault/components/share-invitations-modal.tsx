@@ -1,3 +1,5 @@
+import { useEffect, useRef } from 'react';
+
 import { Box, Flex, styled } from 'leather-styles/jsx';
 import { CopyAddress } from '~/components/copy-address';
 import { useToast } from '~/features/toasts/use-toast';
@@ -99,9 +101,29 @@ function PendingStatus() {
   );
 }
 
-function CopyMessageButton({ message }: { message: string }) {
-  const { success: showToast } = useToast();
-  const { onCopy } = useClipboard(message);
+interface InviteCopyMessages {
+  copied: string;
+  failed: string;
+}
+
+function useInviteCopy(value: string, messages: InviteCopyMessages, isOpen: () => boolean) {
+  const toast = useToast();
+  const { onCopy } = useClipboard(value);
+
+  return async function copyInvite() {
+    const didCopy = await onCopy();
+    if (didCopy === undefined || !isOpen()) return;
+    if (didCopy) toast.success(messages.copied);
+    else toast.error(messages.failed);
+  };
+}
+
+function CopyMessageButton({ message, isOpen }: { message: string; isOpen(): boolean }) {
+  const copyInvite = useInviteCopy(
+    message,
+    { copied: 'Invite message copied', failed: 'Unable to copy invite message. Try again.' },
+    isOpen
+  );
   return (
     <BasicTooltip
       asChild
@@ -114,10 +136,7 @@ function CopyMessageButton({ message }: { message: string }) {
           height="30px"
           px="space.03"
           textStyle="label.03"
-          onClick={() => {
-            onCopy();
-            showToast('Invite message copied');
-          }}
+          onClick={() => void copyInvite()}
         >
           <Flex alignItems="center" gap="space.01">
             <CopyIcon variant="small" />
@@ -129,9 +148,12 @@ function CopyMessageButton({ message }: { message: string }) {
   );
 }
 
-function CopyLinkButton({ link }: { link: string }) {
-  const { success: showToast } = useToast();
-  const { onCopy } = useClipboard(link);
+function CopyLinkButton({ link, isOpen }: { link: string; isOpen(): boolean }) {
+  const copyInvite = useInviteCopy(
+    link,
+    { copied: 'Invite link copied', failed: 'Unable to copy invite link. Try again.' },
+    isOpen
+  );
   return (
     <Button
       variant="solid"
@@ -140,10 +162,7 @@ function CopyLinkButton({ link }: { link: string }) {
       px="space.03"
       textStyle="label.03"
       flexShrink={0}
-      onClick={() => {
-        onCopy();
-        showToast('Invite link copied');
-      }}
+      onClick={() => void copyInvite()}
     >
       <Flex alignItems="center" gap="space.01" color="ink.background-primary">
         <LinkIcon />
@@ -161,11 +180,13 @@ function PendingInviteRow({
   member,
   creatorName,
   showDivider,
+  isOpen,
 }: {
   vault: Vault;
   member: VaultMember;
   creatorName: string | null;
   showDivider: boolean;
+  isOpen(): boolean;
 }) {
   return (
     <Box
@@ -187,8 +208,11 @@ function PendingInviteRow({
         caption={<CopyAddress addr={member.address} wide />}
         action={
           <Flex alignItems="center" gap="space.02" flexShrink={0}>
-            <CopyMessageButton message={inviteMessage(vault, member, creatorName)} />
-            <CopyLinkButton link={inviteLink(vault)} />
+            <CopyMessageButton
+              message={inviteMessage(vault, member, creatorName)}
+              isOpen={isOpen}
+            />
+            <CopyLinkButton link={inviteLink(vault)} isOpen={isOpen} />
           </Flex>
         }
       />
@@ -206,6 +230,15 @@ export function ShareInvitationsModal({
   const joined = vault.members.filter(member => member.membershipStatus === 'joined');
   const creator = vault.members.find(member => member.user?.id === vault.createdBy);
   const creatorName = creator?.name ?? null;
+  const isShowingRef = useRef(isShowing);
+
+  useEffect(() => {
+    isShowingRef.current = isShowing;
+  }, [isShowing]);
+
+  function isOpen() {
+    return isShowingRef.current;
+  }
 
   return (
     <Sheet
@@ -231,6 +264,7 @@ export function ShareInvitationsModal({
                 member={member}
                 creatorName={creatorName}
                 showDivider={index > 0}
+                isOpen={isOpen}
               />
             ))}
           </Box>

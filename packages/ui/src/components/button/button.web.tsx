@@ -1,4 +1,4 @@
-import { type ComponentType, type ReactElement, isValidElement } from 'react';
+import { type ComponentType, type ReactElement, cloneElement, isValidElement } from 'react';
 
 import { styled } from 'leather-styles/jsx';
 import { isNullish } from 'remeda';
@@ -199,8 +199,8 @@ const StyledButton = styled('button', {
 // hasIconStart is derived from iconStart below, never passed in.
 export interface ButtonProps
   extends Omit<React.ComponentProps<typeof StyledButton>, 'hasIconStart'> {
-  iconStart?: ComponentType<IconProps> | ReactElement;
-  iconEnd?: ComponentType<IconProps> | ReactElement;
+  iconStart?: ComponentType<IconProps> | ReactElement<IconProps>;
+  iconEnd?: ComponentType<IconProps> | ReactElement<IconProps>;
 }
 
 export function Button(props: ButtonProps) {
@@ -234,9 +234,16 @@ export function Button(props: ButtonProps) {
 
 Button.displayName = 'Button';
 
-function renderIcon(icon: ComponentType<IconProps> | ReactElement | undefined, props: IconProps) {
-  if (isValidElement(icon) || isNullish(icon)) {
-    return icon;
+function renderIcon(
+  icon: ComponentType<IconProps> | ReactElement<IconProps> | undefined,
+  props: IconProps
+) {
+  if (isNullish(icon)) return icon;
+  if (isValidElement<IconProps>(icon)) {
+    return cloneElement(icon, {
+      variant: icon.props.variant ?? props.variant,
+      color: icon.props.color ?? props.color,
+    });
   }
   const IconComponent = icon;
   return <IconComponent {...props} />;

@@ -18,6 +18,8 @@ export default defineProject({
     environmentMatchGlobs: [
       ['app/features/bitcoin-staking/**/*.spec.tsx', 'jsdom'],
       ['app/pages/multisig/account/components/propose-transaction-modal.spec.tsx', 'jsdom'],
+      ['app/pages/multisig/vault/components/share-invitations-modal.spec.tsx', 'jsdom'],
+      ['app/pages/playground/shared/recipes/**/*.spec.tsx', 'jsdom'],
     ],
   },
 });

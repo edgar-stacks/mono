@@ -143,6 +143,7 @@ interface AvatarIconProps {
 
 function AvatarIcon({ icon, avatarSize }: AvatarIconProps) {
   if (icon) {
+    if (isDefined(icon.props.width) || isDefined(icon.props.height)) return icon;
     const iconProps = icon.props.variant
       ? { variant: icon.props.variant }
       : iconSizeMap[avatarSize];
