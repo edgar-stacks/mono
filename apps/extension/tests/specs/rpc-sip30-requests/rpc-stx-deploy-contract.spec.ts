@@ -25,7 +25,7 @@ test.describe('RPC: stx_deployContract', () => {
       await test
         .expect(
           popup.getByText(
-            'Only fees will be transferred from your account or the transaction will abort.',
+            'Nothing will leave your account, and every asset movement in this transaction must be listed below or it will abort.',
             { exact: true }
           )
         )
