@@ -3,6 +3,7 @@ import { useParams } from 'react-router';
 import { deserializeTransaction, isTokenTransferPayload } from '@stacks/transactions';
 import { Box, Stack } from 'leather-styles/jsx';
 
+import { getSbtcSponsoredTransferDetails } from '@leather.io/stacks';
 import { BasicTooltip, InfoCircleIcon } from '@leather.io/ui';
 import { baseCurrencyAmountInQuote, convertAmountToBaseUnit, sumMoney } from '@leather.io/utils';
 
@@ -27,9 +28,29 @@ import { useCryptoCurrencyMarketData } from '@app/query/common/market-data/marke
 import type { ProposalSentSummaryState } from '../../../sent-summary/proposal-sent-summary';
 import { stacksConfirmationRouteStateSchema } from '../../hooks/use-send-form-navigate';
 import { SendFormConfirmationLayout } from '../send-form-confirmation.layout';
+import { SbtcSponsoredSendFormConfirmation } from '../sip10/sbtc-sponsored-send-form-confirmation';
 import { useProposeStacksSendTransaction } from './use-propose-stacks-send-transaction';
 
 export function StacksSendFormConfirmation() {
+  const routeState = useRouteState(stacksConfirmationRouteStateSchema);
+  const { sponsorship, decimals } = routeState;
+  const tx = deserializeTransaction(routeState.tx);
+  const sbtcSponsoredDetails = sponsorship ? getSbtcSponsoredTransferDetails(tx) : null;
+
+  if (sponsorship && sbtcSponsoredDetails && decimals !== undefined)
+    return (
+      <SbtcSponsoredSendFormConfirmation
+        routeState={routeState}
+        sponsorship={sponsorship}
+        tx={tx}
+        details={sbtcSponsoredDetails}
+        decimals={decimals}
+      />
+    );
+  return <StacksStandardSendFormConfirmation />;
+}
+
+function StacksStandardSendFormConfirmation() {
   const {
     tx: txHex,
     decimals,
