@@ -1,4 +1,5 @@
 import type { BrowserContext, Page } from '@playwright/test';
+import { TransactionVersion } from '@stacks/network';
 import {
   PayloadType,
   type StacksTransactionWire,
@@ -14,7 +15,7 @@ import { getConnectedTestAppPermissionsState } from '@tests/page-object-models/o
 import { SharedComponentsSelectors } from '@tests/selectors/shared-component.selectors';
 import { z } from 'zod';
 
-import type { RpcParams, stxTransferStx } from '@leather.io/rpc';
+import { RpcErrorCode, type RpcParams, type stxTransferStx } from '@leather.io/rpc';
 
 import { RpcErrorMessage } from '@shared/rpc/methods/validation.utils';
 
@@ -34,6 +35,41 @@ function getTokenTransferPayload(tx: StacksTransactionWire): TokenTransferPayloa
 // Mocked fee estimations resolve to these three tiers (see mockStacksFeeRequests)
 const slowFee = { displayed: '0.0002 STX', microStx: 200 };
 const standardFee = { displayed: '0.0004 STX', microStx: 400 };
+
+const walletOnTestnetState = { networks: { ids: [], entities: {}, currentNetworkId: 'testnet' } };
+
+function initiateSip30RpcTransferStx(page: Page) {
+  return async (params: RpcParams<typeof stxTransferStx>) =>
+    page.evaluate(requestLeatherProvider, { method: 'stx_transferStx', params: { ...params } });
+}
+
+function approveAndCaptureBroadcastedTx(
+  context: BrowserContext,
+  { editFeeToSlow }: { editFeeToSlow: boolean }
+) {
+  return async () => {
+    const popup = await context.waitForEvent('page');
+
+    await test.expect(popup.getByText('0.0001 STX', { exact: true })).toBeVisible();
+    await test.expect(popup.getByText(standardFee.displayed, { exact: true })).toBeVisible();
+
+    if (editFeeToSlow) {
+      await popup.getByText('Standard', { exact: true }).click();
+      await test.expect(popup.getByText('Edit fee', { exact: true })).toBeVisible();
+      await popup.getByText('Slow', { exact: true }).click();
+      await popup.getByText('Save', { exact: true }).click();
+      await test.expect(popup.getByText(slowFee.displayed, { exact: true })).toBeVisible();
+    }
+
+    const broadcastRequestPromise = popup.waitForRequest('**/v2/transactions');
+    await popup.getByText('Approve', { exact: true }).click();
+    const broadcastRequest = await broadcastRequestPromise;
+
+    const requestBody = broadcastRequest.postData();
+    if (!requestBody) throw new Error('Broadcast request has no body');
+    return deserializeTransaction(broadcastRequestBodySchema.parse(JSON.parse(requestBody)).tx);
+  };
+}
 
 test.describe('RPC: stx_transferStx', () => {
   test.beforeEach(async ({ extensionId, globalPage, onboardingPage, page }) => {
@@ -66,11 +102,6 @@ test.describe('RPC: stx_transferStx', () => {
     };
   }
 
-  function initiateSip30RpcTransferStx(page: Page) {
-    return async (params: RpcParams<typeof stxTransferStx>) =>
-      page.evaluate(requestLeatherProvider, { method: 'stx_transferStx', params: { ...params } });
-  }
-
   test('shows memo on SIP-30 STX transfer approval', async ({ page, context }) => {
     const [result] = await Promise.all([
       initiateSip30RpcTransferStx(page)({
@@ -91,34 +122,6 @@ test.describe('RPC: stx_transferStx', () => {
       },
     });
   });
-
-  function approveAndCaptureBroadcastedTx(
-    context: BrowserContext,
-    { editFeeToSlow }: { editFeeToSlow: boolean }
-  ) {
-    return async () => {
-      const popup = await context.waitForEvent('page');
-
-      await test.expect(popup.getByText('0.0001 STX', { exact: true })).toBeVisible();
-      await test.expect(popup.getByText(standardFee.displayed, { exact: true })).toBeVisible();
-
-      if (editFeeToSlow) {
-        await popup.getByText('Standard', { exact: true }).click();
-        await test.expect(popup.getByText('Edit fee', { exact: true })).toBeVisible();
-        await popup.getByText('Slow', { exact: true }).click();
-        await popup.getByText('Save', { exact: true }).click();
-        await test.expect(popup.getByText(slowFee.displayed, { exact: true })).toBeVisible();
-      }
-
-      const broadcastRequestPromise = popup.waitForRequest('**/v2/transactions');
-      await popup.getByText('Approve', { exact: true }).click();
-      const broadcastRequest = await broadcastRequestPromise;
-
-      const requestBody = broadcastRequest.postData();
-      if (!requestBody) throw new Error('Broadcast request has no body');
-      return deserializeTransaction(broadcastRequestBodySchema.parse(JSON.parse(requestBody)).tx);
-    };
-  }
 
   test('approves a SIP-30 STX transfer broadcasting the displayed fee', async ({
     page,
@@ -215,5 +218,48 @@ test.describe('RPC: stx_transferStx', () => {
         message: RpcErrorMessage.UserRejectedOperation,
       },
     });
+  });
+});
+
+test.describe('RPC: stx_transferStx with the wallet switched to testnet', () => {
+  test.beforeEach(async ({ extensionId, globalPage, onboardingPage, page }) => {
+    await globalPage.setupAndUseApiCalls(extensionId);
+    await onboardingPage.signInWithTestAccount(extensionId, {
+      ...getConnectedTestAppPermissionsState(),
+      ...walletOnTestnetState,
+    });
+    await page.goto('localhost:3000');
+  });
+
+  test('opens on mainnet when the request has no network', async ({ page, context }) => {
+    const mockedTxid = await mockStacksBroadcastTransaction(context);
+
+    const [result, broadcastedTx] = await Promise.all([
+      initiateSip30RpcTransferStx(page)({
+        amount: 100,
+        recipient: TEST_ACCOUNT_2_STX_ADDRESS,
+      }),
+      approveAndCaptureBroadcastedTx(context, { editFeeToSlow: false })(),
+    ]);
+
+    test.expect(broadcastedTx.transactionVersion).toEqual(TransactionVersion.Mainnet);
+    test.expect(transferStxResultSchema.parse(result.result).txid).toEqual(mockedTxid);
+  });
+
+  test('rejects an unknown network without opening a popup', async ({ page, context }) => {
+    const openedPages: unknown[] = [];
+    context.on('page', openedPage => openedPages.push(openedPage));
+
+    const result = await initiateSip30RpcTransferStx(page)({
+      amount: 100,
+      recipient: TEST_ACCOUNT_2_STX_ADDRESS,
+      network: 'Testnet',
+    });
+
+    test.expect(result.error).toEqual({
+      code: RpcErrorCode.INVALID_PARAMS,
+      message: test.expect.stringContaining("Unknown network: 'Testnet'"),
+    });
+    test.expect(openedPages).toHaveLength(0);
   });
 });

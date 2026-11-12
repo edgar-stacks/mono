@@ -19,6 +19,8 @@ import {
   policyStateOverrides,
 } from '@tests/mocks/mock-policies';
 import { getConnectedTestAppPermissionsState } from '@tests/page-object-models/onboarding.page';
+import { SettingsSelectors } from '@tests/selectors/settings.selectors';
+import { z } from 'zod';
 
 import { deriveStxMultisigAddress } from '@leather.io/stacks';
 import { assertExistence } from '@leather.io/utils';
@@ -30,6 +32,7 @@ interface PersistedRootState {
 }
 
 const mainnetChainId = 1;
+const testnetChainId = 2147483648;
 const stacksPolicy = makeStacksPolicy({
   address: deriveStxMultisigAddress({
     publicKeys: exampleStacksMultisigPublicKeys,
@@ -37,6 +40,16 @@ const stacksPolicy = makeStacksPolicy({
     chainId: mainnetChainId,
   }),
 });
+const testnetStacksPolicy = makeStacksPolicy({
+  address: deriveStxMultisigAddress({
+    publicKeys: exampleStacksMultisigPublicKeys,
+    threshold: 2,
+    chainId: testnetChainId,
+  }),
+  networkId: 'testnet',
+});
+
+const proposeRequestBodySchema = z.object({ multisigAddress: z.string() });
 
 function makeCallContractParams(recipient: string) {
   const args: ClarityValue[] = [
@@ -76,6 +89,20 @@ function initiateGetAddresses(page: Page, params: unknown) {
 
 async function approveGetAddresses(context: BrowserContext) {
   const popup = await context.waitForEvent('page');
+  const button = popup.getByTestId('get-addresses-approve-button');
+  await expect(button).toBeVisible();
+  await button.click();
+}
+
+async function approveGetAddressesAsSinglesig(context: BrowserContext) {
+  const popup = await context.waitForEvent('page');
+  const singlesigAccountSelector = SettingsSelectors.SwitchAccountItemIndex.replace('[index]', '0');
+  const currentAccount = popup.getByTestId(singlesigAccountSelector);
+  await expect(currentAccount).toBeVisible({ timeout: 10_000 });
+  await currentAccount.click();
+  const singlesigAccount = popup.getByRole('dialog').getByTestId(singlesigAccountSelector);
+  await expect(singlesigAccount).toBeVisible();
+  await singlesigAccount.click();
   const button = popup.getByTestId('get-addresses-approve-button');
   await expect(button).toBeVisible();
   await button.click();
@@ -192,7 +219,7 @@ test.describe('RPC: per-origin policy binding', () => {
     await page.goto('localhost:3000');
 
     const requestPromise = initiateGetAddresses(page, { allowPolicyAccounts: true });
-    await approveGetAddresses(context);
+    await approveGetAddressesAsSinglesig(context);
     const connectResult = await requestPromise;
     test
       .expect(getResponseAddresses(connectResult).some(address => address.kind === 'single-sig'))
@@ -200,5 +227,40 @@ test.describe('RPC: per-origin policy binding', () => {
 
     const permission = await readPersistedPermission(page, extensionId)();
     test.expect(permission.policyId).toBeUndefined();
+  });
+
+  test('a policy-bound request without a network proposes on the policy network', async ({
+    page,
+    context,
+    extensionId,
+    onboardingPage,
+  }) => {
+    test.slow();
+
+    await mockProposeMultisigTransaction(context);
+    await mockFundedStacksAddress(context, testnetStacksPolicy.address);
+    await onboardingPage.signInWithTestAccount(extensionId, {
+      ...getConnectedTestAppPermissionsState({ policyId: testnetStacksPolicy.id }),
+      ...policyStateOverrides({ policies: [testnetStacksPolicy] }),
+    });
+    await page.goto('localhost:3000');
+
+    const proposeRequestPromise = context.waitForEvent('request', request =>
+      request.url().endsWith('/v1/multisig-ext/propose')
+    );
+    const [result] = await Promise.all([
+      requestStxCallContract(page, TEST_ACCOUNT_2_STX_ADDRESS),
+      clickPropose(context),
+    ]);
+
+    assertExistence(result, 'Expected result');
+    test.expect(result.result).toMatchObject({
+      proposalId: exampleMultisigTransactionId,
+      status: 'proposed',
+    });
+    const proposeRequest = await proposeRequestPromise;
+    test
+      .expect(proposeRequestBodySchema.parse(proposeRequest.postDataJSON()).multisigAddress)
+      .toEqual(testnetStacksPolicy.address);
   });
 });

@@ -24,6 +24,7 @@ import {
   getOriginatingFrameFromPort,
   sendErrorResponseOnUserPopupClose,
   triggerRequestPopupWindowOpen,
+  validateRequestNetwork,
 } from '../rpc-request-utils';
 
 export const signMessageHandler = defineRpcRequestHandler(
@@ -94,11 +95,18 @@ export const signMessageHandler = defineRpcRequestHandler(
       return;
     }
 
+    const { status: networkStatus } = await validateRequestNetwork({
+      id: request.id,
+      method: request.method,
+      network: request.params.network,
+      port,
+    });
+    if (networkStatus === 'failure') return;
+
     void trackRpcRequestSuccess({ endpoint: request.method });
 
     const requestParams: RequestParams = [
       ['message', request.params.message],
-      ['network', request.params.network ?? 'mainnet'],
       ['paymentType', paymentType],
       ['requestId', request.id],
     ];
@@ -109,7 +117,8 @@ export const signMessageHandler = defineRpcRequestHandler(
 
     const { frameId, urlParams, tabId } = await createConnectingAppSearchParamsWithLastKnownAccount(
       port,
-      requestParams
+      requestParams,
+      { network: request.params.network }
     );
     const { id } = await triggerRequestPopupWindowOpen(RouteUrls.RpcSignBip322Message, urlParams);
 

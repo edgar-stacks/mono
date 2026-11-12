@@ -4,9 +4,9 @@ import { RpcErrorCode, type RpcRequests } from '@leather.io/rpc';
 
 import { createMockPort } from './create-mock-port';
 import {
-  createConnectingAppMetadataSearchParams,
   createConnectingAppSearchParamsWithLastKnownAccount,
   validateConnectedWalletExists,
+  validateRequestNetwork,
 } from './rpc-request-utils';
 
 const mocks = vi.hoisted(() => ({
@@ -60,19 +60,33 @@ function buildPermission(overrides: Record<string, unknown> = {}) {
 function buildState({
   permission,
   walletFingerprints,
+  policies = {},
+  networks = {},
 }: {
   permission?: Record<string, unknown>;
   walletFingerprints: string[];
+  policies?: Record<string, unknown>;
+  networks?: Record<string, unknown>;
 }) {
   return {
     appPermissions: { entities: permission ? { [hostname]: permission } : {} },
     wallets: { entities: buildWalletEntities(walletFingerprints) },
+    policy: { entities: policies },
+    networks: { entities: networks },
   };
 }
 
-describe(createConnectingAppMetadataSearchParams.name, () => {
-  test('preserves the originating frame in popup request metadata', () => {
-    const result = createConnectingAppMetadataSearchParams(buildPort());
+describe('popup request metadata', () => {
+  beforeEach(() => {
+    mocks.getRootState.mockResolvedValue(buildState({ walletFingerprints: [] }));
+  });
+
+  afterEach(() => {
+    vi.clearAllMocks();
+  });
+
+  test('preserves the originating frame in popup request metadata', async () => {
+    const result = await createConnectingAppSearchParamsWithLastKnownAccount(buildPort());
 
     expect(result.frameId).toBe(frameId);
     expect(result.tabId).toBe(tabId);
@@ -80,8 +94,8 @@ describe(createConnectingAppMetadataSearchParams.name, () => {
     expect(result.urlParams.get('tabId')).toBe(tabId.toString());
   });
 
-  test('sets the frame origin and the top-level tab origin', () => {
-    const result = createConnectingAppMetadataSearchParams(
+  test('sets the frame origin and the top-level tab origin', async () => {
+    const result = await createConnectingAppSearchParamsWithLastKnownAccount(
       buildPort('https://top.example.com/some/page')
     );
 
@@ -89,8 +103,8 @@ describe(createConnectingAppMetadataSearchParams.name, () => {
     expect(result.urlParams.get('topOrigin')).toBe('https://top.example.com');
   });
 
-  test('omits the top origin when the sender tab has no url', () => {
-    const result = createConnectingAppMetadataSearchParams(buildPort());
+  test('omits the top origin when the sender tab has no url', async () => {
+    const result = await createConnectingAppSearchParamsWithLastKnownAccount(buildPort());
 
     expect(result.urlParams.get('topOrigin')).toBeNull();
   });
@@ -150,6 +164,184 @@ describe(createConnectingAppSearchParamsWithLastKnownAccount.name, () => {
     expect(result.urlParams.get('fingerprint')).toBeNull();
     expect(result.urlParams.get('policyId')).toBeNull();
   });
+
+  test('skips a stored binding without an accountIndex', async () => {
+    const permission = buildPermission({ policyId: `${fingerprint}/0/bc1qaddr/mainnet` });
+    Reflect.deleteProperty(permission, 'accountIndex');
+    mocks.getRootState.mockResolvedValue(buildState({ permission, walletFingerprints: [] }));
+
+    const result = await createConnectingAppSearchParamsWithLastKnownAccount(buildPort());
+
+    expect(result.urlParams.get('accountIndex')).toBeNull();
+    expect(result.urlParams.get('fingerprint')).toBeNull();
+    expect(result.urlParams.get('policyId')).toBeNull();
+  });
+
+  test.each([null, '1', 1.5, Number.NaN])(
+    'skips a stored binding whose accountIndex is %s',
+    async accountIndex => {
+      mocks.getRootState.mockResolvedValue(
+        buildState({ permission: buildPermission({ accountIndex }), walletFingerprints: [] })
+      );
+
+      const result = await createConnectingAppSearchParamsWithLastKnownAccount(buildPort());
+
+      expect(result.urlParams.get('accountIndex')).toBeNull();
+      expect(result.urlParams.get('fingerprint')).toBeNull();
+    }
+  );
+
+  test('keeps the request-scoped account when the stored binding is invalid', async () => {
+    mocks.getRootState.mockResolvedValue(
+      buildState({ permission: buildPermission({ accountIndex: '1' }), walletFingerprints: [] })
+    );
+
+    const result = await createConnectingAppSearchParamsWithLastKnownAccount(buildPort(), [
+      ['accountIndex', '2'],
+    ]);
+
+    expect(result.urlParams.get('accountIndex')).toBe('2');
+    expect(result.urlParams.get('fingerprint')).toBeNull();
+  });
+
+  test('defaults the network to mainnet when the request has none', async () => {
+    mocks.getRootState.mockResolvedValue(
+      buildState({ permission: buildPermission(), walletFingerprints: [] })
+    );
+
+    const result = await createConnectingAppSearchParamsWithLastKnownAccount(buildPort());
+
+    expect(result.urlParams.get('network')).toBe('mainnet');
+  });
+
+  test('defaults the network to mainnet when the origin has no permission', async () => {
+    mocks.getRootState.mockResolvedValue(buildState({ walletFingerprints: [] }));
+
+    const result = await createConnectingAppSearchParamsWithLastKnownAccount(buildPort());
+
+    expect(result.urlParams.get('network')).toBe('mainnet');
+  });
+
+  test('defaults the network to the bound policy network', async () => {
+    const policyId = `${fingerprint}/0/tb1qaddr/testnet4`;
+    mocks.getRootState.mockResolvedValue(
+      buildState({
+        permission: buildPermission({ policyId }),
+        walletFingerprints: [],
+        policies: { [policyId]: { id: policyId, networkId: 'testnet4' } },
+      })
+    );
+
+    const result = await createConnectingAppSearchParamsWithLastKnownAccount(buildPort());
+
+    expect(result.urlParams.get('network')).toBe('testnet4');
+  });
+
+  test('uses an explicit network over the bound policy network', async () => {
+    const policyId = `${fingerprint}/0/tb1qaddr/testnet4`;
+    mocks.getRootState.mockResolvedValue(
+      buildState({
+        permission: buildPermission({ policyId }),
+        walletFingerprints: [],
+        policies: { [policyId]: { id: policyId, networkId: 'testnet4' } },
+      })
+    );
+
+    const result = await createConnectingAppSearchParamsWithLastKnownAccount(buildPort(), [], {
+      network: 'signet',
+    });
+
+    expect(result.urlParams.get('network')).toBe('signet');
+    expect(result.urlParams.getAll('network')).toHaveLength(1);
+  });
+
+  test('defaults the network to mainnet when the bound policy no longer exists', async () => {
+    mocks.getRootState.mockResolvedValue(
+      buildState({
+        permission: buildPermission({ policyId: `${fingerprint}/0/tb1qaddr/testnet4` }),
+        walletFingerprints: [],
+      })
+    );
+
+    const result = await createConnectingAppSearchParamsWithLastKnownAccount(buildPort());
+
+    expect(result.urlParams.get('network')).toBe('mainnet');
+  });
+});
+
+describe(validateRequestNetwork.name, () => {
+  const customNetworkId = 'my-devnet';
+
+  beforeEach(() => {
+    vi.stubGlobal('chrome', { tabs: { sendMessage: mocks.sendMessage } });
+    mocks.getRootState.mockResolvedValue(
+      buildState({
+        walletFingerprints: [],
+        networks: { [customNetworkId]: { id: customNetworkId } },
+      })
+    );
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.clearAllMocks();
+  });
+
+  function validate(network: string | undefined) {
+    return validateRequestNetwork({
+      id: 'req-1',
+      method: 'getAddresses',
+      network,
+      port: buildPort(),
+    });
+  }
+
+  test('accepts a request without a network', async () => {
+    expect(await validate(undefined)).toEqual({ status: 'success' });
+    expect(mocks.sendMessage).not.toHaveBeenCalled();
+  });
+
+  test.each([
+    'mainnet',
+    'testnet',
+    'testnet4',
+    'signet',
+    'sbtcTestnet',
+    'sbtcDevenv',
+    'devnet',
+    'private-1',
+    'stakingTestnet',
+  ])('accepts the default network %s', async network => {
+    expect(await validate(network)).toEqual({ status: 'success' });
+    expect(mocks.sendMessage).not.toHaveBeenCalled();
+  });
+
+  test('accepts the id of a custom network', async () => {
+    expect(await validate(customNetworkId)).toEqual({ status: 'success' });
+    expect(mocks.sendMessage).not.toHaveBeenCalled();
+  });
+
+  test.each(['unknown', 'Testnet', '', '  '])(
+    'rejects the unknown network "%s" with INVALID_PARAMS',
+    async network => {
+      expect(await validate(network)).toEqual({ status: 'failure' });
+      expect(mocks.sendMessage).toHaveBeenCalledWith(
+        tabId,
+        expect.objectContaining({
+          id: 'req-1',
+          error: objectContaining({
+            code: RpcErrorCode.INVALID_PARAMS,
+            message: expect.stringContaining(`Unknown network: '${network}'`),
+          }),
+        }),
+        { frameId }
+      );
+      expect(mocks.trackRpcRequestError).toHaveBeenCalledWith({
+        endpoint: 'getAddresses',
+        error: 'Unknown network',
+      });
+    }
+  );
 });
 
 describe('validateConnectedWalletExists', () => {
@@ -194,6 +386,25 @@ describe('validateConnectedWalletExists', () => {
 
   test('fails with UNAUTHENTICATED when no permission exists for the origin', async () => {
     mocks.getRootState.mockResolvedValue(buildState({ walletFingerprints: [fingerprint] }));
+
+    const result = await validateConnectedWalletExists(request, buildPort());
+
+    expect(result).toEqual({ status: 'failure' });
+    expect(mocks.sendMessage).toHaveBeenCalledWith(
+      tabId,
+      expect.objectContaining({
+        error: objectContaining({ code: RpcErrorCode.UNAUTHENTICATED }),
+      }),
+      { frameId }
+    );
+  });
+
+  test('fails with UNAUTHENTICATED when the permission has no accountIndex', async () => {
+    const permission = buildPermission();
+    Reflect.deleteProperty(permission, 'accountIndex');
+    mocks.getRootState.mockResolvedValue(
+      buildState({ permission, walletFingerprints: [fingerprint] })
+    );
 
     const result = await validateConnectedWalletExists(request, buildPort());
 
