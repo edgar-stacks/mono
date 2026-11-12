@@ -37,11 +37,12 @@ test.describe('RPC: stx_callContract', () => {
       await test
         .expect(
           popup.getByText(
-            'Only fees will be transferred from your account or the transaction will abort.',
+            'Nothing will leave your account, and every asset movement in this transaction must be listed below or it will abort.',
             { exact: true }
           )
         )
         .toBeVisible();
+      await test.expect(popup.getByText('Deny mode', { exact: true })).toBeVisible();
       await test.expect(popup.getByText('bns', { exact: true })).toBeVisible();
       await test.expect(popup.getByText('name-transfer', { exact: true })).toBeVisible();
       await test.expect(popup.getByText('0x6964', { exact: true })).toBeVisible();
@@ -71,6 +72,28 @@ test.describe('RPC: stx_callContract', () => {
           )
         )
         .toBeVisible();
+      const btn = popup.getByText('Confirm', { exact: true });
+
+      if (buttonToPress === 'Confirm') {
+        await btn.click();
+      } else {
+        await popup.close();
+      }
+    };
+  }
+
+  function checkVisibleOriginatorModeWithNoPostConditions(context: BrowserContext) {
+    return async (buttonToPress: 'Cancel' | 'Confirm') => {
+      const popup = await context.waitForEvent('page');
+      await test
+        .expect(
+          popup.getByText(
+            'Nothing will leave your account beyond fees. This contract may still move its own assets.',
+            { exact: true }
+          )
+        )
+        .toBeVisible();
+      await test.expect(popup.getByText('Originator mode', { exact: true })).toBeVisible();
       const btn = popup.getByText('Confirm', { exact: true });
 
       if (buttonToPress === 'Confirm') {
@@ -142,6 +165,29 @@ test.describe('RPC: stx_callContract', () => {
         postConditions: ['00021a8813c5086ddf53beada66744d40b1dcd0ac1d42001000000000000002a'],
       }),
       checkVisiblePostConditions(context)('Cancel'),
+    ]);
+
+    delete result.id;
+
+    test.expect(result).toEqual({
+      jsonrpc: '2.0',
+      error: {
+        code: 4001,
+        message: RpcErrorMessage.UserRejectedOperation,
+      },
+    });
+  });
+
+  test('call contract with originator mode and no post conditions', async ({ page, context }) => {
+    const [result] = await Promise.all([
+      initiateSip30RpcCallContract(page)({
+        contract: 'ST1X6M947Z7E58CNE0H8YJVJTVKS9VW0PHEG3NHN3.dull-sapphire-bird',
+        functionName: 'buy',
+        functionArgs: ['010000000000000000000000000000002a'],
+        postConditions: [],
+        postConditionMode: 'originator',
+      }),
+      checkVisibleOriginatorModeWithNoPostConditions(context)('Cancel'),
     ]);
 
     delete result.id;

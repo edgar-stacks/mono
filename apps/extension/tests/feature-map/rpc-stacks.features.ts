@@ -126,7 +126,7 @@ export const rpcStacksFeatures = [
       'apps/extension/tests/specs/rpc-policy-propose/debug-ledger.spec.ts',
     ],
     description:
-      'Approver for a contract call: the contract address and name, the function and its arguments (each hex Clarity value decoded with deserializeCV and shown through cvToString; function-argument-list.tsx), the post conditions (or the allow-mode warning "This transaction can transfer any of your assets"), the signing account, and fee and nonce rows. The title is "Sign transaction" when post conditions are present, otherwise "Sign contract". The ready selector (the contract AddressDisplayer) renders only once the contract ABI loads, which setupMockApis supplies through mockStacksContractInterfaceRequests only for SP000000000000000000002Q6VF78.bns, living-leather and leo-token; any other contract renders "Not a valid contract" and the ready selector never appears, as in the two dull-sapphire-bird tests of rpc-stx-call-contract.spec.ts. An unknown function "Function not found" (contract-call-details.layout.tsx). ' +
+      'Approver for a contract call: the contract address and name, the function and its arguments (each hex Clarity value decoded with deserializeCV and shown through cvToString; function-argument-list.tsx), the post conditions under a "Deny mode", "Originator mode" or "Allow mode" badge (with none, deny and originator modes each show their own copy; allow mode shows the warning "This transaction can transfer any of your assets"), the signing account, and fee and nonce rows. The title is "Sign transaction" when post conditions are present, otherwise "Sign contract". The ready selector (the contract AddressDisplayer) renders only once the contract ABI loads, which setupMockApis supplies through mockStacksContractInterfaceRequests only for SP000000000000000000002Q6VF78.bns, living-leather and leo-token; any other contract renders "Not a valid contract" and the ready selector never appears, as in the two dull-sapphire-bird tests of rpc-stx-call-contract.spec.ts. An unknown function "Function not found" (contract-call-details.layout.tsx). ' +
       broadcastNote +
       ' When the origin is bound to a Stacks multisig policy the screen shows both the multisig and the signer and "Propose transaction" posts the proposal to the coordinator and returns { transaction, proposalId, status: "proposed" }; it is blocked with "Available balance insufficient" when the multisig cannot pay, and a failed proposal opens the broadcast-error sheet titled "Unable to propose transaction". ' +
       cancelOnlySpecNote +
@@ -162,7 +162,7 @@ export const rpcStacksFeatures = [
     actions: ['OnboardingPage.signInWithTestAccount'],
     specs: ['apps/extension/tests/specs/rpc-sip30-requests/rpc-stx-deploy-contract.spec.ts'],
     description:
-      'Approver titled "Deploy contract": a post-conditions section ("Only fees will be transferred from your account or the transaction will abort." when there are none), then the signing account, the deploying address with the contract name and the Clarity code body, and fee and nonce rows. ' +
+      'Approver titled "Deploy contract": a post-conditions section with a mode badge ("Nothing will leave your account, and every asset movement in this transaction must be listed below or it will abort." when there are none), then the signing account, the deploying address with the contract name and the Clarity code body, and fee and nonce rows. ' +
       broadcastNote +
       ' ' +
       cancelOnlySpecNote +
