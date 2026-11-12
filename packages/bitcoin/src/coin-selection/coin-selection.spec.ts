@@ -266,6 +266,26 @@ describe(determineUtxosForSpend.name, () => {
 });
 
 describe('mixed input types', () => {
+  test('that dropping dust change reports inputs minus outputs as the fee', () => {
+    const utxos = generateMockTransactions([10_000]);
+    const feeRate = 1;
+    const estimation = determineUtxosForSpend({
+      utxos,
+      recipients: [{ address: recipientAddress, amount: createMoney(9700, 'BTC') }],
+      feeRate,
+    });
+    const noChangeSize = getSizeInfo({
+      utxos,
+      recipients: [{ address: recipientAddress, amount: createMoney(9700, 'BTC') }],
+      isSendMax: true,
+    });
+
+    expect(estimation.outputs).toHaveLength(1);
+    expect(estimation.fee.amount.toNumber()).toEqual(10_000 - 9700);
+    expect(estimation.size).toEqual(noChangeSize.txVBytes);
+    expect(estimation.txVBytes).toEqual(noChangeSize.txVBytes);
+  });
+
   test('that spending from P2TR-only inputs produces correct fee estimation', () => {
     const taprootUtxos = generateMockTaprootTransactions([50_000]);
     const estimation = determineUtxosForSpend({
