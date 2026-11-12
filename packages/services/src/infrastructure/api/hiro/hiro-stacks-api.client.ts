@@ -17,12 +17,14 @@ import { HiroMultiPageRequest, fetchHiroCursorPages, fetchHiroPages } from './hi
 import { hiroApiRequestsPriorityLevels } from './hiro-request-priorities';
 import {
   CallReadOnlyFunctionArgs,
+  GetContractMapEntryArgs,
   HiroAddressBalanceResponse,
   HiroAddressFtBalancesResponse,
   HiroAddressStxBalanceResponse,
   HiroAddressTransaction,
   HiroAddressTransactionsResponse,
   HiroBalanceChangesResponse,
+  HiroContractMapEntryResponse,
   HiroFtMetadata,
   HiroMetadata,
   HiroPageRequest,
@@ -566,6 +568,43 @@ export class HiroStacksApiClient {
         contractName,
         functionName,
         body.arguments,
+      ],
+      fetchFn,
+      { skipCache }
+    );
+  }
+
+  public async getContractMapEntry(
+    { contractAddress, contractName, mapName, key }: GetContractMapEntryArgs,
+    { signal, skipCache }: ApiRequestOptions = {}
+  ): Promise<ClarityValue> {
+    const serializedKey = cvToHex(key);
+    const fetchFn = async () => {
+      const res = await this.limiter.add(
+        RateLimiterType.HiroStacks,
+        () =>
+          this._axios.post<HiroContractMapEntryResponse>(
+            `${selectStacksApiUrl(this.settings.getSettings())}/v2/map_entry/${contractAddress}/${contractName}/${mapName}?proof=0`,
+            JSON.stringify(serializedKey),
+            { signal, headers: { 'Content-Type': 'application/json' } }
+          ),
+        {
+          priority: hiroApiRequestsPriorityLevels.getContractMapEntry,
+          signal,
+          throwOnTimeout: true,
+        }
+      );
+      return hexToCV(res.data.data);
+    };
+
+    return await this.cache.fetchWithCache(
+      [
+        'hiro-stacks-get-contract-map-entry',
+        contractAddress,
+        contractName,
+        mapName,
+        serializedKey,
+        selectStacksChainId(this.settings.getSettings()),
       ],
       fetchFn,
       { skipCache }

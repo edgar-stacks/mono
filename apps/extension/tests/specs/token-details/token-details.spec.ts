@@ -194,6 +194,17 @@ test.describe('Token details', () => {
         await expect(page.getByTestId(TokenDetailsSelectors.TokenDetailsName)).toBeVisible();
       });
 
+      test('that STX token details has no more actions button while accountShuffle is off', async ({
+        homePage,
+        page,
+      }) => {
+        const stxAsset = homePage.assetList.getByTestId(CoreAssetSelectors.StxAsset);
+        await stxAsset.click();
+
+        await expect(page.getByTestId(TokenDetailsSelectors.TokenDetailsSendButton)).toBeVisible();
+        await expect(page.getByTestId(TokenDetailsSelectors.TokenDetailsMoreButton)).toHaveCount(0);
+      });
+
       test('that receive modal opens from STX token details', async ({ homePage, page }) => {
         const stxAsset = homePage.assetList.getByTestId(CoreAssetSelectors.StxAsset);
         await stxAsset.click();
