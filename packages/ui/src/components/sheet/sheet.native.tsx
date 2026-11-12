@@ -1,4 +1,4 @@
-import { type RefObject, useEffect, useState } from 'react';
+import { type ComponentProps, type RefObject, useEffect, useState } from 'react';
 import { BackHandler } from 'react-native';
 
 import BottomSheet, {
@@ -6,12 +6,12 @@ import BottomSheet, {
   type BottomSheetModalProps,
   BottomSheetModalProvider,
   type BottomSheetProps,
+  type BottomSheetScrollView,
   BottomSheetTextInput,
+  type BottomSheetView,
   type SNAP_POINT_TYPE,
   useBottomSheetModal,
 } from '@gorhom/bottom-sheet';
-import { type BottomSheetScrollViewProps } from '@gorhom/bottom-sheet/lib/typescript/components/bottomSheetScrollable/types';
-import { type BottomSheetViewProps } from '@gorhom/bottom-sheet/lib/typescript/components/bottomSheetView/types';
 import { createBox } from '@shopify/restyle';
 
 import { type Theme } from '../../theme-native';
@@ -102,8 +102,8 @@ export type SheetInstance = BottomSheetModal;
 export type PermanentSheetInstance = BottomSheet;
 export type SheetRef = RefObject<SheetInstance | null>;
 export const SheetModalProvider = BottomSheetModalProvider;
-Sheet.View = createBox<Theme, BottomSheetViewProps>(SheetView);
-Sheet.ScrollView = createBox<Theme, BottomSheetScrollViewProps>(SheetScrollView);
+Sheet.View = createBox<Theme, ComponentProps<typeof BottomSheetView>>(SheetView);
+Sheet.ScrollView = createBox<Theme, ComponentProps<typeof BottomSheetScrollView>>(SheetScrollView);
 Sheet.SectionList = SheetSectionList;
 Sheet.VirtualizedList = SheetVirtualizedList;
 Sheet.FlashList = SheetFlashList;
