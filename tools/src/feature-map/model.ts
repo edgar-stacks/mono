@@ -18,6 +18,7 @@ import {
 } from './routers-parser.js';
 import {
   type PageObjectAction,
+  type RpcCatalogEntry,
   type RpcHandler,
   type SelectorObject,
   type SetupMocks,
@@ -25,15 +26,19 @@ import {
   loadFeatureFiles,
   loadFeatureFlags,
   loadMockFunctions,
+  loadNetworkIds,
   loadPageObjectActions,
+  loadPersistWhitelist,
   loadRouteUrls,
   loadRouterFiles,
+  loadRpcCatalog,
   loadRpcHandlers,
   loadRpcMethods,
   loadSelectorObjects,
   loadSelectorTable,
   loadSetupMocks,
   loadSpecs,
+  loadVerifyMockRegistry,
 } from './test-assets.js';
 import { type SourceLocation, type StringTable, mergeStringTables } from './ts-ast.js';
 
@@ -52,6 +57,10 @@ export interface FeatureMapModel {
   readonly rpcMethods: ReadonlySet<string>;
   readonly selectorObjects: ReadonlyMap<string, SelectorObject>;
   readonly rpcHandlers: ReadonlyMap<string, RpcHandler>;
+  readonly mockRegistry: ReadonlySet<string>;
+  readonly persistWhitelist: readonly string[];
+  readonly networkIds: readonly string[];
+  readonly rpcCatalog: readonly RpcCatalogEntry[];
 }
 
 function parseAllFeatures(files: readonly string[], table: StringTable): FeaturesParseResult {
@@ -97,6 +106,10 @@ export function buildFeatureMapModel(config: FeatureMapAppConfig): FeatureMapMod
     rpcMethods: loadRpcMethods(config),
     selectorObjects: loadSelectorObjects(config),
     rpcHandlers: loadRpcHandlers(config),
+    mockRegistry: loadVerifyMockRegistry(config),
+    persistWhitelist: loadPersistWhitelist(config),
+    networkIds: loadNetworkIds(config),
+    rpcCatalog: loadRpcCatalog(config),
   };
 }
 
@@ -177,7 +190,7 @@ function paramNameOf(segment: string): string | undefined {
   return undefined;
 }
 
-function substituteParams(value: string, params: readonly FeatureParam[]): string {
+export function substituteParams(value: string, params: readonly FeatureParam[]): string {
   return value
     .split('/')
     .map(segment => {

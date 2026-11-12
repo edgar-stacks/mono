@@ -193,6 +193,10 @@ function model(overrides: Partial<FeatureMapModel>): FeatureMapModel {
     rpcMethods: new Set(['open']),
     selectorObjects: new Map(),
     rpcHandlers: new Map(),
+    mockRegistry: new Set(['setupMockApis', 'mockStacksFeeRequests']),
+    persistWhitelist: ['active', 'networks', 'wallets', 'softwareKeys'],
+    networkIds: ['mainnet', 'testnet4'],
+    rpcCatalog: [],
     ...overrides,
   };
 }
@@ -509,5 +513,77 @@ describe('router flags and orphan sheets', () => {
     expect(result.errors).toEqual([
       "entry 'orphan' (apps/extension/tests/feature-map/home.features.ts:1): route 'edit-tx-nonce' is not mounted under any of this entry's routes; it only nests under other screens. Fix: move it to the entry whose route mounts it.",
     ]);
+  });
+});
+
+describe('verify preconditions', () => {
+  const label = "entry 'home-tokens' (apps/extension/tests/feature-map/home.features.ts:1)";
+
+  function pageObjectAction(className: string, requiredParameters: number, isStatic = false) {
+    return { file: 'x.page.ts', line: 1, className, requiredParameters, isStatic };
+  }
+
+  function errorsFor(entry: ParsedFeature, overrides: Partial<FeatureMapModel> = {}) {
+    return checkFeatureMap(
+      model({ features: [...claimersExcept('home-tokens'), entry], ...overrides })
+    ).errors;
+  }
+
+  test('requires every mock to be registered for verify', () => {
+    const entry = feature({
+      preconditions: { session: 'signed-in', mocks: ['mockUnregistered'] },
+    });
+    const mocks = new Map([['mockUnregistered', { file: 'mock-x.ts', line: 1 }]]);
+    expect(errorsFor(entry, { mocks })).toEqual([
+      `${label}: mock 'mockUnregistered' is not registered in apps/extension/tests/verify/mock-registry.ts, so verify cannot apply it. Fix: add it to verifyMockRegistry.`,
+    ]);
+  });
+
+  test('rejects two mocks that route the same requests', () => {
+    const pair = ['mockMixedUtxosForSend', 'mockNativeSegwitOnlyUtxosForSend'];
+    const entry = feature({ preconditions: { session: 'signed-in', mocks: pair } });
+    const mocks = new Map(pair.map(mock => [mock, { file: 'mock-mixed-utxos.ts', line: 1 }]));
+    expect(errorsFor(entry, { mocks, mockRegistry: new Set(pair) })).toEqual([
+      `${label}: mocks 'mockMixedUtxosForSend' and 'mockNativeSegwitOnlyUtxosForSend' route the same requests, so only the last one applies. Fix: keep one of them.`,
+    ]);
+  });
+
+  test('requires open actions to be zero-argument instance methods of fixture page objects', () => {
+    const entry = feature({
+      open: ['ReceivePage.open', 'HomePage.make', 'HomePage.switchAccount', 'HomePage.lock'],
+    });
+    const pageObjectActions = new Map([
+      ['ReceivePage.open', pageObjectAction('ReceivePage', 0)],
+      ['HomePage.make', pageObjectAction('HomePage', 0, true)],
+      ['HomePage.switchAccount', pageObjectAction('HomePage', 1)],
+      ['HomePage.lock', pageObjectAction('HomePage', 0)],
+    ]);
+    expect(errorsFor(entry, { pageObjectActions })).toEqual([
+      `${label}: open action 'ReceivePage.open' belongs to ReceivePage, which no test fixture exposes, so verify cannot call it. Fix: use a method of GlobalPage, HomePage, OnboardingPage, SendPage, SwapRevampPage, NetworkPage, SettingsPage, SwitchAccountPage.`,
+      `${label}: open action 'HomePage.make' is static; verify calls open actions on the fixture instance. Fix: use an instance method.`,
+      `${label}: open action 'HomePage.switchAccount' takes 1 required argument; verify calls open actions without arguments. Fix: use or add a zero-argument page-object method.`,
+    ]);
+  });
+
+  test('rejects account types, networks and sessions a run cannot seed', () => {
+    const unknown = feature({
+      preconditions: { session: 'signed-in', accountType: 'hardware', network: 'moon', mocks: [] },
+    });
+    expect(errorsFor(unknown)).toEqual([
+      `${label}: preconditions.accountType 'hardware' is not an account type verify can seed. Fix: use one of software, ledger, mixed, policy.`,
+      `${label}: preconditions.network 'moon' is not a WalletDefaultNetworkConfigurationIds value in packages/models/src/network/network.model.ts. Fix: use one of mainnet, testnet4.`,
+      `${label}: a hardware wallet is seeded on mainnet only, so network 'moon' cannot be set up. Fix: drop network or use a software account.`,
+    ]);
+    const lockedLedger = feature({
+      preconditions: { session: 'locked', accountType: 'ledger', network: 'testnet4', mocks: [] },
+    });
+    expect(errorsFor(lockedLedger)).toEqual([
+      `${label}: a ledger wallet is seeded on mainnet only, so network 'testnet4' cannot be set up. Fix: drop network or use a software account.`,
+      `${label}: a Ledger wallet has no password, so it cannot be locked. Fix: use session 'signed-in' or a software account.`,
+    ]);
+    const softwareTestnet = feature({
+      preconditions: { session: 'locked', accountType: 'software', network: 'testnet4', mocks: [] },
+    });
+    expect(errorsFor(softwareTestnet)).toEqual([]);
   });
 });

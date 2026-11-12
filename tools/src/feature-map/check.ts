@@ -1,6 +1,7 @@
 import { existsSync } from 'node:fs';
 
 import { compareStrings } from '../utils/compare.js';
+import { verifyAccountTypes } from '../verify/verify-contract.js';
 import { toRepoRelative } from './app-config.js';
 import { type ParsedFeature, type ResolvedString } from './features-parser.js';
 import {
@@ -264,6 +265,89 @@ function checkFeatureReferences(model: FeatureMapModel, feature: ParsedFeature):
   return errors;
 }
 
+const mainnetNetworkId = 'mainnet';
+const softwareAccountType = 'software';
+const ledgerAccountType = 'ledger';
+
+function checkVerifyMocks(model: FeatureMapModel, feature: ParsedFeature): string[] {
+  const errors: string[] = [];
+  const label = featureLabel(feature);
+  const registry = toRepoRelative(model.config.verifyMockRegistryFile);
+  const { mocks } = feature.preconditions;
+  for (const mock of mocks) {
+    if (!model.mocks.has(mock) || model.mockRegistry.has(mock)) continue;
+    errors.push(
+      `${label}: mock '${mock}' is not registered in ${registry}, so verify cannot apply it. Fix: add it to ${model.config.verifyMockRegistryObjectName}.`
+    );
+  }
+  for (const [first, second] of model.config.exclusiveMocks) {
+    if (!mocks.includes(first) || !mocks.includes(second)) continue;
+    errors.push(
+      `${label}: mocks '${first}' and '${second}' route the same requests, so only the last one applies. Fix: keep one of them.`
+    );
+  }
+  return errors;
+}
+
+function checkVerifyOpenActions(model: FeatureMapModel, feature: ParsedFeature): string[] {
+  const errors: string[] = [];
+  const label = featureLabel(feature);
+  const pageObjects = model.config.verifyPageObjects;
+  for (const action of feature.open) {
+    const found = model.pageObjectActions.get(action);
+    if (!found) continue;
+    if (!pageObjects.includes(found.className)) {
+      errors.push(
+        `${label}: open action '${action}' belongs to ${found.className}, which no test fixture exposes, so verify cannot call it. Fix: use a method of ${pageObjects.join(', ')}.`
+      );
+      continue;
+    }
+    if (found.isStatic) {
+      errors.push(
+        `${label}: open action '${action}' is static; verify calls open actions on the fixture instance. Fix: use an instance method.`
+      );
+      continue;
+    }
+    if (found.requiredParameters > 0) {
+      const count = found.requiredParameters;
+      errors.push(
+        `${label}: open action '${action}' takes ${count} required argument${count === 1 ? '' : 's'}; verify calls open actions without arguments. Fix: use or add a zero-argument page-object method.`
+      );
+    }
+  }
+  return errors;
+}
+
+function checkVerifyPreconditions(model: FeatureMapModel, feature: ParsedFeature): string[] {
+  const errors: string[] = [];
+  const label = featureLabel(feature);
+  const { accountType, network, session } = feature.preconditions;
+  if (accountType !== undefined && !verifyAccountTypes.some(type => type === accountType)) {
+    errors.push(
+      `${label}: preconditions.accountType '${accountType}' is not an account type verify can seed. Fix: use one of ${verifyAccountTypes.join(', ')}.`
+    );
+  }
+  if (network !== undefined && !model.networkIds.includes(network)) {
+    errors.push(
+      `${label}: preconditions.network '${network}' is not a ${model.config.networkIdsObjectName} value in ${toRepoRelative(model.config.networkIdsFile)}. Fix: use one of ${model.networkIds.join(', ')}.`
+    );
+  }
+  const nonSoftware = accountType !== undefined && accountType !== softwareAccountType;
+  if (nonSoftware && network !== undefined && network !== mainnetNetworkId) {
+    errors.push(
+      `${label}: a ${accountType} wallet is seeded on mainnet only, so network '${network}' cannot be set up. Fix: drop network or use a software account.`
+    );
+  }
+  if (accountType === ledgerAccountType && session === 'locked') {
+    errors.push(
+      `${label}: a Ledger wallet has no password, so it cannot be locked. Fix: use session 'signed-in' or a software account.`
+    );
+  }
+  errors.push(...checkVerifyMocks(model, feature));
+  errors.push(...checkVerifyOpenActions(model, feature));
+  return errors;
+}
+
 function checkRouteFlags(model: FeatureMapModel, feature: ParsedFeature): string[] {
   if (feature.anchor.kind !== 'route') return [];
   const errors: string[] = [];
@@ -338,6 +422,7 @@ export function checkFeatureMap(model: FeatureMapModel): CheckResult {
   errors.push(...checkDuplicateIds(model));
   for (const feature of model.features) {
     errors.push(...checkFeatureReferences(model, feature));
+    errors.push(...checkVerifyPreconditions(model, feature));
     errors.push(...checkGates(model, feature));
     errors.push(...checkRouteFlags(model, feature));
   }

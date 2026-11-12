@@ -379,3 +379,84 @@ export function collectObjectPropertyStrings(
   visit(sourceFile);
   return texts;
 }
+
+function findVariableInitializer(
+  sourceFile: ts.SourceFile,
+  name: string
+): ts.Expression | undefined {
+  for (const statement of sourceFile.statements) {
+    if (!ts.isVariableStatement(statement)) continue;
+    for (const declaration of statement.declarationList.declarations) {
+      if (!ts.isIdentifier(declaration.name) || declaration.name.text !== name) continue;
+      return declaration.initializer ? unwrapExpression(declaration.initializer) : undefined;
+    }
+  }
+  return undefined;
+}
+
+export function collectStringArray(sourceFile: ts.SourceFile, name: string): string[] {
+  const initializer = findVariableInitializer(sourceFile, name);
+  if (!initializer || !ts.isArrayLiteralExpression(initializer)) return [];
+  return initializer.elements
+    .map(element => getStringLiteralText(element))
+    .filter(value => value !== undefined);
+}
+
+export function collectObjectKeys(sourceFile: ts.SourceFile, name: string): string[] {
+  const initializer = findVariableInitializer(sourceFile, name);
+  if (!initializer || !ts.isObjectLiteralExpression(initializer)) return [];
+  return initializer.properties
+    .map(property => (property.name ? getPropertyName(property.name) : undefined))
+    .filter(key => key !== undefined);
+}
+
+export interface CatalogObject {
+  readonly id: string;
+  readonly method: string;
+  readonly buildsParams: boolean;
+  readonly line: number;
+}
+
+function readStringProperty(node: ts.ObjectLiteralExpression, name: string): string | undefined {
+  for (const property of node.properties) {
+    if (!ts.isPropertyAssignment(property) || getPropertyName(property.name) !== name) continue;
+    return getStringLiteralText(property.initializer);
+  }
+  return undefined;
+}
+
+function buildsProperty(node: ts.ObjectLiteralExpression, name: string): boolean {
+  return node.properties.some(property => {
+    if (!property.name || getPropertyName(property.name) !== name) return false;
+    if (ts.isMethodDeclaration(property)) return true;
+    if (!ts.isPropertyAssignment(property)) return false;
+    const initializer = unwrapExpression(property.initializer);
+    return (
+      ts.isArrowFunction(initializer) ||
+      ts.isFunctionExpression(initializer) ||
+      ts.isIdentifier(initializer) ||
+      ts.isCallExpression(initializer)
+    );
+  });
+}
+
+export function collectCatalogObjects(sourceFile: ts.SourceFile): CatalogObject[] {
+  const objects: CatalogObject[] = [];
+  function visit(node: ts.Node) {
+    if (ts.isObjectLiteralExpression(node)) {
+      const id = readStringProperty(node, 'id');
+      const method = readStringProperty(node, 'method');
+      if (id !== undefined && method !== undefined) {
+        objects.push({
+          id,
+          method,
+          buildsParams: buildsProperty(node, 'params'),
+          line: getLine(sourceFile, node),
+        });
+      }
+    }
+    ts.forEachChild(node, visit);
+  }
+  visit(sourceFile);
+  return objects;
+}

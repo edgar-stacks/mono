@@ -1,19 +1,23 @@
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 
 import { getMonorepoRoot } from '../utils/paths.js';
 import { type FeatureMapAppConfig, toRepoRelative } from './app-config.js';
 import {
+  type CatalogObject,
   type SourceLocation,
   type StringTable,
+  collectCatalogObjects,
   collectClassMethods,
   collectDefinedEndpoints,
   collectExportedNames,
   collectFunctionCallees,
   collectHandlerEndpointNames,
   collectInterfaceProperties,
+  collectObjectKeys,
   collectObjectPropertyStrings,
   collectPropertyAccessReferences,
+  collectStringArray,
   collectStringConstObjects,
   listFiles,
   mergeStringTables,
@@ -213,6 +217,38 @@ export function loadRouterFiles(config: FeatureMapAppConfig): string[] {
 
 export function loadFeatureFiles(config: FeatureMapAppConfig): string[] {
   return listFiles(config.featuresDir, file => file.endsWith('.features.ts'));
+}
+
+export function loadVerifyMockRegistry(config: FeatureMapAppConfig): Set<string> {
+  if (!existsSync(config.verifyMockRegistryFile)) return new Set();
+  return new Set(
+    collectObjectKeys(
+      parseSourceFile(config.verifyMockRegistryFile),
+      config.verifyMockRegistryObjectName
+    )
+  );
+}
+
+export function loadPersistWhitelist(config: FeatureMapAppConfig): string[] {
+  return collectStringArray(
+    parseSourceFile(config.persistWhitelistFile),
+    config.persistWhitelistName
+  );
+}
+
+export function loadNetworkIds(config: FeatureMapAppConfig): string[] {
+  const table = collectStringConstObjects(parseSourceFile(config.networkIdsFile));
+  return [...(table.get(config.networkIdsObjectName)?.values() ?? [])];
+}
+
+export interface RpcCatalogEntry extends CatalogObject {
+  readonly file: string;
+}
+
+export function loadRpcCatalog(config: FeatureMapAppConfig): RpcCatalogEntry[] {
+  return listFiles(config.rpcCatalogDir, file => file.endsWith('.ts')).flatMap(file =>
+    collectCatalogObjects(parseSourceFile(file)).map(entry => ({ ...entry, file }))
+  );
 }
 
 export function specPathFor(spec: string): string {

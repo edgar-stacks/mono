@@ -2,12 +2,15 @@ import ts from 'typescript';
 import { describe, expect, test } from 'vitest';
 
 import {
+  collectCatalogObjects,
   collectClassMethods,
   collectDefinedEndpoints,
   collectExportedNames,
   collectFunctionCallees,
   collectHandlerEndpointNames,
   collectInterfaceProperties,
+  collectObjectKeys,
+  collectStringArray,
   collectStringConstObjects,
   evaluateStringExpression,
   parseSourceFile,
@@ -197,5 +200,60 @@ describe(collectFunctionCallees.name, () => {
       callees: ['mockFees', 'mockFees'],
     });
     expect(collectFunctionCallees(sourceFile, 'other')).toBeUndefined();
+  });
+});
+
+describe(collectStringArray.name, () => {
+  test('reads the string elements of a const array', () => {
+    const source = `export const persistWhitelist = ['accounts', 'active', \`wallets\`] as const;
+export const other = ['x'];`;
+    const sourceFile = parseSourceFile('persist-whitelist.ts', source);
+    expect(collectStringArray(sourceFile, 'persistWhitelist')).toEqual([
+      'accounts',
+      'active',
+      'wallets',
+    ]);
+    expect(collectStringArray(sourceFile, 'missing')).toEqual([]);
+  });
+});
+
+describe(collectObjectKeys.name, () => {
+  test('lists the property, shorthand and method names of an object literal', () => {
+    const source = `const local = 1;
+export const verifyMockRegistry = {
+  setupMockApis: ({ context }) => setupMockApis(context),
+  mockUnhandledRequests,
+  async mockStacksRawTx({ context }) { await mockStacksRawTx(context); },
+  'quoted-key': noop,
+} satisfies Record<string, unknown>;`;
+    const sourceFile = parseSourceFile('mock-registry.ts', source);
+    expect(collectObjectKeys(sourceFile, 'verifyMockRegistry')).toEqual([
+      'setupMockApis',
+      'mockUnhandledRequests',
+      'mockStacksRawTx',
+      'quoted-key',
+    ]);
+    expect(collectObjectKeys(sourceFile, 'local')).toEqual([]);
+  });
+});
+
+describe(collectCatalogObjects.name, () => {
+  test('finds objects with an id and a method and tells builders from static params', () => {
+    const source = `export const methods = [
+  { id: 'open-popup', method: 'open', params: { mode: 'popup' } },
+  {
+    id: 'getAddresses',
+    method: 'getAddresses',
+    params(ctx) { return { network: networkOf(ctx) }; },
+  },
+  { id: 'arrow', method: 'signPsbt', params: async ctx => buildPsbt(ctx) },
+  { id: 'no-method' },
+];`;
+    const objects = collectCatalogObjects(parseSourceFile('general.ts', source));
+    expect(objects.map(({ id, method, buildsParams }) => ({ id, method, buildsParams }))).toEqual([
+      { id: 'open-popup', method: 'open', buildsParams: false },
+      { id: 'getAddresses', method: 'getAddresses', buildsParams: true },
+      { id: 'arrow', method: 'signPsbt', buildsParams: true },
+    ]);
   });
 });
