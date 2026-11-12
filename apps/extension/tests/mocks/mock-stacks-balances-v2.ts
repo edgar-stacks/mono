@@ -115,3 +115,11 @@ export async function mockEmptyStacksBalancesV2Request(page: Page | BrowserConte
     })
   );
 }
+
+export async function mockZeroStxBalanceV2Request(page: Page | BrowserContext) {
+  await page.route('**hiro.so/extended/v2/addresses/**/balances/stx', route =>
+    route.fulfill({
+      json: mockedEmptyStxBalanceV2,
+    })
+  );
+}

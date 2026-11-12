@@ -9,6 +9,7 @@ import { STX_DECIMALS } from '@leather.io/constants';
 import {
   type CryptoCurrency,
   FeeTypes,
+  type Money,
   type StacksFeeEstimate,
   type StacksTransactionFees,
 } from '@leather.io/models';
@@ -45,6 +46,8 @@ function transactionFeesToEstimates(txFees: StacksTransactionFees): StacksFeeEst
 interface FeeRowProps {
   fees?: StacksTransactionFees;
   allowCustom?: boolean;
+  feeBadge?: React.ReactNode;
+  feeFiatValue?: Money | null;
   isSponsored: boolean;
   defaultFeeValue?: number;
   disableFeeSelection?: boolean;
@@ -53,11 +56,13 @@ export function FeesRow({
   fees,
   isSponsored,
   allowCustom = true,
+  feeBadge,
+  feeFiatValue,
   defaultFeeValue,
   disableFeeSelection,
 }: FeeRowProps) {
   const [feeField, _, feeHelper] = useField<unknown>('fee');
-  const [feeCurrencyField] = useField<CryptoCurrency>('feeCurrency');
+  const [feeCurrencyField, ___, feeCurrencyHelper] = useField<CryptoCurrency>('feeCurrency');
   const [feeTypeField, __, feeTypeHelper] = useField<string>('feeType');
   const [fieldWarning, setFieldWarning] = useState<string | undefined>(undefined);
   const [isSelectVisible, setIsSelectVisible] = useState(false);
@@ -68,14 +73,25 @@ export function FeesRow({
   const estimates = useMemo(() => (fees ? transactionFeesToEstimates(fees) : []), [fees]);
   const hasFeeEstimates = estimates.length > 0;
   const feeCurrencySymbol = feeCurrencyField.value;
+  const feesCurrencySymbol = fees?.options.standard.value.symbol;
 
-  const convertCryptoCurrencyToUsd = useConvertCryptoCurrencyToFiatAmount(feeCurrencySymbol);
+  const convertCryptoCurrencyToUsd = useConvertCryptoCurrencyToFiatAmount(
+    feeFiatValue === undefined ? feeCurrencySymbol : 'STX'
+  );
 
   const feeInUsd = useMemo(() => {
+    if (feeFiatValue !== undefined) return feeFiatValue;
     if ((!isNumber(feeField.value) && !isString(feeField.value)) || !feeCurrencySymbol) return null;
+    if (feesCurrencySymbol && feesCurrencySymbol !== feeCurrencySymbol) return null;
     const feeAsMoney = createMoney(new BigNumber(feeField.value), feeCurrencySymbol);
     return convertCryptoCurrencyToUsd(feeAsMoney);
-  }, [convertCryptoCurrencyToUsd, feeCurrencySymbol, feeField.value]);
+  }, [
+    convertCryptoCurrencyToUsd,
+    feeCurrencySymbol,
+    feeField.value,
+    feeFiatValue,
+    feesCurrencySymbol,
+  ]);
 
   useEffect(() => {
     if (defaultFeeValue) {
@@ -85,6 +101,13 @@ export function FeesRow({
       void feeTypeHelper.setValue(FeeTypes[FeeTypes.Custom]);
     }
   }, [feeHelper, defaultFeeValue, feeTypeHelper]);
+
+  useEffect(() => {
+    if (!feesCurrencySymbol || feesCurrencySymbol === feeCurrencySymbol) return;
+    void feeCurrencyHelper.setValue(feesCurrencySymbol);
+    void feeHelper.setValue('');
+    void feeTypeHelper.setValue(FeeTypes[FeeTypes.Unknown]);
+  }, [feeCurrencyHelper, feeCurrencySymbol, feeHelper, feeTypeHelper, feesCurrencySymbol]);
 
   useEffect(() => {
     if (isSponsored) {
@@ -133,6 +156,7 @@ export function FeesRow({
   return (
     <FeesRowLayout
       data-testid={SharedComponentsSelectors.FeeRow}
+      feeBadge={feeBadge}
       feeField={
         isCustom ? (
           <CustomFeeField
@@ -143,7 +167,9 @@ export function FeesRow({
           />
         ) : (
           <Box
-            onClick={() => handleSelectFeeEstimateOrCustomField(FeeTypes.Custom)}
+            onClick={
+              allowCustom ? () => handleSelectFeeEstimateOrCustomField(FeeTypes.Custom) : undefined
+            }
             textAlign="right"
             width="100%"
           >

@@ -8,6 +8,7 @@ export const SendCryptoAssetSelectors = {
   ConfirmationDetailsAssetValue: 'confirmation-details-asset-value',
   ConfirmationDetailsFee: 'confirmation-details-fee',
   ConfirmationDetailsMemo: 'confirmation-details-memo',
+  SbtcFeeRequoteCallout: 'sbtc-fee-requote-callout',
   ConfirmationDetailText: 'confirmation-detail-text',
   ChooseAssetToSendPage: 'choose-asset-to-send-page',
   FormFieldInputErrorLabel: 'form-field-input-error-label',

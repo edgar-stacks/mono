@@ -6,6 +6,8 @@ import {
   BITFLOW_KEEPER_API_HOST,
   BITFLOW_KEEPER_API_KEY,
   BITFLOW_PROVIDER_ADDRESS,
+  IS_TEST_ENV,
+  SPONSORSHIP_API_URL,
   WALLET_ENVIRONMENT,
 } from '@shared/environment';
 
@@ -17,6 +19,7 @@ export function initAppServices() {
   initServicesContainer({
     env: {
       environment: WALLET_ENVIRONMENT,
+      sponsorshipApiUrl: IS_TEST_ENV ? undefined : SPONSORSHIP_API_URL || undefined,
       bitflow: {
         bitflowApiHost: BITFLOW_API_HOST,
         bitflowApiKey: BITFLOW_API_KEY,

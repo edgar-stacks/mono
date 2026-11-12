@@ -1,6 +1,7 @@
 import { expect } from '@playwright/test';
 import { TEST_ACCOUNT_2_STX_ADDRESS } from '@tests/mocks/constants';
 import { mockStacksBroadcastTransaction } from '@tests/mocks/mock-stacks-txs';
+import { SharedComponentsSelectors } from '@tests/selectors/shared-component.selectors';
 
 import { test } from '../../fixtures/fixtures';
 
@@ -16,6 +17,13 @@ test.describe('Send sip10', () => {
     await onboardingPage.signInWithTestAccount(extensionId);
     await homePage.sendButton.click();
     await sendPage.selectSip10AndGoToSendForm(leatherTestTokenTestId);
+  });
+
+  test('charges the fee in STX with no sponsored badge', async ({ sendPage }) => {
+    await expect(sendPage.feeToBePaid).toContainText('STX');
+    await expect(
+      sendPage.page.getByTestId(SharedComponentsSelectors.SponsoredFeeBadge)
+    ).toHaveCount(0);
   });
 
   test('can send sip10 token', async ({ sendPage }) => {

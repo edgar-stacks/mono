@@ -1,5 +1,9 @@
 import { type StacksTransactionWire, isTokenTransferPayload } from '@stacks/transactions';
 
+import {
+  type SbtcSponsoredTransferDetails,
+  getSbtcSponsoredTransferDetails,
+} from '@leather.io/stacks';
 import { baseCurrencyAmountInQuote, createMoney, isNumber, sumMoney } from '@leather.io/utils';
 
 import { formatCurrency } from '@app/common/currency-formatter';
@@ -15,6 +19,7 @@ import {
   getTokenTransferMemoDisplayText,
   safeAddressToString,
 } from '@app/common/transactions/stacks/transaction.utils';
+import { sbtcFeeCurrency } from '@app/features/sbtc-sponsorship/sbtc-sponsorship.utils';
 import { TxStatusBadge } from '@app/features/tx-status-badge/tx-status-badge';
 import { useCryptoCurrencyMarketData } from '@app/query/common/market-data/market-data.hooks';
 import { useGetFungibleTokenMetadataQuery } from '@app/query/stacks/token-metadata/fungible-tokens/fungible-token-metadata.query';
@@ -60,7 +65,46 @@ export function StxSentSummary({ txid, tx }: StacksChainSummaryProps) {
   );
 }
 
+interface SbtcSponsoredSentSummaryProps {
+  txid: string;
+  tx: StacksTransactionWire;
+  details: SbtcSponsoredTransferDetails;
+}
+function SbtcSponsoredSentSummary({ txid, tx, details }: SbtcSponsoredSentSummaryProps) {
+  const { data: tokenMetadata } = useGetFungibleTokenMetadataQuery(details.contractId);
+
+  if (!tokenMetadata || !('decimals' in tokenMetadata) || !isNumber(tokenMetadata.decimals))
+    return <StacksChainTxSummaryLoading txid={txid} />;
+
+  const amount = createMoney(details.amount, sbtcFeeCurrency, tokenMetadata.decimals);
+  const fee = createMoney(details.fee, sbtcFeeCurrency, tokenMetadata.decimals);
+
+  return (
+    <StacksChainTxSummaryLayout
+      token={sbtcFeeCurrency}
+      txid={txid}
+      value={amount}
+      recipient={details.recipient}
+      metadata={[
+        ['Status', <TxStatusBadge key={txid} txid={txid} />],
+        ['Total spend', formatCurrency(sumMoney([amount, fee]))],
+        ['Sending', formatCurrency(amount)],
+        ['Fee', formatCurrency(fee)],
+        ['Memo', details.memo || '—'],
+        ['Nonce', getNonceFromStacksTransaction(tx)],
+      ]}
+    />
+  );
+}
+
 export function Sip10SentSummary({ txid, symbol, tx }: StacksChainSummaryProps) {
+  const sbtcSponsoredDetails = getSbtcSponsoredTransferDetails(tx);
+  if (sbtcSponsoredDetails)
+    return <SbtcSponsoredSentSummary txid={txid} tx={tx} details={sbtcSponsoredDetails} />;
+  return <Sip10TransferSentSummary txid={txid} symbol={symbol} tx={tx} />;
+}
+
+function Sip10TransferSentSummary({ txid, symbol, tx }: StacksChainSummaryProps) {
   const sip10Payload = getSip10TransferPayload(tx);
   if (!sip10Payload) throw new Error('Impossible state, not a SIP-10 transfer');
   const contract = getContractAddressFromContractCallPayload(sip10Payload);

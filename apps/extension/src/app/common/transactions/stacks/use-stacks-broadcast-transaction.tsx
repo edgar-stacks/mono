@@ -12,6 +12,8 @@ import { RouteUrls } from '@shared/route-urls';
 import { useSubmitTransactionCallback } from '@app/common/hooks/use-submit-stx-transaction';
 import {
   StacksTransactionActionType,
+  isSponsoredTransaction,
+  sponsoredTransactionBroadcastErrorMessage,
   stacksTransactionToHex,
 } from '@app/common/transactions/stacks/transaction.utils';
 import { toastDurations, useToast } from '@app/features/toasts/use-toast';
@@ -99,6 +101,12 @@ export function useStacksBroadcastTransaction({
     async function broadcastTransaction(unsignedTx: StacksTransactionWire) {
       try {
         if (!unsignedTx) return;
+        if (isSponsoredTransaction(unsignedTx)) {
+          void navigate(RouteUrls.BroadcastError, {
+            state: { message: sponsoredTransactionBroadcastErrorMessage },
+          });
+          return;
+        }
         const signedTx = await signStacksTransaction(unsignedTx);
         // TODO: Maybe better error handling here?
         if (!signedTx) return;

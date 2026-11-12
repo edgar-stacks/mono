@@ -1,6 +1,7 @@
 import type { StacksNetwork } from '@stacks/network';
 import {
   AddressHashMode,
+  AuthType,
   ClarityType,
   type ContractCallPayload,
   type StacksTransactionWire,
@@ -201,4 +202,11 @@ export function safeAddressToString(address: string) {
   } catch {
     return null;
   }
+}
+
+export const sponsoredTransactionBroadcastErrorMessage =
+  'Sponsored transactions are submitted through the sponsor and cannot be broadcast by the wallet';
+
+export function isSponsoredTransaction(tx: StacksTransactionWire) {
+  return tx.auth.authType === AuthType.Sponsored;
 }

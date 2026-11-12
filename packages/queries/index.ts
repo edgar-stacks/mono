@@ -8,6 +8,7 @@ export * from './src/market-data/market-data.query-config';
 export * from './src/market-history/market-history.query-config';
 export * from './src/market-stats/market-stats.query-config';
 export * from './src/multisig/propose-multisig-transaction.mutation-config';
+export * from './src/sponsorship/sbtc-sponsorship.query-config';
 export * from './src/token-analytics/token-analytics.query-config';
 export * from './src/balances/btc-balances.query-config';
 export * from './src/balances/stx-balances.query-config';
