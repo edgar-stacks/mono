@@ -134,18 +134,18 @@ function getLetters(string: string, offset = 1) {
 }
 
 export function getTicker(value: string) {
-  let name = kebabCase(value);
-  if (name.includes('-')) {
-    const words = name.split('-');
-    if (words.length >= 3) {
-      name = `${getLetters(words[0])}${getLetters(words[1])}${getLetters(words[2])}`;
-    } else {
-      name = `${getLetters(words[0])}${getLetters(words[1], 2)}`;
-    }
-  } else if (name.length >= 3) {
-    name = getLetters(name, 3);
+  const words = kebabCase(value)
+    .split('-')
+    .map(word => word.replace(/[^\p{L}\p{N}]/gu, ''))
+    .filter(word => word.length > 0);
+  const [first = '', second = '', third = ''] = words;
+  if (words.length >= 3) {
+    return `${getLetters(first)}${getLetters(second)}${getLetters(third)}`.toUpperCase();
   }
-  return name.toUpperCase();
+  if (words.length === 2) {
+    return `${getLetters(first)}${getLetters(second, 2)}`.toUpperCase();
+  }
+  return getLetters(first, 3).toUpperCase();
 }
 
 export function propIfDefined(prop: string, value: unknown) {
