@@ -59,11 +59,12 @@ export function LedgerSignBitcoinTxContainer({ request }: LedgerSignBitcoinTxCon
     isAppOpen: isBitcoinAppOpen({ network: network.chain.bitcoin.mode }),
     getAppVersion: getBitcoinAppVersion(dmk),
     connectApp: connectLedgerBitcoinApp(dmk, network.chain.bitcoin.mode, signerActions.run),
-    async signTransactionWithDevice(bitcoinApp) {
+    async signTransactionWithDevice(bitcoinApp, attempt) {
       ledgerNavigate.toDeviceBusyStep('Verifying public key on Ledger…');
 
       ledgerNavigate.toConnectionSuccessStep('bitcoin');
       await delay(1200);
+      if (attempt.isDismissed()) return;
 
       ledgerNavigate.toAwaitingDeviceOperation({ hasApprovedOperation: false });
 
@@ -76,13 +77,15 @@ export function LedgerSignBitcoinTxContainer({ request }: LedgerSignBitcoinTxCon
               inputsToSign
             )
           : await signLedger(bitcoinApp, unsignedTransaction.toPSBT(), inputsToSign);
+        if (attempt.isDismissed()) return;
 
         if (!btcTx) throw new Error('No tx returned');
         ledgerNavigate.toAwaitingDeviceOperation({ hasApprovedOperation: true });
         await delay(1200);
+        if (attempt.isDismissed()) return;
         ledgerNavigate.settleLedgerAction(request, { status: 'signed', value: btcTx });
       } catch (e) {
-        if (isLedgerActionCancelledError(e)) return;
+        if (isLedgerActionCancelledError(e) || attempt.isDismissed()) return;
         logger.error('Unable to sign tx with ledger', e);
         ledgerAnalytics.transactionSignedOnLedgerRejected();
         // Descriptor signing is awaited by the rpc popup, which owns the error

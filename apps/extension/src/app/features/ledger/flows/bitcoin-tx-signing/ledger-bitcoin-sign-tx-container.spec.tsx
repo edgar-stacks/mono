@@ -133,11 +133,8 @@ interface RenderSignTxContextParams {
   descriptor?: string;
 }
 
-function renderSignTxContext({
-  settleOnRejection,
-  descriptor,
-}: RenderSignTxContextParams): LedgerTxSigningContext {
-  render(
+function renderSignTxContext({ settleOnRejection, descriptor }: RenderSignTxContextParams) {
+  const { unmount } = render(
     <LedgerSignBitcoinTxContainer
       request={{
         kind: 'sign-bitcoin-tx',
@@ -152,7 +149,7 @@ function renderSignTxContext({
   );
   const call = mocks.captureContext.mock.calls.at(-1);
   if (!call) throw new Error('Tx signing context was not rendered');
-  return call[0];
+  return { context: call[0], unmount };
 }
 
 interface SetupSignTransactionParams {
@@ -176,9 +173,7 @@ function setupSignTransaction({
     mocks.signLedger.mockResolvedValue(undefined);
     mocks.signLedgerDescriptor.mockResolvedValue(undefined);
   }
-  return {
-    context: renderSignTxContext({ settleOnRejection: settleOnRejection ?? false, descriptor }),
-  };
+  return renderSignTxContext({ settleOnRejection: settleOnRejection ?? false, descriptor });
 }
 
 function expectSettledOnceWith(outcome: LedgerSigningOutcome<btc.Transaction>) {
@@ -287,6 +282,53 @@ describe('LedgerSignBitcoinTxContainer', () => {
 
     expect(mocks.toOperationRejectedStep).toHaveBeenCalledOnce();
     expect(mocks.settleLedgerAction).not.toHaveBeenCalled();
+  });
+
+  test('does not settle when signing finishes after the flow unmounted', async () => {
+    const signing = Promise.withResolvers<btc.Transaction>();
+    const { context, unmount } = setupSignTransaction({});
+    mocks.signLedger.mockReturnValue(signing.promise);
+
+    const { attempt } = await act(async () => {
+      const pending = context.signTransaction();
+      await vi.waitFor(() => expect(mocks.signLedger).toHaveBeenCalledOnce());
+      return { attempt: pending };
+    });
+    unmount();
+
+    await act(async () => {
+      signing.resolve(new btc.Transaction());
+      await attempt;
+    });
+
+    expect(mocks.settleLedgerAction).not.toHaveBeenCalled();
+    expect(mocks.toAwaitingDeviceOperation).not.toHaveBeenCalledWith({
+      hasApprovedOperation: true,
+    });
+    expect(mocks.disconnect).toHaveBeenCalledOnce();
+  });
+
+  test('does not settle or report when signing fails after the flow unmounted', async () => {
+    const signing = Promise.withResolvers<btc.Transaction>();
+    const { context, unmount } = setupSignTransaction({ settleOnRejection: true });
+    mocks.signLedger.mockReturnValue(signing.promise);
+
+    const { attempt } = await act(async () => {
+      const pending = context.signTransaction();
+      await vi.waitFor(() => expect(mocks.signLedger).toHaveBeenCalledOnce());
+      return { attempt: pending };
+    });
+    unmount();
+
+    await act(async () => {
+      signing.reject(disconnectError);
+      await attempt;
+    });
+
+    expect(mocks.settleLedgerAction).not.toHaveBeenCalled();
+    expect(mocks.transactionSignedOnLedgerRejected).not.toHaveBeenCalled();
+    expect(mocks.toErrorStep).not.toHaveBeenCalled();
+    expect(mocks.disconnect).toHaveBeenCalledOnce();
   });
 
   test('stays silent when the user cancelled the device action from the sheet', async () => {

@@ -62,7 +62,7 @@ export function LedgerSignStacksTxContainer({ request }: LedgerSignStacksTxConta
       return connectLedgerStacksApp(dmk, { ...options, runAction: signerActions.run });
     },
     passesAdditionalVersionCheck: stacksVersionGate(ledgerNavigate),
-    async signTransactionWithDevice(stacksApp) {
+    async signTransactionWithDevice(stacksApp, attempt) {
       if (!account) {
         const errorMessage = 'No active account found for transaction signing';
         ledgerNavigate.toErrorStep(chain, errorMessage);
@@ -70,9 +70,11 @@ export function LedgerSignStacksTxContainer({ request }: LedgerSignStacksTxConta
       }
 
       await migrateFingerprintIfNeeded(stacksApp);
+      if (attempt.isDismissed()) return;
 
       ledgerNavigate.toConnectionSuccessStep('stacks');
       await delay(1000);
+      if (attempt.isDismissed()) return;
 
       ledgerNavigate.toAwaitingDeviceOperation({ hasApprovedOperation: false });
 
@@ -80,6 +82,7 @@ export function LedgerSignStacksTxContainer({ request }: LedgerSignStacksTxConta
         Buffer.from(unsignedTx, 'hex'),
         account.derivationPath
       );
+      if (attempt.isDismissed()) return;
 
       if (hasLedgerReturnCode(resp, LedgerError.DataIsInvalid)) {
         if (settleOnRejection) {
@@ -111,6 +114,7 @@ export function LedgerSignStacksTxContainer({ request }: LedgerSignStacksTxConta
       ledgerNavigate.toAwaitingDeviceOperation({ hasApprovedOperation: true });
 
       await delay(1000);
+      if (attempt.isDismissed()) return;
 
       const signedTx = signStacksTransactionWithSignature(unsignedTx, resp.signatureVRS);
       ledgerAnalytics.transactionSignedOnLedgerSuccessfully();

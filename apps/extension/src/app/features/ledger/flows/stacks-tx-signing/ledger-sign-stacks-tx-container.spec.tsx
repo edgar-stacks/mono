@@ -148,8 +148,8 @@ function expectSettledOnceWith(outcome: LedgerSigningOutcome<unknown>) {
   );
 }
 
-function renderSignTxContext(settleOnRejection: boolean): LedgerTxSigningContext {
-  render(
+function renderSignTxContext(settleOnRejection: boolean) {
+  const { unmount } = render(
     <LedgerSignStacksTxContainer
       request={{
         kind: 'sign-stacks-tx',
@@ -162,7 +162,7 @@ function renderSignTxContext(settleOnRejection: boolean): LedgerTxSigningContext
   );
   const call = mocks.captureContext.mock.calls.at(-1);
   if (!call) throw new Error('Tx signing context was not rendered');
-  return call[0];
+  return { context: call[0], unmount };
 }
 
 const transportFailureReturnCode = 0xffff;
@@ -188,7 +188,7 @@ function setupSignTransaction({
   mocks.signTransaction.mockReturnValue(() =>
     Promise.resolve({ returnCode, errorMessage, signatureVRS })
   );
-  return { context: renderSignTxContext(settleOnRejection ?? false) };
+  return renderSignTxContext(settleOnRejection ?? false);
 }
 
 describe('LedgerSignStacksTxContainer', () => {
@@ -278,6 +278,68 @@ describe('LedgerSignStacksTxContainer', () => {
 
     expect(mocks.toOperationRejectedStep).toHaveBeenCalledOnce();
     expect(mocks.settleLedgerAction).not.toHaveBeenCalled();
+    expect(mocks.disconnect).toHaveBeenCalledOnce();
+    expect(mocks.disconnect).toHaveBeenCalledWith({ sessionId: fakeLedgerSessionId });
+  });
+
+  test('does not sign when the flow unmounted during the fingerprint migration', async () => {
+    const migration = Promise.withResolvers<void>();
+    const { context, unmount } = setupSignTransaction({
+      returnCode: LedgerError.NoErrors,
+      errorMessage: 'No errors',
+      signatureVRS: Buffer.alloc(65),
+    });
+    mocks.migrateFingerprint.mockReturnValue(migration.promise);
+
+    const { attempt } = await act(async () => {
+      const pending = context.signTransaction();
+      await vi.waitFor(() => expect(mocks.migrateFingerprint).toHaveBeenCalledOnce());
+      return { attempt: pending };
+    });
+    unmount();
+
+    await act(async () => {
+      migration.resolve();
+      await attempt;
+    });
+
+    expect(mocks.signTransaction).not.toHaveBeenCalled();
+    expect(mocks.toConnectionSuccessStep).toHaveBeenCalledOnce();
+    expect(mocks.disconnect).toHaveBeenCalledOnce();
+    expect(mocks.disconnect).toHaveBeenCalledWith({ sessionId: fakeLedgerSessionId });
+  });
+
+  test('does not settle or track success when signing finishes after the flow unmounted', async () => {
+    const signing = Promise.withResolvers<{
+      returnCode: number;
+      errorMessage: string;
+      signatureVRS: Buffer;
+    }>();
+    mocks.signWithSignature.mockReturnValue({ signed: true });
+    const { context, unmount } = setupSignTransaction({
+      returnCode: LedgerError.NoErrors,
+      errorMessage: 'No errors',
+    });
+    mocks.signTransaction.mockReturnValue(() => signing.promise);
+
+    const { attempt } = await act(async () => {
+      const pending = context.signTransaction();
+      await vi.waitFor(() => expect(mocks.signTransaction).toHaveBeenCalledOnce());
+      return { attempt: pending };
+    });
+    unmount();
+
+    await act(async () => {
+      signing.resolve({
+        returnCode: LedgerError.NoErrors,
+        errorMessage: 'No errors',
+        signatureVRS: Buffer.alloc(65),
+      });
+      await attempt;
+    });
+
+    expect(mocks.settleLedgerAction).not.toHaveBeenCalled();
+    expect(mocks.transactionSignedOnLedgerSuccessfully).not.toHaveBeenCalled();
     expect(mocks.disconnect).toHaveBeenCalledOnce();
     expect(mocks.disconnect).toHaveBeenCalledWith({ sessionId: fakeLedgerSessionId });
   });
