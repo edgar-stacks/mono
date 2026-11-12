@@ -203,7 +203,7 @@ export const homeFeatures = [
           'On home click "Receive" (HomePageSelectors.ReceiveCryptoAssetBtn); below the md breakpoint that test id sits on the "Transfer" button, whose sheet has the Receive row',
           'With Bitcoin keys and no policy the "Choose asset to receive" sheet opens with a Tokens tab (Bitcoin (BTC), Bitcoin Taproot, Stacks (STX), then one row per swappable SIP-10 asset sharing the Stacks address) and a Collectibles tab (Stacks NFT); the BTC, Taproot and STX rows have a copy button and a QR button that switches the sheet to that address with a QR code, the SIP-10 rows have a copy button only',
           'With a policy account the BTC or STX QR view opens directly; without Bitcoin keys the STX QR view opens directly (transfer-buttons.tsx onReceive)',
-          'Row verify buttons need a Ledger wallet with keys for that chain and no policy; they start the Ledger address-verification flow. The BTC QR sheet\'s "Verify" footer button (HomePageSelectors.ReceiveSheetVerifyAddressBtn) also appears for a Ledger Bitcoin multisig and verifies the multisig address (receive-btc.tsx); the STX QR sheet excludes policies (receive-stx.tsx)',
+          'Row verify buttons need a Ledger wallet with keys for that chain and no policy; they start the Ledger address-verification flow. The BTC QR sheet\'s "Verify" footer button (HomePageSelectors.ReceiveSheetVerifyAddressBtn) also appears for a Ledger Bitcoin multisig and verifies the multisig address (receive-btc.tsx); the STX QR sheet\'s does the same for a Ledger Stacks multisig through the stxMultisig variant, which needs Stacks app 0.27.0 or later (receive-stx.tsx)',
         ],
       },
       {
@@ -239,12 +239,13 @@ export const homeFeatures = [
       'apps/extension/tests/specs/receive/receive.spec.ts',
       homeTabsSpec,
       'apps/extension/tests/specs/ledger/ledger.spec.ts',
+      'apps/extension/tests/specs/receive/receive-stx-multisig-ledger.spec.ts',
       'apps/extension/tests/specs/token-details/token-details.spec.ts',
       'apps/extension/tests/specs/onboarding/onboarding.spec.ts',
       'apps/extension/tests/specs/switch-account/multiwallet-integrity.spec.ts',
     ],
     description:
-      'The receive sheet (apps/extension/src/app/pages/receive/receive-dialog.tsx), rendered by the app Container (container.tsx) and opened from the home Receive action and the other showReceive callers without a URL change; the collectibles-only variant of the sheet has no caller. The Tokens tab lists the native segwit, taproot and Stacks addresses of the current account, plus the swappable SIP-10 assets from useAlexSwappableAssets, each with copy-to-clipboard; the BTC, Taproot and STX rows also have a QR button that swaps the sheet for the full address and QR code (SharedComponentsSelectors.AddressDisplayer), the SIP-10 rows do not; the Collectibles tab lists the Stacks address for NFTs. The row verify buttons render only for a Ledger wallet with keys for that chain and no policy; the BTC QR sheet\'s "Verify" footer button (ReceiveSheetVerifyAddressBtn) also renders for a Ledger Bitcoin multisig, the STX one does not. Page objects read addresses through this dialog because clipboard reads are unreliable in Playwright.',
+      'The receive sheet (apps/extension/src/app/pages/receive/receive-dialog.tsx), rendered by the app Container (container.tsx) and opened from the home Receive action and the other showReceive callers without a URL change; the collectibles-only variant of the sheet has no caller. The Tokens tab lists the native segwit, taproot and Stacks addresses of the current account, plus the swappable SIP-10 assets from useAlexSwappableAssets, each with copy-to-clipboard; the BTC, Taproot and STX rows also have a QR button that swaps the sheet for the full address and QR code (SharedComponentsSelectors.AddressDisplayer), the SIP-10 rows do not; the Collectibles tab lists the Stacks address for NFTs. The row verify buttons render only for a Ledger wallet with keys for that chain and no policy; the "Verify" footer button (ReceiveSheetVerifyAddressBtn) of the BTC and STX QR sheets also renders for a Ledger Bitcoin or Stacks multisig. Page objects read addresses through this dialog because clipboard reads are unreliable in Playwright.',
   },
   {
     id: 'feature-introducer',
