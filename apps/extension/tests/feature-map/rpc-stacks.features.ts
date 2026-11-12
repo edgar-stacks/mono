@@ -55,10 +55,13 @@ export const rpcStacksFeatures = [
       ready: ConnectAccountSelectors.StxAddAccountApproveBtn,
       others: [],
     },
-    actions: ['OnboardingPage.signInWithTestAccount'],
-    specs: ['apps/extension/tests/specs/rpc-add-account/rpc-add-account.spec.ts'],
+    actions: ['OnboardingPage.signInWithTestAccount', 'OnboardingPage.signInWithLedgerAccount'],
+    specs: [
+      'apps/extension/tests/specs/rpc-add-account/rpc-add-account.spec.ts',
+      'apps/extension/tests/specs/rpc-add-account/stx-add-account-ledger.spec.ts',
+    ],
     description:
-      'Approver that registers (add mode, title "Add multisig account") or only verifies (verify mode, title "Verify multisig address") a Stacks multisig policy: it shows the multisig address, the signing account, the account name, the M-of-N signing policy and the public keys. The confirm button (ConnectAccountSelectors.StxAddAccountApproveBtn) reads "Verify" in verify mode or "Confirm" otherwise and is enabled only when the active account is one of the co-signers and the address could be derived (use-stx-add-account.ts canApprove). Add mode returns { added: true, accountId, address, publicKeys, threshold, role }; verify mode returns { added: false, address, publicKeys, threshold, role }. In add mode a failed registration sends -32603 "Failed to register policy" (use-stx-add-account.ts). "Deny" or closing the popup returns 4001. Params that fail the schema return -32602 before any popup (stx-add-account.ts). The origin needs no prior connection.',
+      'Approver that registers (add mode, title "Add multisig account") or only verifies (verify mode, title "Verify multisig address") a Stacks multisig policy: it shows the multisig address, the signing account, the account name, the M-of-N signing policy and the public keys. The confirm button (ConnectAccountSelectors.StxAddAccountApproveBtn) reads "Verify" in verify mode or "Confirm" otherwise, with " on Ledger" appended for a Ledger wallet, whose press opens the confirm-stx-policy-address Ledger flow (Stacks app 0.27.0 or later) that shows the address on the device and finalizes only once it matches (rpc-stx-add-account.tsx). It is enabled only when the active account is one of the co-signers and the address could be derived (use-stx-add-account.ts canApprove). Add mode returns { added: true, accountId, address, publicKeys, threshold, role }; verify mode returns { added: false, address, publicKeys, threshold, role }. In add mode a failed registration sends -32603 "Failed to register policy" (use-stx-add-account.ts). "Deny" or closing the popup returns 4001. Params that fail the schema return -32602 before any popup (stx-add-account.ts). The origin needs no prior connection.',
   },
   {
     id: 'rpc-stx-sign-transaction',
