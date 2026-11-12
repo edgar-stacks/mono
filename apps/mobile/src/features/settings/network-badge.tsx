@@ -13,7 +13,13 @@ export function NetworkBadge(props: NetworkBadgeProps) {
 
   return (
     <Pressable onPress={() => router.navigate('/settings/networks')}>
-      <Badge testID={TestId.networkBadge} label={networkPreference.name} mr="2" {...props} />
+      <Badge
+        testID={TestId.networkBadge}
+        label={networkPreference.name}
+        mr="2"
+        variant="warning"
+        {...props}
+      />
     </Pressable>
   );
 }
