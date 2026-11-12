@@ -204,6 +204,7 @@ export const homeFeatures = [
           'With Bitcoin keys and no policy the "Choose asset to receive" sheet opens with a Tokens tab (Bitcoin (BTC), Bitcoin Taproot, Stacks (STX), then one row per swappable SIP-10 asset sharing the Stacks address) and a Collectibles tab (Stacks NFT); the BTC, Taproot and STX rows have a copy button and a QR button that switches the sheet to that address with a QR code, the SIP-10 rows have a copy button only',
           'With a policy account the BTC or STX QR view opens directly; without Bitcoin keys the STX QR view opens directly (transfer-buttons.tsx onReceive)',
           'Row verify buttons need a Ledger wallet with keys for that chain and no policy; they start the Ledger address-verification flow. The BTC QR sheet\'s "Verify" footer button (HomePageSelectors.ReceiveSheetVerifyAddressBtn) also appears for a Ledger Bitcoin multisig and verifies the multisig address (receive-btc.tsx); the STX QR sheet excludes policies (receive-stx.tsx)',
+          'Every copy button (HomePageSelectors.ReceiveBtcNativeSegwitCopyBtn and HomePageSelectors.ReceiveStacksNftCopyBtn have test ids) and the QR sheets\' "Copy address" button toast "Address copied to clipboard" (use-copy-address.ts). Off mainnet the sheet header and the BTC and STX QR sheets show the current network name in a warning badge (HomePageSelectors.ReceiveNetworkBadge, receive-sheet-header.tsx); on mainnet there is none',
         ],
       },
       {

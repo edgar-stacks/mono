@@ -7,8 +7,7 @@ import { Stack } from 'leather-styles/jsx';
 import { Avatar, BtcAvatarIcon, StxAvatarIcon } from '@leather.io/ui';
 import { isString } from '@leather.io/utils';
 
-import { copyToClipboard } from '@app/common/utils/copy-to-clipboard';
-import { useToast } from '@app/features/toasts/use-toast';
+import { useCopyAddress } from '@app/features/token/hooks/use-copy-address';
 import { useAlexSwappableAssets } from '@app/query/common/alex-sdk/alex-sdk.hooks';
 
 import { receiveTabStyle } from '../receive-tab-style';
@@ -36,12 +35,7 @@ export function ReceiveTokens({
   onClickVerifyBtcTaproot,
   onClickVerifyStx,
 }: ReceiveTokensProps) {
-  const toast = useToast();
-
-  async function copyAddress(address: string) {
-    await copyToClipboard(address);
-    toast.success('Copied to clipboard!');
-  }
+  const copyAddress = useCopyAddress();
   const { data: swapAssets = [] } = useAlexSwappableAssets(stxAddress);
 
   const receivableAssets = useMemo(
@@ -59,10 +53,11 @@ export function ReceiveTokens({
     <Stack className={css(receiveTabStyle)}>
       <ReceiveItem
         address={btcAddressNativeSegwit}
+        copyDataTestId={HomePageSelectors.ReceiveBtcNativeSegwitCopyBtn}
         icon={<BtcAvatarIcon size="xl" />}
         dataTestId={HomePageSelectors.ReceiveBtcNativeSegwitQrCodeBtn}
         onCopyAddress={() => {
-          void copyAddress(btcAddressNativeSegwit);
+          copyAddress(btcAddressNativeSegwit);
         }}
         onClickQrCode={onClickQrBtc}
         onClickVerifyAddress={onClickVerifyBtc}
@@ -74,7 +69,7 @@ export function ReceiveTokens({
         icon={<BtcAvatarIcon size="xl" />}
         dataTestId={HomePageSelectors.ReceiveBtcTaprootQrCodeBtn}
         onCopyAddress={() => {
-          void copyAddress(btcAddressTaproot);
+          copyAddress(btcAddressTaproot);
         }}
         onClickQrCode={onClickQrBtcTaproot}
         onClickVerifyAddress={onClickVerifyBtcTaproot}
@@ -86,7 +81,7 @@ export function ReceiveTokens({
         icon={<StxAvatarIcon size="xl" />}
         dataTestId={HomePageSelectors.ReceiveStxQrCodeBtn}
         onCopyAddress={() => {
-          void copyAddress(stxAddress);
+          copyAddress(stxAddress);
         }}
         onClickQrCode={onClickQrStx}
         onClickVerifyAddress={onClickVerifyStx}
@@ -106,7 +101,7 @@ export function ReceiveTokens({
             )
           }
           onCopyAddress={() => {
-            void copyAddress(asset.address);
+            copyAddress(asset.address);
           }}
           title={asset.name}
         />

@@ -5,9 +5,11 @@ import { SharedComponentsSelectors } from '@tests/selectors/shared-component.sel
 import { Box, Flex, styled } from 'leather-styles/jsx';
 import { token } from 'leather-styles/tokens';
 
-import { AddressDisplayer, Button, Sheet, SheetHeader, ShieldIcon } from '@leather.io/ui';
+import { AddressDisplayer, Button, Sheet, ShieldIcon } from '@leather.io/ui';
 
 import { ButtonRow } from '@app/components/layout';
+
+import { ReceiveSheetHeader } from './receive-sheet-header';
 
 interface ReceiveTokensLayoutProps {
   address: string;
@@ -32,8 +34,7 @@ export function ReceiveTokensLayout(props: ReceiveTokensLayoutProps) {
   return (
     <Sheet
       header={
-        <SheetHeader
-          variant="large"
+        <ReceiveSheetHeader
           title={
             <>
               Receive <br /> {title}

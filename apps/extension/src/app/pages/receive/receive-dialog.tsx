@@ -1,7 +1,7 @@
 import { HomePageSelectors } from '@tests/selectors/home.selectors';
 import { Box } from 'leather-styles/jsx';
 
-import { Sheet, SheetHeader, Tabs } from '@leather.io/ui';
+import { Sheet, Tabs } from '@leather.io/ui';
 
 import type { ReceiveView } from '@app/common/receive/receive';
 import { useWalletType } from '@app/common/use-wallet-type';
@@ -16,6 +16,7 @@ import {
 import { useCurrentPolicy } from '@app/store/policy/policy.selectors';
 
 import { ReceiveCollectibles } from './components/receive-collectibles';
+import { ReceiveSheetHeader } from './components/receive-sheet-header';
 import { ReceiveTokens } from './components/receive-tokens';
 import { ReceiveBtcModal } from './receive-btc';
 import { ReceiveStxModal } from './receive-stx';
@@ -72,7 +73,7 @@ function ReceiveSheet({ type = 'full', onChangeView, onClose }: ReceiveSheetProp
 
   return (
     <Sheet
-      header={<SheetHeader variant="large" title={title} onClose={onClose} />}
+      header={<ReceiveSheetHeader title={title} onClose={onClose} />}
       onClose={onClose}
       isShowing
     >

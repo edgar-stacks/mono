@@ -2,9 +2,8 @@ import { analytics } from '@shared/utils/analytics';
 
 import { useCurrentAccountDisplayName } from '@app/common/hooks/account/use-account-names';
 import { useWalletType } from '@app/common/use-wallet-type';
-import { copyToClipboard } from '@app/common/utils/copy-to-clipboard';
 import { useVerifyAddressOnLedger } from '@app/features/ledger/flows/verify-address/use-verify-address-on-ledger';
-import { useToast } from '@app/features/toasts/use-toast';
+import { useCopyAddress } from '@app/features/token/hooks/use-copy-address';
 import { useCurrentStacksAccount } from '@app/store/accounts/blockchain/stacks/stacks-account.hooks';
 import { useHasLedgerStacksKeys } from '@app/store/ledger/ledger.selectors';
 import { useCurrentPolicy, usePolicyDisplayName } from '@app/store/policy/policy.selectors';
@@ -16,12 +15,7 @@ interface ReceiveStxModalProps {
 }
 
 export function ReceiveStxModal({ onClose }: ReceiveStxModalProps) {
-  const toast = useToast();
-
-  async function copyAddress(address: string) {
-    await copyToClipboard(address);
-    toast.success('Copied to clipboard!');
-  }
+  const copyAddress = useCopyAddress();
   const currentAccount = useCurrentStacksAccount();
   const policy = useCurrentPolicy();
   const { walletType } = useWalletType();
@@ -45,7 +39,7 @@ export function ReceiveStxModal({ onClose }: ReceiveStxModalProps) {
       onClose={onClose}
       onCopyAddressToClipboard={() => {
         analytics.track('copy_stx_address_to_clipboard');
-        void copyAddress(address);
+        copyAddress(address);
       }}
       onVerifyAddress={canVerifyOnLedger ? () => verifyAddressOnLedger('stx') : undefined}
       title="STX"

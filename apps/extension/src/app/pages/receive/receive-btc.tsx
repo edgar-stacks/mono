@@ -1,10 +1,9 @@
 import { analytics } from '@shared/utils/analytics';
 
 import { useWalletType } from '@app/common/use-wallet-type';
-import { copyToClipboard } from '@app/common/utils/copy-to-clipboard';
 import type { VerifyAddressVariant } from '@app/features/ledger/flow/ledger-flow.types';
 import { useVerifyAddressOnLedger } from '@app/features/ledger/flows/verify-address/use-verify-address-on-ledger';
-import { useToast } from '@app/features/toasts/use-toast';
+import { useCopyAddress } from '@app/features/token/hooks/use-copy-address';
 import { useCurrentAccountId } from '@app/store/accounts/account';
 import { useZeroIndexTaprootAddress } from '@app/store/accounts/blockchain/bitcoin/bitcoin.hooks';
 import { useNativeSegwitAccountIndexAddressIndexZero } from '@app/store/accounts/blockchain/bitcoin/native-segwit-account.hooks';
@@ -19,13 +18,7 @@ interface ReceiveBtcModalProps {
 }
 
 export function ReceiveBtcModal({ type = 'btc', onClose }: ReceiveBtcModalProps) {
-  const toast = useToast();
-
-  async function copyAddress(address: string) {
-    await copyToClipboard(address);
-    toast.success('Copied to clipboard!');
-  }
-
+  const copyAddress = useCopyAddress();
   const currentAccount = useCurrentAccountId();
   const policy = useCurrentPolicy();
   const nativeSegwitAddress = useNativeSegwitAccountIndexAddressIndexZero(currentAccount);
@@ -55,7 +48,7 @@ export function ReceiveBtcModal({ type = 'btc', onClose }: ReceiveBtcModalProps)
       onClose={onClose}
       onCopyAddressToClipboard={() => {
         analytics.track('copy_btc_address_to_clipboard', { type });
-        void copyAddress(address);
+        copyAddress(address);
       }}
       onVerifyAddress={
         canVerifyOnLedger ? () => verifyAddressOnLedger(getVerifyVariant()) : undefined
