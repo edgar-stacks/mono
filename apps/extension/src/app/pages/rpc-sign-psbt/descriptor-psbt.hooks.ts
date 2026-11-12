@@ -6,7 +6,7 @@ import {
   findAccountDescriptorKey,
   getDescriptorMatchingInputIndexes,
   makeNativeSegwitAddressIndexDerivationPath,
-  resolveLedgerSignableDescriptor,
+  resolveWalletPolicyDescriptor,
 } from '@leather.io/bitcoin';
 
 import { useWalletType } from '@app/common/use-wallet-type';
@@ -76,7 +76,7 @@ export function useSignDescriptorPsbt() {
     const signedTx = await whenWallet({
       software: () => signPsbt({ tx, signingConfig }),
       async ledger() {
-        const ledgerDescriptor = resolveLedgerSignableDescriptor({
+        const ledgerDescriptor = resolveWalletPolicyDescriptor({
           descriptor,
           psbt: tx.toPSBT(),
           inputIndexes,

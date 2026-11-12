@@ -1,21 +1,11 @@
-import { DeviceActionStatus, UserInteractionRequired } from '@ledgerhq/device-management-kit';
-import { RegisteredWallet, WalletPolicy } from '@ledgerhq/device-signer-kit-bitcoin';
-import { hexToBytes } from '@noble/hashes/utils';
 import { HDKey } from '@scure/bip32';
-import { of } from 'rxjs';
 
-import { fakeSignerAction, makeFakeLedgerBitcoinApp } from '../utils/ledger-app.mocks';
+import {
+  makeFakeHardwareBitcoinSigner,
+  makeFakeOperationContext,
+} from '@leather.io/ledger/test-utils';
+
 import { useDisplayLedgerDescriptorAddress } from './use-display-ledger-descriptor-address';
-
-const mocks = vi.hoisted(() => ({
-  registerWallet: vi.fn(),
-  getWalletAddress: vi.fn(),
-  toDeviceBusyStep: vi.fn(),
-}));
-
-vi.mock('../flow/ledger-flow.context', () => ({
-  useLedgerSteps: () => ({ toDeviceBusyStep: mocks.toDeviceBusyStep }),
-}));
 
 vi.mock('@app/store/accounts/blockchain/bitcoin/native-segwit-account.hooks', () => ({
   useCurrentNativeSegwitAccount: () => ({
@@ -23,6 +13,10 @@ vi.mock('@app/store/accounts/blockchain/bitcoin/native-segwit-account.hooks', ()
     xpub: accountKeychain.publicExtendedKey,
     keyOrigin: accountKeyOrigin,
   }),
+}));
+
+vi.mock('@app/store/networks/networks.selectors', () => ({
+  useCurrentNetwork: () => ({ chain: { bitcoin: { mode: 'mainnet' } } }),
 }));
 
 function makeNativeSegwitAccountKeychain(seedByte: number) {
@@ -35,95 +29,52 @@ const accountKeychain = makeNativeSegwitAccountKeychain(1);
 const cosignerXpub = makeNativeSegwitAccountKeychain(2).publicExtendedKey;
 const vaultDescriptor = `wsh(multi(2,${cosignerXpub}/1/7,${accountKeychain.publicExtendedKey}/1/7))`;
 const deviceAddress = 'bc1qdeviceaddress';
-const registeredPolicyHmac = new Uint8Array(32).fill(9);
-
-function makeFakeLedgerApp() {
-  return makeFakeLedgerBitcoinApp({
-    getMasterFingerprint: () =>
-      fakeSignerAction({ masterFingerprint: hexToBytes(masterFingerprintHex) }),
-    registerWallet: mocks.registerWallet,
-    getWalletAddress: mocks.getWalletAddress,
-  });
-}
 
 describe(useDisplayLedgerDescriptorAddress.name, () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    mocks.registerWallet.mockImplementation((policy: WalletPolicy) =>
-      fakeSignerAction(
-        new RegisteredWallet(
-          policy.name,
-          policy.descriptorTemplate,
-          policy.keys,
-          registeredPolicyHmac
-        )
-      )
-    );
-    mocks.getWalletAddress.mockImplementation(() => fakeSignerAction({ address: deviceAddress }));
-  });
-
-  test('registers the policy and displays the address at the descriptor key path index', async () => {
-    const displayAddress = useDisplayLedgerDescriptorAddress();
-
-    const address = await displayAddress(makeFakeLedgerApp(), vaultDescriptor);
-
-    expect(address).toBe(deviceAddress);
-    const registerWalletCall: unknown[] = mocks.registerWallet.mock.calls[0];
-    const [policy] = registerWalletCall;
-    expect(policy).toBeInstanceOf(WalletPolicy);
-    expect(policy).toMatchObject({
-      name: 'Leather',
-      descriptorTemplate: 'wsh(multi(2,@0/**,@1/**))',
-      keys: [cosignerXpub, `[${accountKeyOrigin}]${accountKeychain.publicExtendedKey}`],
+  test('shows the address of the wallet policy with the account key carrying its origin', async () => {
+    const signer = makeFakeHardwareBitcoinSigner({
+      showAddress: vi.fn().mockResolvedValue(deviceAddress),
     });
-    const getWalletAddressCall: unknown[] = mocks.getWalletAddress.mock.calls[0];
-    const [wallet, addressIndex, options] = getWalletAddressCall;
-    expect(wallet).toBeInstanceOf(RegisteredWallet);
-    expect(wallet).toMatchObject({ hmac: registeredPolicyHmac });
-    expect(addressIndex).toBe(7);
-    expect(options).toEqual({ checkOnDevice: true, change: true, skipOpenApp: true });
-  });
-
-  test('shows the register prompt and restores the caller screen once registered', async () => {
-    const onWalletRegistered = vi.fn();
-    mocks.registerWallet.mockImplementation((policy: WalletPolicy) => ({
-      observable: of(
-        {
-          status: DeviceActionStatus.Pending,
-          intermediateValue: { requiredUserInteraction: UserInteractionRequired.RegisterWallet },
-        },
-        {
-          status: DeviceActionStatus.Completed,
-          output: new RegisteredWallet(
-            policy.name,
-            policy.descriptorTemplate,
-            policy.keys,
-            registeredPolicyHmac
-          ),
-        }
-      ),
-      cancel: vi.fn(),
-    }));
+    const ctx = makeFakeOperationContext();
     const displayAddress = useDisplayLedgerDescriptorAddress();
 
-    await displayAddress(makeFakeLedgerApp(), vaultDescriptor, { onWalletRegistered });
+    await expect(displayAddress(signer, vaultDescriptor, ctx)).resolves.toBe(deviceAddress);
 
-    expect(mocks.toDeviceBusyStep).toHaveBeenCalledWith(
-      'Approve the Leather wallet policy on your Ledger…'
+    expect(signer.showAddress).toHaveBeenCalledWith(
+      {
+        type: 'policy',
+        network: 'mainnet',
+        policyDescriptor: `wsh(multi(2,${cosignerXpub}/1/7,[${accountKeyOrigin}]${accountKeychain.publicExtendedKey}/1/7))`,
+      },
+      ctx
     );
-    expect(onWalletRegistered).toHaveBeenCalledOnce();
-    expect(mocks.getWalletAddress).toHaveBeenCalledOnce();
+  });
+
+  test('fails fast when the account is not part of the descriptor', async () => {
+    const signer = makeFakeHardwareBitcoinSigner();
+    const otherXpub = makeNativeSegwitAccountKeychain(3).publicExtendedKey;
+    const displayAddress = useDisplayLedgerDescriptorAddress();
+
+    await expect(
+      displayAddress(
+        signer,
+        `wsh(multi(2,${cosignerXpub}/0/0,${otherXpub}/0/0))`,
+        makeFakeOperationContext()
+      )
+    ).rejects.toThrow('Current account is not part of this descriptor');
+    expect(signer.showAddress).not.toHaveBeenCalled();
   });
 
   test('fails fast when a co-signer is a raw public key', async () => {
     const rawKey = makeNativeSegwitAccountKeychain(2).deriveChild(0).deriveChild(0).publicKey;
     if (!rawKey) throw new Error('Expected public key');
     const rawKeyDescriptor = `wsh(multi(2,${Buffer.from(rawKey).toString('hex')},${accountKeychain.publicExtendedKey}/0/0))`;
+    const signer = makeFakeHardwareBitcoinSigner();
     const displayAddress = useDisplayLedgerDescriptorAddress();
 
-    await expect(displayAddress(makeFakeLedgerApp(), rawKeyDescriptor)).rejects.toThrow(
-      'another signer is a raw public key'
-    );
-    expect(mocks.registerWallet).not.toHaveBeenCalled();
+    await expect(
+      displayAddress(signer, rawKeyDescriptor, makeFakeOperationContext())
+    ).rejects.toThrow('another signer is a raw public key');
+    expect(signer.showAddress).not.toHaveBeenCalled();
   });
 });
