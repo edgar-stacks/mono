@@ -12,6 +12,8 @@ export default defineConfig({
   globalCss: {
     ...globalLoaderCss,
     'button:not(:disabled)': { cursor: 'pointer' },
+    '[data-frame] *': { scrollbarWidth: 'none' },
+    '[data-frame] *::-webkit-scrollbar': { display: 'none' },
     ':root': {
       '--multisig-collecting-wash':
         'linear-gradient(90deg, rgb(from token(colors.orange.action-primary-default) r g b / 0.16), rgb(from token(colors.orange.action-primary-default) r g b / 0.025))',
