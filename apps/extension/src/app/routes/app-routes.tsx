@@ -5,6 +5,7 @@ import * as Sentry from '@sentry/react';
 
 import { LoadingSpinner } from '@leather.io/ui';
 
+import { IS_DEV_ENV, IS_TEST_ENV } from '@shared/environment';
 import { RouteUrls } from '@shared/route-urls';
 
 import { Content } from '@app/components/layout/layouts/content.layout';
@@ -287,6 +288,17 @@ function useAppRoutes() {
 
           {/* Popup Routes */}
           {rpcRequestRoutes}
+
+          {(IS_DEV_ENV || IS_TEST_ENV) && (
+            <Route
+              path={RouteUrls.ApprovalScreensPreview}
+              lazy={async () => ({
+                Component: (
+                  await import('@app/pages/approval-screens-preview/approval-screens-preview')
+                ).default,
+              })}
+            />
+          )}
         </Route>
 
         <Route
