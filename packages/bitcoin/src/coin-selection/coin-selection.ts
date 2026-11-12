@@ -116,17 +116,26 @@ export function determineUtxosForSpend<T extends InputData>({
     new BigNumber(estimateTransactionSize().txVBytes).multipliedBy(feeRate).toNumber()
   );
 
-  const changeAmount =
-    BigInt(getUtxoTotal(neededUtxos).toString()) - BigInt(amount.amount.toNumber()) - BigInt(fee);
+  const inputsMinusOutputs =
+    BigInt(getUtxoTotal(neededUtxos).toString()) - BigInt(amount.amount.toNumber());
 
-  const changeUtxos: CoinSelectionOutput[] =
-    changeAmount > BTC_P2WPKH_DUST_AMOUNT
-      ? [
-          {
-            value: changeAmount,
-          },
-        ]
-      : [];
+  const changeAmount = inputsMinusOutputs - BigInt(fee);
+
+  const hasChange = changeAmount > BTC_P2WPKH_DUST_AMOUNT;
+
+  const changeUtxos: CoinSelectionOutput[] = hasChange
+    ? [
+        {
+          value: changeAmount,
+        },
+      ]
+    : [];
+
+  const sizeInfo = hasChange
+    ? estimateTransactionSize()
+    : getSizeInfo({ utxos: neededUtxos, recipients, isSendMax: true, inputSizing });
+
+  const finalFee = hasChange ? fee : Number(inputsMinusOutputs);
 
   const outputs: CoinSelectionOutput[] = [
     ...recipients.map(({ address, amount }) => ({
@@ -140,8 +149,8 @@ export function determineUtxosForSpend<T extends InputData>({
     filteredUtxos,
     inputs: neededUtxos,
     outputs,
-    size: estimateTransactionSize().txVBytes,
-    fee: createMoney(new BigNumber(fee), 'BTC'),
-    ...estimateTransactionSize(),
+    size: sizeInfo.txVBytes,
+    fee: createMoney(new BigNumber(finalFee), 'BTC'),
+    ...sizeInfo,
   };
 }
