@@ -231,7 +231,7 @@ describe(buildSignerManagerOptions.name, () => {
     });
     expect(options[0]).toEqual({
       providerId: currentCustomRowId,
-      name: 'SP21Y…XEFFP.custom-signer-manager',
+      name: 'SP21…EFFP.custom-signer-manager',
       meta: '',
       isCurrent: true,
       mono: true,
