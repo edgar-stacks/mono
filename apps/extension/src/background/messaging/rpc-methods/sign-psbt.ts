@@ -21,6 +21,7 @@ import {
   getOriginatingFrameFromPort,
   sendErrorResponseOnUserPopupClose,
   triggerRequestPopupWindowOpen,
+  validateRequestNetwork,
 } from '../rpc-request-utils';
 
 function validatePsbt(hex: string) {
@@ -96,6 +97,14 @@ export const signPsbtHandler = defineRpcRequestHandler(signPsbt.method, async (r
     return;
   }
 
+  const { status: networkStatus } = await validateRequestNetwork({
+    id: request.id,
+    method: request.method,
+    network: request.params.network,
+    port,
+  });
+  if (networkStatus === 'failure') return;
+
   const requestParams: RequestParams = [
     ['hex', request.params.hex],
     ['requestId', request.id],
@@ -107,10 +116,6 @@ export const signPsbtHandler = defineRpcRequestHandler(signPsbt.method, async (r
 
   if (isDefined(request.params.broadcast)) {
     requestParams.push(['broadcast', request.params.broadcast.toString()]);
-  }
-
-  if (isDefined(request.params.network)) {
-    requestParams.push(['network', request.params.network.toString()]);
   }
 
   if (isDefined(request.params.descriptor)) {
@@ -129,7 +134,8 @@ export const signPsbtHandler = defineRpcRequestHandler(signPsbt.method, async (r
 
   const { frameId, urlParams, tabId } = await createConnectingAppSearchParamsWithLastKnownAccount(
     port,
-    requestParams
+    requestParams,
+    { network: request.params.network }
   );
 
   if (urlParams.has('policyId') && isUndefined(request.params.descriptor)) {

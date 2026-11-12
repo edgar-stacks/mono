@@ -37,6 +37,7 @@ vi.mock('../rpc-request-utils', () => ({
     mocks.createConnectingAppSearchParamsWithLastKnownAccount,
   triggerRequestPopupWindowOpen: mocks.triggerRequestPopupWindowOpen,
   sendErrorResponseOnUserPopupClose: mocks.sendErrorResponseOnUserPopupClose,
+  validateRequestNetwork: () => Promise.resolve({ status: 'success' }),
 }));
 
 vi.mock('../rpc-helpers', () => ({

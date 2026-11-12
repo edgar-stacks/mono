@@ -13,6 +13,8 @@ import { assertExistence } from '@leather.io/utils';
 import { test } from '../../fixtures/fixtures';
 
 const getAddressesMethods = ['getAddresses', 'stx_getAddresses'] as const;
+
+const walletOnTestnetState = { networks: { ids: [], entities: {}, currentNetworkId: 'testnet' } };
 type GetAddressesMethods = (typeof getAddressesMethods)[number];
 
 function softwareSignIn() {
@@ -110,6 +112,26 @@ getAddressesMethods.forEach(method => {
         expectedResult: getExpectedResponseForKeys(['bitcoin']),
       },
     } as const;
+
+    test.describe('with the wallet switched to testnet', () => {
+      test.beforeEach(async ({ extensionId, onboardingPage }) => {
+        await onboardingPage.signInWithTestAccount(extensionId, walletOnTestnetState);
+      });
+
+      test('it returns mainnet addresses when the request has no network', async ({
+        page,
+        context,
+      }) => {
+        await page.goto('localhost:3000');
+        const getAddressesPromise = initiateGetAddresses(page, method);
+        const popup = await interceptRequestPopup(context);
+        await clickConnectLeatherButton(popup);
+
+        const result = await getAddressesPromise;
+        assertExistence(result, 'Expected result');
+        test.expect(result).toEqual(getExpectedResponseForKeys(['bitcoin', 'stacks']));
+      });
+    });
 
     Object.entries(specs).forEach(([walletPreset, { signIn, expectedResult }]) => {
       test.describe(`${walletPreset} `, () => {

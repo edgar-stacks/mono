@@ -54,4 +54,19 @@ describe('isConnectedToExistingWallet', () => {
     const permission = createPermission({ policyId: `${fingerprint}/0/bc1qaddr/mainnet` });
     expect(isConnectedToExistingWallet(permission, createWalletEntities([fingerprint]))).toBe(true);
   });
+
+  test('returns false when a pre-multiwallet permission has no accountIndex', () => {
+    const permission = createPermission();
+    Reflect.deleteProperty(permission, 'accountIndex');
+    expect(isConnectedToExistingWallet(permission, createWalletEntities([fingerprint]))).toBe(
+      false
+    );
+  });
+
+  test('returns false when the permission accountIndex is not an integer', () => {
+    const permission = createPermission({ accountIndex: 1.5 });
+    expect(isConnectedToExistingWallet(permission, createWalletEntities([fingerprint]))).toBe(
+      false
+    );
+  });
 });
