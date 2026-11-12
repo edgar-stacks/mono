@@ -9,8 +9,6 @@ import {
   BottomSheetVirtualizedList,
   useBottomSheetScrollableCreator,
 } from '@gorhom/bottom-sheet';
-import { type BottomSheetScrollViewProps } from '@gorhom/bottom-sheet/lib/typescript/components/bottomSheetScrollable/types';
-import { type BottomSheetViewProps } from '@gorhom/bottom-sheet/lib/typescript/components/bottomSheetView/types';
 import { FlashList, type FlashListProps } from '@shopify/flash-list';
 
 import { useTheme } from '../../hooks/use-theme.native';
@@ -31,7 +29,7 @@ function useSheetStyles() {
   };
 }
 
-export function SheetView({ style, ...props }: BottomSheetViewProps) {
+export function SheetView({ style, ...props }: ComponentProps<typeof BottomSheetView>) {
   const styles = useSheetStyles();
   return (
     <BottomSheetView
@@ -45,7 +43,7 @@ export function SheetScrollView({
   style,
   contentContainerStyle,
   ...props
-}: BottomSheetScrollViewProps) {
+}: ComponentProps<typeof BottomSheetScrollView>) {
   const styles = useSheetStyles();
   return (
     <BottomSheetScrollView
