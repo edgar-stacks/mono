@@ -1,7 +1,7 @@
 {
   "name": "@leather.io/utils",
   "author": "Leather.io contact@leather.io",
-  "description": "Shared bitcoin utilities",
+  "description": "Shared utilities for Leather apps and packages",
   "version": "0.55.0",
   "license": "MIT",
   "homepage": "https://github.com/leather-io/mono/tree/dev/packages/utils",
