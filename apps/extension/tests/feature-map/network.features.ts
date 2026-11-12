@@ -141,7 +141,7 @@ export const networkFeatures = [
     ],
     gate: 'account',
     flags: [],
-    preconditions: { session: 'signed-in', network: 'testnet4', mocks: [...defaultMocks] },
+    preconditions: { session: 'signed-in', mocks: [...defaultMocks] },
     selectors: {
       ready: HomePageSelectors.NetworkSwitcher,
       others: [],

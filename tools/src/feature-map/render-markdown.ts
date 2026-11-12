@@ -1,4 +1,5 @@
 import { compareStrings } from '../utils/compare.js';
+import { verifyBlockReason, verifyCommand } from '../verify/resolve.js';
 import { toRepoRelative } from './app-config.js';
 import { type ParsedFeature, type ResolvedString } from './features-parser.js';
 import {
@@ -153,6 +154,14 @@ function renderFeature(model: FeatureMapModel, feature: ParsedFeature): string[]
     );
   }
   lines.push('');
+
+  const blocked = verifyBlockReason(feature);
+  lines.push(
+    '**Verify**',
+    '',
+    blocked ? `Not runnable: ${blocked}.` : code(verifyCommand(model, feature)),
+    ''
+  );
 
   lines.push('**Preconditions**', '');
   lines.push(`- session: ${feature.preconditions.session}`);

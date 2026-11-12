@@ -6,10 +6,14 @@ import { describe, expect, test } from 'vitest';
 import { getFeatureMapAppConfig } from './app-config.js';
 import {
   loadMockFunctions,
+  loadNetworkIds,
+  loadPersistWhitelist,
   loadRouterFiles,
+  loadRpcCatalog,
   loadRpcHandlers,
   loadSelectorObjects,
   loadSetupMocks,
+  loadVerifyMockRegistry,
 } from './test-assets.js';
 
 const config = getFeatureMapAppConfig('extension');
@@ -87,5 +91,50 @@ describe(loadRouterFiles.name, () => {
     expect(names).toContain('home.tsx');
     expect(names).toContain('rpc-stx-call-contract.routes.tsx');
     expect(names).not.toContain('modal-background-wrapper.tsx');
+  });
+});
+
+describe(loadVerifyMockRegistry.name, () => {
+  test('lists the mocks verify can apply, including the defaults every entry names', () => {
+    const registry = loadVerifyMockRegistry(config);
+    expect(registry.has('setupMockApis')).toBe(true);
+    expect(registry.has('mockUnhandledRequests')).toBe(true);
+    const mocks = loadMockFunctions(config);
+    expect([...registry].every(name => mocks.has(name))).toBe(true);
+  });
+
+  test('is empty when the registry file is missing', () => {
+    const registry = loadVerifyMockRegistry({
+      ...config,
+      verifyMockRegistryFile: path.join(tempDir, 'missing-registry.ts'),
+    });
+    expect(registry.size).toBe(0);
+  });
+});
+
+describe(loadPersistWhitelist.name, () => {
+  test('reads the persisted slice names', () => {
+    const whitelist = loadPersistWhitelist(config);
+    expect(whitelist).toContain('active');
+    expect(whitelist).toContain('softwareKeys');
+    expect(whitelist).toContain('wallets');
+  });
+});
+
+describe(loadNetworkIds.name, () => {
+  test('reads the default wallet network ids', () => {
+    const ids = loadNetworkIds(config);
+    expect(ids).toContain('mainnet');
+    expect(ids).toContain('testnet4');
+  });
+});
+
+describe(loadRpcCatalog.name, () => {
+  test('lists the test-app catalog entries with their methods', () => {
+    const catalog = loadRpcCatalog(config);
+    const open = catalog.find(entry => entry.id === 'open-popup');
+    expect(open).toMatchObject({ method: 'open', buildsParams: false });
+    expect(open?.file.endsWith('methods/general.ts')).toBe(true);
+    expect(catalog.find(entry => entry.id === 'getAddresses')?.buildsParams).toBe(true);
   });
 });
