@@ -41,6 +41,7 @@ export {
 } from './activity/blockchain-activity-selectors';
 export {
   buildBlockchainActivityActionTitle,
+  buildBlockchainActivityHeroLines,
   interpolateActivityTemplate,
 } from './activity/blockchain-activity-copy';
 export type {

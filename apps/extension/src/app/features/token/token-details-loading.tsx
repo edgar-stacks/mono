@@ -3,9 +3,10 @@ import { Box, Circle, Flex, Stack } from 'leather-styles/jsx';
 import { historicalPeriods } from '@leather.io/models';
 import { SkeletonLoader } from '@leather.io/ui';
 
+import { DetailsSection } from '@app/components/details/details-section';
+
 import { TokenActivityLoading } from './components/token-activity-loading';
 import { TokenDetailsHeader } from './components/token-details-header';
-import { TokenDetailsSection } from './components/token-details-section';
 
 function LoadingRow() {
   return (
@@ -81,23 +82,23 @@ export function TokenDetailsLoading({ title = 'Loading...' }: { title?: string }
         <Stack bg="ink.background-secondary" borderRadius={['0', null, 'md']} overflow="hidden">
           <LoadingOverview />
 
-          <TokenDetailsSection title="Price">
+          <DetailsSection title="Price">
             <LoadingPrice />
-          </TokenDetailsSection>
+          </DetailsSection>
 
-          <TokenDetailsSection title="Description">
+          <DetailsSection title="Description">
             <LoadingDescription />
-          </TokenDetailsSection>
+          </DetailsSection>
 
-          <TokenDetailsSection title="Token details">
+          <DetailsSection title="Token details">
             <LoadingRow />
             <LoadingRow />
             <LoadingRow />
-          </TokenDetailsSection>
+          </DetailsSection>
 
-          <TokenDetailsSection title="Activity">
+          <DetailsSection title="Activity">
             <TokenActivityLoading />
-          </TokenDetailsSection>
+          </DetailsSection>
         </Stack>
       </Box>
     </Stack>

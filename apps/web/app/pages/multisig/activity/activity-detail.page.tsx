@@ -50,6 +50,7 @@ export function ActivityDetailPage() {
 
   const activity = useBlockchainActivityByTxIdDetailQuery(
     accountAddresses,
+    network.startsWith('btc') ? 'bitcoin' : 'stacks',
     txid,
     settings,
     Boolean(account.data && txid)

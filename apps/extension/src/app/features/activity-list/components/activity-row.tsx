@@ -1,8 +1,10 @@
 import { memo } from 'react';
+import { useNavigate } from 'react-router';
 
 import { styled } from 'leather-styles/jsx';
 
 import {
+  type BlockchainActivityAmount,
   type BlockchainActivityDirection,
   type BlockchainActivityIndicator,
   type BlockchainActivityItem,
@@ -15,11 +17,10 @@ import {
   ListItemBox,
 } from '@leather.io/ui';
 
-import { analytics } from '@shared/utils/analytics';
+import { RouteUrls } from '@shared/route-urls';
+import { replaceRouteParams } from '@shared/utils/replace-route-params';
 
 import { formatCurrency } from '@app/common/currency-formatter';
-import { useBitcoinExplorerLink } from '@app/common/hooks/use-bitcoin-explorer-link';
-import { useStacksExplorerLink } from '@app/common/hooks/use-stacks-explorer-link';
 import { openInNewTab } from '@app/common/utils/open-in-new-tab';
 import { Balance } from '@app/components/balance/balance';
 
@@ -31,6 +32,11 @@ const indicatorSize = 12;
 interface ActivityRowProps {
   item: BlockchainActivityItem;
   sbtcOverlay?: SbtcDepositOverlay;
+  onOpen?(): void;
+}
+
+function directionOperator(direction: BlockchainActivityDirection) {
+  return direction === 'received' ? '+' : '−';
 }
 
 function resolveValueColor(
@@ -42,23 +48,44 @@ function resolveValueColor(
   return 'ink.text-primary';
 }
 
-function Row({ item, sbtcOverlay }: ActivityRowProps) {
+interface AmountCaptionProps {
+  amount: BlockchainActivityAmount;
+}
+
+function AmountCaption({ amount }: AmountCaptionProps) {
+  const { caption } = amount;
+  if (caption?.kind === 'more') {
+    return (
+      <styled.span textStyle="caption.01" color="ink.text-subdued" whiteSpace="nowrap">
+        {`+${caption.count} more`}
+      </styled.span>
+    );
+  }
+  return (
+    <Balance
+      balance={caption?.kind === 'change' ? caption.crypto : amount.quote}
+      operator={caption?.kind === 'change' ? directionOperator(caption.direction) : undefined}
+      color="ink.text-subdued"
+      textStyle="caption.01"
+      whiteSpace="nowrap"
+      formatCurrency={formatCurrency}
+    />
+  );
+}
+
+function Row({ item, sbtcOverlay, onOpen }: ActivityRowProps) {
   const { activity, view } = item;
-  const { handleOpenBitcoinTxLink } = useBitcoinExplorerLink();
-  const { handleOpenStacksTxLink } = useStacksExplorerLink();
+  const navigate = useNavigate();
 
   const { amount } = view;
   const valueColor = amount ? resolveValueColor(view.indicator, amount.direction) : undefined;
   const actionKind = getActivityActionKind(activity);
 
-  function openInExplorer() {
-    if (view.chain === 'bitcoin') {
-      analytics.track('view_bitcoin_transaction');
-      handleOpenBitcoinTxLink({ txid: view.txid });
-      return;
-    }
-    analytics.track('view_transaction');
-    handleOpenStacksTxLink({ txid: view.txid });
+  function openDetails() {
+    onOpen?.();
+    void navigate(
+      replaceRouteParams(RouteUrls.ActivityDetails, { chain: view.chain, txid: view.txid })
+    );
   }
 
   function renderAction() {
@@ -70,7 +97,7 @@ function Row({ item, sbtcOverlay }: ActivityRowProps) {
 
   return (
     <ListItemBox
-      onClick={sbtcOverlay?.reclaimUrl ? undefined : openInExplorer}
+      onClick={openDetails}
       leading={
         <BlockchainActivityAvatarIcon
           avatar={view.avatar}
@@ -105,8 +132,8 @@ function Row({ item, sbtcOverlay }: ActivityRowProps) {
         amount ? (
           <Balance
             balance={amount.crypto ?? amount.quote}
-            operator={amount.direction === 'received' ? '+' : '−'}
-            formattingOptions={amount.crypto ? { showCurrency: false } : undefined}
+            operator={directionOperator(amount.direction)}
+            formattingOptions={amount.crypto ? { showCurrency: !!amount.showSymbol } : undefined}
             color={valueColor}
             textStyle="label.02"
             whiteSpace="nowrap"
@@ -114,17 +141,7 @@ function Row({ item, sbtcOverlay }: ActivityRowProps) {
           />
         ) : undefined
       }
-      trailingCaption={
-        amount?.crypto ? (
-          <Balance
-            balance={amount.quote}
-            color="ink.text-subdued"
-            textStyle="caption.01"
-            whiteSpace="nowrap"
-            formatCurrency={formatCurrency}
-          />
-        ) : undefined
-      }
+      trailingCaption={amount?.crypto ? <AmountCaption amount={amount} /> : undefined}
       action={renderAction()}
     />
   );

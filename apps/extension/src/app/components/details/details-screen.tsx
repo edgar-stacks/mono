@@ -4,18 +4,17 @@ import { Box, Stack } from 'leather-styles/jsx';
 
 import { Content } from '@app/components/layout';
 
-import { TokenDetailsHeader } from './token-details-header';
-
-interface TokenDetailsScreenProps {
-  title: string;
+interface DetailsScreenProps {
+  header: ReactNode;
   children: ReactNode;
+  testId?: string;
 }
 
-export function TokenDetailsScreen({ title, children }: TokenDetailsScreenProps) {
+export function DetailsScreen({ header, children, testId }: DetailsScreenProps) {
   return (
     <Content>
-      <Stack width="100%" gap="space.00" data-testid="token-details-container">
-        <TokenDetailsHeader title={title} />
+      <Stack width="100%" gap="space.00" data-testid={testId}>
+        {header}
         <Box width="100%" maxWidth={['100%', null, '780px']} margin="0 auto">
           <Stack
             bg="ink.background-primary"

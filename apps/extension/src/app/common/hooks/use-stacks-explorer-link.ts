@@ -30,5 +30,17 @@ export function useStacksExplorerLink() {
     [chain.stacks.chainId, chain.stacks.url, isNakamotoTestnet]
   );
 
-  return { handleOpenStacksTxLink };
+  const getStacksAddressLink = useCallback(
+    (address: string) =>
+      getStacksExplorerLink({
+        mode: stacksChainIdToCoreNetworkMode(chain.stacks.chainId),
+        type: 'address',
+        value: address,
+        isNakamoto: isNakamotoTestnet,
+        apiUrl: getStacksExplorerApiUrl(chain.stacks.url),
+      }),
+    [chain.stacks.chainId, chain.stacks.url, isNakamotoTestnet]
+  );
+
+  return { handleOpenStacksTxLink, getStacksAddressLink };
 }
