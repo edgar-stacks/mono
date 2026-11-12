@@ -26,6 +26,7 @@ import { clearKeychainSelectorCaches } from '@app/store/in-memory-key/keychain-s
 
 import { useSyncAddressMonitor } from '../address-monitor/use-sync-address-monitor';
 import { useRestoreFormState } from '../popup-send-form-restoration/use-restore-form-state';
+import { useSidePanelRequestRouting } from '../side-panel/use-side-panel-request-routing';
 
 initalizeAnalytics();
 
@@ -63,6 +64,7 @@ export function Container() {
     window.location.reload();
   });
   useRestoreFormState();
+  useSidePanelRequestRouting();
   useHandleQueuedBackgroundAnalytics();
   const isWalletReady = useAccountGateDestination() === null;
   useUpdateAppliedToast(isWalletReady);

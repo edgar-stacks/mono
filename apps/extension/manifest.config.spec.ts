@@ -21,6 +21,9 @@ test('creates a Chromium development manifest', () => {
         128: 'assets/icons/leather-icon-128-dev.png',
       },
     },
+    side_panel: {
+      default_path: 'side-panel.html',
+    },
     content_scripts: [
       {
         js: ['content-script.ts'],
@@ -37,8 +40,17 @@ test('creates a Chromium development manifest', () => {
         resources: ['inpage.js'],
         use_dynamic_url: false,
       },
+      {
+        resources: [
+          'assets/icons/leather-icon-128.png',
+          'assets/fonts/diatype/diatype-regular.woff2',
+          'assets/fonts/diatype/diatype-medium.woff2',
+        ],
+        use_dynamic_url: false,
+      },
     ],
   });
+  expect(manifest.permissions).toContain('sidePanel');
 });
 
 test('creates a preview manifest', () => {

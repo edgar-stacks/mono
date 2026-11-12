@@ -1,5 +1,3 @@
-export const CONTENT_SCRIPT_PORT = 'content-script';
-
 export const WALLET_LOCK_MESSAGE = 'wallet/lock';
 
 export const SIGN_OUT_MESSAGE = 'wallet/sign-out';

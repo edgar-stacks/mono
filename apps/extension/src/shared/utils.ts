@@ -1,4 +1,5 @@
 import { logger } from './logger';
+import { isSidePanelPage, returnSidePanelToHome } from './side-panel';
 
 export const assumedZeroFingerprint = '00000000';
 
@@ -6,6 +7,10 @@ export function closeWindow() {
   // We prevent `window.close()` directly as to allow for debugging helper
   if (process.env.DEBUG_PREVENT_WINDOW_CLOSE === 'true') {
     logger.warn('Prevented window close with flag DEBUG_PREVENT_WINDOW_CLOSE');
+    return;
+  }
+  if (isSidePanelPage()) {
+    returnSidePanelToHome();
     return;
   }
   window.close();

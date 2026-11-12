@@ -9,7 +9,7 @@ import {
 import { logger } from '@shared/logger';
 import { sendMessageToOriginatingFrame } from '@shared/messaging/send-message-to-originating-frame';
 
-import type { RpcHandler } from './define-rpc-request-handler';
+import type { RequestSender, RpcHandler } from './define-rpc-request-handler';
 import { methodsRequiringConnectedWallet } from './methods-requiring-connected-wallet';
 import { btcAddAccountHandler } from './rpc-methods/btc-add-account';
 import { getAddressesHandler, stxGetAddressesHandler } from './rpc-methods/get-addresses';
@@ -55,7 +55,11 @@ function getRpcHandler<M extends keyof RpcEndpointMap>(
   return rpcHandlers[method];
 }
 
-export async function rpcMessageHandler(request: RpcRequests, port: chrome.runtime.Port) {
+export function hasRpcRequestHandler(method: string) {
+  return Object.hasOwn(rpcHandlers, method);
+}
+
+export async function rpcMessageHandler(request: RpcRequests, port: RequestSender) {
   listenForOriginTabClose({ tabId: port.sender?.tab?.id });
 
   logger.info(`Received RPC request ${request.method}`, request);

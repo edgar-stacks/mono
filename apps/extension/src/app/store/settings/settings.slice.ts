@@ -17,6 +17,7 @@ interface InitialState {
   discardedInscriptions: string[];
   networkBadgeAlwaysOn?: boolean;
   tokenDetailsTab?: TokenDetailsTab;
+  isSidePanelModeEnabled?: boolean;
 }
 
 const initialState: InitialState = {
@@ -66,6 +67,9 @@ export const settingsSlice = createSlice({
     },
     toggleNetworkBadgeAlwaysOn(state) {
       state.networkBadgeAlwaysOn = !state.networkBadgeAlwaysOn;
+    },
+    toggleSidePanelMode(state) {
+      state.isSidePanelModeEnabled = !(state.isSidePanelModeEnabled ?? true);
     },
     tokenDetailsTabSelected(state, action: PayloadAction<TokenDetailsTab>) {
       state.tokenDetailsTab = action.payload;

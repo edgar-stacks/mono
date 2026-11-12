@@ -58,6 +58,15 @@ export function useNetworkBadgeAlwaysOn() {
   return useSelector(selectNetworkBadgeAlwaysOn);
 }
 
+const selectIsSidePanelModeEnabled = createSelector(
+  selectSettings,
+  state => state.isSidePanelModeEnabled ?? true
+);
+
+export function useIsSidePanelModeEnabled() {
+  return useSelector(selectIsSidePanelModeEnabled);
+}
+
 const selectSeenFeatureIntros = createSelector(
   selectSettings,
   state => state.seenFeatureIntros ?? []

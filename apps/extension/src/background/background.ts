@@ -1,23 +1,33 @@
 //
 // This file is the entrypoint to the extension's background script
 // https://developer.chrome.com/docs/extensions/mv3/architecture-overview/#background_script
+import { z } from 'zod';
+
 import type { RpcRequests } from '@leather.io/rpc';
+import { isDefined } from '@leather.io/utils';
 
 import { listenForSessionDurationPort } from '@shared/analytics/session-duration-tracking';
 import { logger } from '@shared/logger';
-import { CONTENT_SCRIPT_PORT } from '@shared/message-types';
 import { warnUsersAboutDevToolsDangers } from '@shared/utils/dev-tools-warning-log';
 
 import { queueAnalyticsRequest } from './background-analytics';
 import { initExtensionUpdateMonitor } from './extension-update-monitor';
 import { initContextMenuActions } from './init-context-menus';
 import { internalBackgroundMessageHandler } from './messaging/internal-methods/message-handler';
-import { rpcMessageHandler } from './messaging/rpc-message-handler';
+import { hasRpcRequestHandler, rpcMessageHandler } from './messaging/rpc-message-handler';
 import { initAddressMonitor } from './monitors/address-monitor';
+import { initSidePanelAvailabilitySync } from './side-panel/side-panel-availability';
+import {
+  handleSidePanelOverlayAction,
+  listenForSidePanelRequests,
+  openSidePanelForIncomingRequest,
+} from './side-panel/side-panel-requests';
 
 initContextMenuActions();
 initExtensionUpdateMonitor();
 warnUsersAboutDevToolsDangers();
+initSidePanelAvailabilitySync();
+listenForSidePanelRequests();
 
 chrome.runtime.onInstalled.addListener(details => {
   const reason: string = details.reason;
@@ -28,27 +38,52 @@ chrome.runtime.onInstalled.addListener(details => {
   }
 });
 
-// Listen for connection to the content-script - port for two-way communication
-chrome.runtime.onConnect.addListener(port => {
-  if (port.name !== CONTENT_SCRIPT_PORT) return;
-
-  port.onMessage.addListener((message: RpcRequests, port) => {
-    if (!port.sender?.tab?.id)
-      return logger.error('Message reached background script without a corresponding tab');
-
-    // Chromium/Firefox discrepancy
-    const originUrl = port.sender?.origin ?? port.sender?.url;
-
-    if (!originUrl)
-      return logger.error('Message reached background script without a corresponding origin');
-
-    void rpcMessageHandler(message, port);
-  });
+const rpcRequestEnvelopeSchema = z.looseObject({
+  jsonrpc: z.literal('2.0'),
+  id: z.string(),
+  method: z.string(),
 });
+
+const rpcRequestSchema = z.custom<RpcRequests>(
+  message => rpcRequestEnvelopeSchema.safeParse(message).success
+);
+
+function isContentScriptSender(sender: chrome.runtime.MessageSender) {
+  return isDefined(sender.tab) && !sender.url?.startsWith(chrome.runtime.getURL(''));
+}
+
+function handleContentScriptMessage(message: unknown, sender: chrome.runtime.MessageSender) {
+  if (handleSidePanelOverlayAction(message, sender)) return;
+  const parsedRequest = rpcRequestSchema.safeParse(message);
+  if (!parsedRequest.success) return;
+  const request = parsedRequest.data;
+
+  const tabId = sender.tab?.id;
+  if (!tabId) return logger.error('Message reached background script without a corresponding tab');
+
+  // Chromium/Firefox discrepancy
+  const originUrl = sender.origin ?? sender.url;
+
+  if (!originUrl)
+    return logger.error('Message reached background script without a corresponding origin');
+
+  if (hasRpcRequestHandler(request.method))
+    openSidePanelForIncomingRequest({
+      tabId,
+      method: request.method,
+      params: 'params' in request ? request.params : undefined,
+    });
+  void rpcMessageHandler(request, { sender });
+}
 
 //
 // Events from the extension frames script
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (isContentScriptSender(sender)) {
+    handleContentScriptMessage(message, sender);
+    sendResponse();
+    return false;
+  }
   void internalBackgroundMessageHandler(message, sender, sendResponse);
   // Listener fn must return `true` to indicate the response will be async
   return true;
