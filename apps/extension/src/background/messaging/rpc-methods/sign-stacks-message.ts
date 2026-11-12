@@ -17,7 +17,7 @@ import {
 } from '@shared/rpc/methods/sign-stacks-message';
 import { shouldRefuseSignInMessageSigning } from '@shared/rpc/sign-in-message-veto';
 
-import { defineRpcRequestHandler } from '../define-rpc-request-handler';
+import { type RequestSender, defineRpcRequestHandler } from '../define-rpc-request-handler';
 import { trackRpcRequestError, trackRpcRequestSuccess } from '../rpc-helpers';
 import {
   type RequestParams,
@@ -31,7 +31,7 @@ import {
 async function handleRpcSignStacksMessage(
   method: 'stx_signMessage' | 'stx_signStructuredMessage',
   request: RpcRequest<typeof stxSignMessage> | RpcRequest<typeof stxSignStructuredMessage>,
-  port: chrome.runtime.Port,
+  port: RequestSender,
   requestParams: RequestParams
 ) {
   if (isUndefined(request.params)) {

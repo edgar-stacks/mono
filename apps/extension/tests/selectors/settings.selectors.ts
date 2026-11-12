@@ -33,6 +33,7 @@ export const SettingsSelectors = {
   AllowSpendingBtn: 'allow-spending-btn',
   ToggleNotifications: 'toggle-notifications',
   ToggleNetworkBadge: 'toggle-network-badge',
+  ToggleSidePanelMode: 'toggle-side-panel-mode',
   SettingsPage: 'settings-page',
 } as const;
 export type SettingsSelectors = (typeof SettingsSelectors)[keyof typeof SettingsSelectors];
