@@ -1,10 +1,10 @@
+import { HomePageSelectors } from '@tests/selectors/home.selectors';
 import { css } from 'leather-styles/css';
 import { Stack } from 'leather-styles/jsx';
 
 import { StxAvatarIcon } from '@leather.io/ui';
 
-import { copyToClipboard } from '@app/common/utils/copy-to-clipboard';
-import { useToast } from '@app/features/toasts/use-toast';
+import { useCopyAddress } from '@app/features/token/hooks/use-copy-address';
 
 import { receiveTabStyle } from '../receive-tab-style';
 import { ReceiveItem } from './receive-item';
@@ -14,19 +14,15 @@ interface ReceiveCollectiblesProps {
   onClickQrStacksNft(): void;
 }
 export function ReceiveCollectibles({ stxAddress, onClickQrStacksNft }: ReceiveCollectiblesProps) {
-  const toast = useToast();
-
-  async function copyAddress(address: string) {
-    await copyToClipboard(address);
-    toast.success('Copied to clipboard!');
-  }
+  const copyAddress = useCopyAddress();
   return (
     <Stack className={css(receiveTabStyle)}>
       <ReceiveItem
         address={stxAddress}
+        copyDataTestId={HomePageSelectors.ReceiveStacksNftCopyBtn}
         icon={<StxAvatarIcon />}
         onCopyAddress={() => {
-          void copyAddress(stxAddress);
+          copyAddress(stxAddress);
         }}
         onClickQrCode={onClickQrStacksNft}
         title="Stacks NFT"

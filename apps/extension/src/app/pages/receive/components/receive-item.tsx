@@ -11,6 +11,7 @@ import { truncateMiddle } from '@leather.io/utils';
 
 interface ReceiveItemProps {
   address?: string;
+  copyDataTestId?: string;
   dataTestId?: string;
   icon: React.ReactNode;
   onCopyAddress(): void;
@@ -21,6 +22,7 @@ interface ReceiveItemProps {
 }
 export function ReceiveItem({
   address,
+  copyDataTestId,
   dataTestId,
   icon,
   onCopyAddress,
@@ -48,7 +50,7 @@ export function ReceiveItem({
                 />
               </BasicTooltip>
             )}
-            <IconButton icon={<CopyIcon />} onClick={onCopyAddress} />
+            <IconButton data-testid={copyDataTestId} icon={<CopyIcon />} onClick={onCopyAddress} />
             {onClickQrCode && (
               <IconButton
                 data-testid={dataTestId}
