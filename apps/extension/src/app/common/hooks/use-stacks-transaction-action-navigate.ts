@@ -13,19 +13,20 @@ export function useStacksTransactionActionNavigate() {
   const { whenWallet } = useWalletType();
 
   return useCallback(
-    (txid: string, action: StacksTransactionActionType) => {
+    (txid: string, action: StacksTransactionActionType, returnTo?: string) => {
       const routeUrl =
         action === StacksTransactionActionType.IncreaseFee
           ? RouteUrls.IncreaseStacksFee.replace(':txid', txid)
           : RouteUrls.CancelStacksTransaction.replace(':txid', txid);
+      const options = returnTo ? { state: { returnTo } } : undefined;
 
       return whenWallet({
         ledger: () =>
           whenPageMode({
-            full: () => void navigate(routeUrl),
+            full: () => void navigate(routeUrl, options),
             popup: () => void openIndexPageInNewTab(routeUrl),
           })(),
-        software: () => navigate(routeUrl),
+        software: () => navigate(routeUrl, options),
       })();
     },
     [navigate, whenWallet]

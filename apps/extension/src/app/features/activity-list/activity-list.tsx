@@ -1,5 +1,5 @@
-import { useCallback, useMemo } from 'react';
-import { GroupedVirtuoso } from 'react-virtuoso';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { GroupedVirtuoso, type GroupedVirtuosoHandle, type StateSnapshot } from 'react-virtuoso';
 
 import { groupActivityByDate } from '@leather.io/features';
 
@@ -14,7 +14,11 @@ import { ActivityLoadingMore } from './components/activity-loading-more';
 import { ActivityRow } from './components/activity-row';
 import { useSbtcDepositActivity } from './use-sbtc-deposit-activity';
 
+let savedListState: StateSnapshot | undefined;
+
 export function ActivityList() {
+  const virtuosoRef = useRef<GroupedVirtuosoHandle>(null);
+  const [restoreStateFrom] = useState(() => savedListState);
   const accountAddresses = useCurrentAccountAddresses();
   const {
     items,
@@ -52,12 +56,28 @@ export function ActivityList() {
     [groups]
   );
 
+  useEffect(() => {
+    savedListState = undefined;
+  }, []);
+
+  const saveListState = useCallback(() => {
+    virtuosoRef.current?.getState(snapshot => {
+      savedListState = snapshot;
+    });
+  }, []);
+
   const itemContent = useCallback(
     (index: number) => {
       const item = flatItems[index];
-      return <ActivityRow item={item} sbtcOverlay={sbtcOverlays.get(item.view.txid)} />;
+      return (
+        <ActivityRow
+          item={item}
+          sbtcOverlay={sbtcOverlays.get(item.view.txid)}
+          onOpen={saveListState}
+        />
+      );
     },
-    [flatItems, sbtcOverlays]
+    [flatItems, sbtcOverlays, saveListState]
   );
 
   const endReached = useCallback(() => {
@@ -84,6 +104,8 @@ export function ActivityList() {
       onRetry={refetch}
     >
       <GroupedVirtuoso
+        ref={virtuosoRef}
+        restoreStateFrom={restoreStateFrom}
         style={{ height: '100%' }}
         groupCounts={groupCounts}
         groupContent={groupContent}

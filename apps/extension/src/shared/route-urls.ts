@@ -28,6 +28,7 @@ export const RouteUrls = {
 
   // nested routes must have relative paths
   Activity: '/activity',
+  ActivityDetails: '/activity/:chain/:txid',
   Collectibles: '/collectibles',
 
   // Locked wallet route

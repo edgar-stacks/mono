@@ -6,6 +6,7 @@ import {
   type BitcoinTransaction,
   type BlockchainActivity,
   type BlockchainActivityBalanceChange,
+  type CryptoAssetChain,
   type CryptoAssetId,
   type FungibleCryptoAsset,
   type MarketData,
@@ -154,15 +155,32 @@ export class BlockchainActivityService {
   // Reconstructs one activity from a txid alone, for the read-only detail of proposal-less activity.
   public async getActivityByTxId(
     account: AccountAddresses,
+    chain: CryptoAssetChain,
     txid: string,
     signal?: AbortSignal
   ): Promise<BlockchainActivity | null> {
-    const activity = account.stacks
-      ? await this.getStacksActivityByTxId(account.stacks.stxAddress, txid, signal)
-      : await this.getBitcoinActivityByTxId(account, txid, signal);
+    const activity = await this.getChainActivityByTxId(account, chain, txid, signal);
     if (activity === null) return null;
     const [enriched] = await this.enrichWithMarketData([activity], signal);
     return enriched ?? null;
+  }
+
+  private async getChainActivityByTxId(
+    account: AccountAddresses,
+    chain: CryptoAssetChain,
+    txid: string,
+    signal?: AbortSignal
+  ): Promise<BlockchainActivity | null> {
+    switch (chain) {
+      case 'stacks':
+        return account.stacks
+          ? this.getStacksActivityByTxId(account.stacks.stxAddress, txid, signal)
+          : null;
+      case 'bitcoin':
+        return this.getBitcoinActivityByTxId(account, txid, signal);
+      default:
+        return assertUnreachable(chain);
+    }
   }
 
   private async getBitcoinActivityByTxId(
@@ -170,7 +188,16 @@ export class BlockchainActivityService {
     txid: string,
     signal?: AbortSignal
   ): Promise<BlockchainActivity | null> {
-    if (account.bitcoin?.type !== 'fixedAddress') return null;
+    if (!account.bitcoin) return null;
+    if (account.bitcoin.type === 'hd') {
+      const txs = await this.bitcoinTransactionsService.getAccountTransactions(
+        account,
+        btcTxHorizonPageRequest,
+        signal
+      );
+      const accountTx = txs.find(tx => tx.txid === txid);
+      return accountTx ? mapBitcoinActivity(accountTx) : null;
+    }
     const tx = await this.bitcoinTransactionsService.getTransactionByTxId(txid, signal);
     if (tx === null) return null;
     const { address } = account.bitcoin;

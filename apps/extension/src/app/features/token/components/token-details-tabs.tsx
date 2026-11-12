@@ -5,12 +5,12 @@ import { Box, Stack, styled } from 'leather-styles/jsx';
 import type { BlockchainActivityItem } from '@leather.io/features';
 import { Tabs } from '@leather.io/ui';
 
+import { DetailsSection } from '@app/components/details/details-section';
 import { ActivityRow } from '@app/features/activity-list/components/activity-row';
 import { type TokenDetailsTab, defaultTokenDetailsTab } from '@app/store/settings/settings.slice';
 
 import { TokenActivityEmpty } from './token-activity-empty';
 import { TokenActivityLoading } from './token-activity-loading';
-import { TokenDetailsSection } from './token-details-section';
 
 interface TokenDetailsTabItem {
   label: string;
@@ -90,15 +90,15 @@ export function TokenDetailsTabs({
         <Stack gap="space.00">
           {priceContent}
           {descriptionText ? (
-            <TokenDetailsSection title="About">
+            <DetailsSection title="About">
               <Box px="space.05" pb="space.02">
                 <styled.p textStyle="body.02" margin="0" data-testid="token-details-description">
                   {descriptionText}
                 </styled.p>
               </Box>
-            </TokenDetailsSection>
+            </DetailsSection>
           ) : null}
-          <TokenDetailsSection title="Token details">{detailRows}</TokenDetailsSection>
+          <DetailsSection title="Token details">{detailRows}</DetailsSection>
         </Stack>
       </Tabs.Content>
       {balancesContent ? (

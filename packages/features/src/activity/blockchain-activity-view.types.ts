@@ -30,6 +30,10 @@ export interface BlockchainActivityAmount {
   direction: BlockchainActivityDirection;
   quote: Money;
   crypto?: Money;
+  showSymbol?: boolean;
+  caption?:
+    | { kind: 'change'; direction: BlockchainActivityDirection; crypto: Money }
+    | { kind: 'more'; count: number };
 }
 
 export interface BlockchainActivityView {

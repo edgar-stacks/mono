@@ -1,6 +1,6 @@
 import { Suspense } from 'react';
 import { FormProvider, useForm } from 'react-hook-form';
-import { useLocation, useNavigate, useParams } from 'react-router';
+import { useLocation, useParams } from 'react-router';
 
 import { zodResolver } from '@hookform/resolvers/zod';
 import type { StacksTransactionWire } from '@stacks/transactions';
@@ -10,8 +10,6 @@ import { Flex, Stack } from 'leather-styles/jsx';
 import type { StacksTransaction } from '@leather.io/models';
 import { Caption, LoadingSpinner, Sheet, SheetHeader, Spinner } from '@leather.io/ui';
 import { microStxToStx, stxToMicroStx } from '@leather.io/utils';
-
-import { RouteUrls } from '@shared/route-urls';
 
 import { stacksValue } from '@app/common/stacks-utils';
 import { type StacksTransactionActionType } from '@app/common/transactions/stacks/transaction.utils';
@@ -25,6 +23,7 @@ import { useCurrentStacksAccountAddress } from '@app/store/accounts/blockchain/s
 import { IncreaseFeeField } from './components/increase-fee-field';
 import { TransactionActions } from './components/transaction-actions';
 import { useStacksTransactionAction } from './hooks/use-stacks-transaction-action';
+import { useCloseTransactionAction } from './use-close-transaction-action';
 
 interface StacksTransactionActionSheetProps {
   description: string;
@@ -49,7 +48,7 @@ export function StacksTransactionActionSheetLoader({
 }: StacksTransactionActionSheetLoaderProps) {
   const { txid } = useParams();
   const toast = useToast();
-  const navigate = useNavigate();
+  const closeTransactionAction = useCloseTransactionAction();
 
   if (!txid) throw new Error('Transaction id should be provided');
 
@@ -60,7 +59,7 @@ export function StacksTransactionActionSheetLoader({
 
   if (!rawTx || !tx) {
     toast.error('Transaction not found');
-    void navigate(RouteUrls.Home);
+    closeTransactionAction();
     return null;
   }
 
@@ -76,8 +75,8 @@ export function StacksTransactionActionSheet({
   routeUrl,
   actionType,
 }: StacksTransactionActionSheetProps) {
-  const navigate = useNavigate();
   const location = useLocation();
+  const closeTransactionAction = useCloseTransactionAction();
 
   const StacksAddress = useCurrentStacksAccountAddress();
   const availableUnlockedBalance = useStxAddressAvailableUnlockedBalance(StacksAddress);
@@ -107,7 +106,7 @@ export function StacksTransactionActionSheet({
     <FormProvider {...methods}>
       <Sheet
         isShowing={location.pathname === routeUrl.replace(':txid', txid)}
-        onClose={() => void navigate(RouteUrls.Home)}
+        onClose={closeTransactionAction}
         header={<SheetHeader title={title} />}
         footer={
           <TransactionActions
@@ -116,7 +115,7 @@ export function StacksTransactionActionSheet({
               stxToMicroStx(feeValue).isLessThanOrEqualTo(initialTransactionFee)
             }
             isLoading={isBroadcasting}
-            onCancel={() => void navigate(RouteUrls.Home)}
+            onCancel={closeTransactionAction}
             onSubmit={() => void methods.handleSubmit(onSubmit)()}
           />
         }

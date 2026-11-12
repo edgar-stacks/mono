@@ -5,7 +5,7 @@ import {
   skipToken,
 } from '@tanstack/react-query';
 
-import type { AccountAddresses, BlockchainActivity } from '@leather.io/models';
+import type { AccountAddresses, BlockchainActivity, CryptoAssetChain } from '@leather.io/models';
 import {
   type ActivityRequest,
   type ActivityResponse,
@@ -34,26 +34,28 @@ export function createBlockchainActivityQueryConfig(
 
 export function createBlockchainActivityByTxIdQueryKey(
   account: AccountAddresses,
+  chain: CryptoAssetChain,
   txid: string | undefined,
   settings: UserSettings
 ) {
   return createServiceQueryKey(
     'blockchain-activity-service--get-activity-by-tx-id',
-    [account, txid],
+    [account, chain, txid],
     settings
   );
 }
 
 export function createBlockchainActivityByTxIdQueryConfig(
   account: AccountAddresses,
+  chain: CryptoAssetChain,
   txid: string | undefined,
   settings: UserSettings
 ) {
   return {
-    queryKey: createBlockchainActivityByTxIdQueryKey(account, txid, settings),
+    queryKey: createBlockchainActivityByTxIdQueryKey(account, chain, txid, settings),
     queryFn: txid
       ? ({ signal }: QueryFunctionContext) =>
-          getBlockchainActivityService().getActivityByTxId(account, txid, signal)
+          getBlockchainActivityService().getActivityByTxId(account, chain, txid, signal)
       : skipToken,
     ...activityQueryOptions,
   } satisfies UseQueryOptions<BlockchainActivity | null>;
