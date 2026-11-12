@@ -10,7 +10,7 @@ const stacksStandardDescriptors = [
   `[${fingerprint}/44'/5757'/0'/0/1]03a1b2c3`,
 ];
 
-const ledgerLiveDescriptors = [
+const bip44Descriptors = [
   `[${fingerprint}/44'/5757'/0'/0/0]025b2c58`,
   `[${fingerprint}/44'/5757'/1'/0/0]03a1b2c3`,
 ];
@@ -28,9 +28,9 @@ describe(resolveLedgerStacksDerivationPathType.name, () => {
         fingerprint,
         hasWalletForFingerprint: false,
         legacyWalletMatchesDevice: false,
-        chosenDerivationPathType: 'ledgerLive',
+        chosenDerivationPathType: 'bip44',
       })
-    ).toEqual({ status: 'resolved', derivationPathType: 'ledgerLive', overriddenChosenType: null });
+    ).toEqual({ status: 'resolved', derivationPathType: 'bip44', overriddenChosenType: null });
   });
 
   test('that it requires a choice for a fresh device without a valid choice', () => {
@@ -62,17 +62,17 @@ describe(resolveLedgerStacksDerivationPathType.name, () => {
         fingerprint,
         hasWalletForFingerprint: true,
         legacyWalletMatchesDevice: false,
-        chosenDerivationPathType: 'ledgerLive',
+        chosenDerivationPathType: 'bip44',
       })
     ).toEqual({
       status: 'resolved',
       derivationPathType: 'stacks',
-      overriddenChosenType: 'ledgerLive',
+      overriddenChosenType: 'bip44',
     });
 
     expect(
       resolveLedgerStacksDerivationPathType({
-        stxKeychainDescriptors: ledgerLiveDescriptors,
+        stxKeychainDescriptors: bip44Descriptors,
         fingerprint,
         hasWalletForFingerprint: true,
         legacyWalletMatchesDevice: false,
@@ -80,7 +80,7 @@ describe(resolveLedgerStacksDerivationPathType.name, () => {
       })
     ).toEqual({
       status: 'resolved',
-      derivationPathType: 'ledgerLive',
+      derivationPathType: 'bip44',
       overriddenChosenType: 'stacks',
     });
   });
@@ -88,25 +88,25 @@ describe(resolveLedgerStacksDerivationPathType.name, () => {
   test('that a chosen type matching the inferred type is not reported as overridden', () => {
     expect(
       resolveLedgerStacksDerivationPathType({
-        stxKeychainDescriptors: ledgerLiveDescriptors,
+        stxKeychainDescriptors: bip44Descriptors,
         fingerprint,
         hasWalletForFingerprint: true,
         legacyWalletMatchesDevice: false,
-        chosenDerivationPathType: 'ledgerLive',
+        chosenDerivationPathType: 'bip44',
       })
-    ).toEqual({ status: 'resolved', derivationPathType: 'ledgerLive', overriddenChosenType: null });
+    ).toEqual({ status: 'resolved', derivationPathType: 'bip44', overriddenChosenType: null });
   });
 
   test('that inference without a valid choice is not reported as overridden', () => {
     expect(
       resolveLedgerStacksDerivationPathType({
-        stxKeychainDescriptors: ledgerLiveDescriptors,
+        stxKeychainDescriptors: bip44Descriptors,
         fingerprint,
         hasWalletForFingerprint: true,
         legacyWalletMatchesDevice: false,
         chosenDerivationPathType: undefined,
       })
-    ).toEqual({ status: 'resolved', derivationPathType: 'ledgerLive', overriddenChosenType: null });
+    ).toEqual({ status: 'resolved', derivationPathType: 'bip44', overriddenChosenType: null });
   });
 
   test('that keys of other wallets do not affect the choice', () => {
@@ -116,9 +116,9 @@ describe(resolveLedgerStacksDerivationPathType.name, () => {
         fingerprint,
         hasWalletForFingerprint: false,
         legacyWalletMatchesDevice: false,
-        chosenDerivationPathType: 'ledgerLive',
+        chosenDerivationPathType: 'bip44',
       })
-    ).toEqual({ status: 'resolved', derivationPathType: 'ledgerLive', overriddenChosenType: null });
+    ).toEqual({ status: 'resolved', derivationPathType: 'bip44', overriddenChosenType: null });
   });
 
   test('that a legacy wallet matching the device pins it to the stacks standard', () => {
@@ -128,19 +128,19 @@ describe(resolveLedgerStacksDerivationPathType.name, () => {
         fingerprint,
         hasWalletForFingerprint: false,
         legacyWalletMatchesDevice: true,
-        chosenDerivationPathType: 'ledgerLive',
+        chosenDerivationPathType: 'bip44',
       })
     ).toEqual({
       status: 'resolved',
       derivationPathType: 'stacks',
-      overriddenChosenType: 'ledgerLive',
+      overriddenChosenType: 'bip44',
     });
   });
 
   test('that legacy keys are ignored once the device has its own wallet', () => {
     expect(
       resolveLedgerStacksDerivationPathType({
-        stxKeychainDescriptors: [...legacyDescriptors, ...ledgerLiveDescriptors],
+        stxKeychainDescriptors: [...legacyDescriptors, ...bip44Descriptors],
         fingerprint,
         hasWalletForFingerprint: true,
         legacyWalletMatchesDevice: true,
@@ -148,7 +148,7 @@ describe(resolveLedgerStacksDerivationPathType.name, () => {
       })
     ).toEqual({
       status: 'resolved',
-      derivationPathType: 'ledgerLive',
+      derivationPathType: 'bip44',
       overriddenChosenType: 'stacks',
     });
   });

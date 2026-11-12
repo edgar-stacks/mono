@@ -7,6 +7,8 @@ import {
 } from './ledger-request-keys.context';
 import { ConnectLedgerRequestKeys } from './steps/connect-ledger-request-keys';
 
+export const defaultNumberOfKeysToPullFromLedgerDevice = 10;
+
 interface RequestKeysFlowProps {
   context: LedgerRequestKeysContext;
   isActionCancellableByUser: boolean;

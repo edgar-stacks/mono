@@ -28,7 +28,7 @@ import {
   isExtendedPublicKeyExpression,
   isWshDescriptor,
   makeWshDescriptorInstance,
-  toLedgerSignableDescriptor,
+  toWalletPolicyDescriptor,
 } from './wsh-descriptor';
 
 // Testnet extended-key version bytes (tprv / tpub) — Ledger uses these on testnet.
@@ -535,7 +535,7 @@ describe('wsh-descriptor', () => {
     const { scriptPubKey, keys } = compileWshDescriptor(descriptor);
     const accountKey = expectDefined(findAccountKeyByPubkey(keys, pubkeyA));
     const keyOrigin = "e87a850b/84'/0'/0'";
-    const ledgerDescriptor = toLedgerSignableDescriptor(descriptor, accountKey, xpubA, keyOrigin);
+    const ledgerDescriptor = toWalletPolicyDescriptor(descriptor, accountKey, xpubA, keyOrigin);
 
     expect(ledgerDescriptor).toContain(`[${keyOrigin}]${xpubA}`);
     // Origin is metadata only — the compiled scriptPubKey is unchanged.
@@ -550,7 +550,7 @@ describe('wsh-descriptor', () => {
     const accountKey = expectDefined(findAccountKeyByPubkey(keys, pubkeyA));
     const keyOrigin = "e87a850b/84'/0'/0'";
 
-    const ledgerDescriptor = toLedgerSignableDescriptor(
+    const ledgerDescriptor = toWalletPolicyDescriptor(
       checksummedDescriptor,
       accountKey,
       xpubA,
@@ -572,7 +572,7 @@ describe('wsh-descriptor', () => {
     expect(accountKey.bip32).toBeUndefined();
 
     const keyOrigin = "e87a850b/84'/0'/0'";
-    const ledgerDescriptor = toLedgerSignableDescriptor(
+    const ledgerDescriptor = toWalletPolicyDescriptor(
       rawPubkeyDescriptor,
       accountKey,
       xpubA,
@@ -591,11 +591,11 @@ describe('wsh-descriptor', () => {
     const keyOrigin = "e87a850b/84'/0'/0'";
     const { keys } = compileWshDescriptor(descriptor);
     const accountKey = expectDefined(findAccountKeyByPubkey(keys, pubkeyA));
-    const ledgerDescriptor = toLedgerSignableDescriptor(descriptor, accountKey, xpubA, keyOrigin);
+    const ledgerDescriptor = toWalletPolicyDescriptor(descriptor, accountKey, xpubA, keyOrigin);
 
     const { keys: ledgerKeys } = compileWshDescriptor(ledgerDescriptor);
     const ledgerAccountKey = expectDefined(findAccountKeyByPubkey(ledgerKeys, pubkeyA));
-    expect(toLedgerSignableDescriptor(ledgerDescriptor, ledgerAccountKey, xpubA, keyOrigin)).toBe(
+    expect(toWalletPolicyDescriptor(ledgerDescriptor, ledgerAccountKey, xpubA, keyOrigin)).toBe(
       ledgerDescriptor
     );
   });
@@ -607,7 +607,7 @@ describe('wsh-descriptor', () => {
     // The same key on two branches (same sub-path).
     const repeated = `wsh(and_v(v:pk(${xpubA}/0/0),pk(${xpubA}/0/0)))`;
 
-    const ledgerDescriptor = toLedgerSignableDescriptor(repeated, accountKey, xpubA, keyOrigin);
+    const ledgerDescriptor = toWalletPolicyDescriptor(repeated, accountKey, xpubA, keyOrigin);
     expect(ledgerDescriptor.split(`[${keyOrigin}]${xpubA}`).length - 1).toBe(2);
   });
 
@@ -619,7 +619,7 @@ describe('wsh-descriptor', () => {
     const keyOrigin = "e87a850b/84'/0'/0'";
     const repeated = `wsh(and_v(v:pk(${pubkeyHex}),pk(${pubkeyHex})))`;
 
-    const ledgerDescriptor = toLedgerSignableDescriptor(repeated, accountKey, xpubA, keyOrigin);
+    const ledgerDescriptor = toWalletPolicyDescriptor(repeated, accountKey, xpubA, keyOrigin);
     expect(ledgerDescriptor.split(`[${keyOrigin}]${xpubA}/0/0`).length - 1).toBe(2);
     expect(ledgerDescriptor).not.toContain(pubkeyHex);
   });
@@ -635,12 +635,7 @@ describe('wsh-descriptor', () => {
     const keyOrigin = "e87a850b/84'/1'/0'";
 
     // xpubA (mainnet) stands in for the wallet's stored xpub — a different string.
-    const ledgerDescriptor = toLedgerSignableDescriptor(
-      tpubDescriptor,
-      accountKey,
-      xpubA,
-      keyOrigin
-    );
+    const ledgerDescriptor = toWalletPolicyDescriptor(tpubDescriptor, accountKey, xpubA, keyOrigin);
     expect(ledgerDescriptor).toContain(`[${keyOrigin}]${tpub}`);
     expect(ledgerDescriptor).not.toBe(tpubDescriptor);
   });
@@ -651,7 +646,7 @@ describe('wsh-descriptor', () => {
     const keyOrigin = "e87a850b/84'/0'/0'";
     // Descriptor uses a different key (xpubB) than the matched accountKey (xpubA).
     expect(() =>
-      toLedgerSignableDescriptor(`wsh(pk(${xpubB}/0/0))`, accountKey, xpubA, keyOrigin)
+      toWalletPolicyDescriptor(`wsh(pk(${xpubB}/0/0))`, accountKey, xpubA, keyOrigin)
     ).toThrow();
   });
 });
