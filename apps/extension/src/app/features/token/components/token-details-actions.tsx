@@ -1,7 +1,9 @@
 import { useNavigate } from 'react-router';
 
-import { Flex, styled } from 'leather-styles/jsx';
+import { TokenDetailsSelectors } from '@tests/selectors/token-details.selectors';
+import { Flex, Stack, styled } from 'leather-styles/jsx';
 
+import { DropdownMenu, EllipsisHIcon } from '@leather.io/ui';
 import type { SerializedCryptoAssetId } from '@leather.io/utils';
 
 import { RouteUrls } from '@shared/route-urls';
@@ -49,6 +51,58 @@ function TokenDetailsPillButton({ label, onClick, disabled, testId }: TokenDetai
   );
 }
 
+export interface TokenDetailsMoreAction {
+  label: string;
+  description: string;
+  onSelect(): void;
+}
+
+interface TokenDetailsMoreActionsProps {
+  actions: TokenDetailsMoreAction[];
+}
+
+function TokenDetailsMoreActions({ actions }: TokenDetailsMoreActionsProps) {
+  return (
+    <DropdownMenu.Root>
+      <DropdownMenu.Trigger asChild>
+        <styled.button
+          type="button"
+          aria-label="More actions"
+          display="inline-flex"
+          alignItems="center"
+          justifyContent="center"
+          flexShrink={0}
+          width="36px"
+          height="36px"
+          bg="ink.background-primary"
+          border="default"
+          borderRadius="999px"
+          _hover={{ bg: 'ink.component-background-hover', cursor: 'pointer' }}
+          data-testid={TokenDetailsSelectors.TokenDetailsMoreButton}
+        >
+          <EllipsisHIcon color="ink.text-primary" />
+        </styled.button>
+      </DropdownMenu.Trigger>
+      <DropdownMenu.Portal>
+        <DropdownMenu.Content align="end" side="bottom" sideOffset={8}>
+          <DropdownMenu.Group>
+            {actions.map(action => (
+              <DropdownMenu.Item key={action.label} onSelect={action.onSelect}>
+                <Stack gap="space.01">
+                  <styled.span textStyle="label.02">{action.label}</styled.span>
+                  <styled.span textStyle="caption.01" color="ink.text-subdued">
+                    {action.description}
+                  </styled.span>
+                </Stack>
+              </DropdownMenu.Item>
+            ))}
+          </DropdownMenu.Group>
+        </DropdownMenu.Content>
+      </DropdownMenu.Portal>
+    </DropdownMenu.Root>
+  );
+}
+
 export type SwapChain = 'bitcoin' | 'stacks';
 
 interface TokenDetailsActionsRowProps {
@@ -58,6 +112,7 @@ interface TokenDetailsActionsRowProps {
   swapChain: SwapChain;
   isBuyEnabled?: boolean;
   isSwapEnabled?: boolean;
+  moreActions?: TokenDetailsMoreAction[];
 }
 
 export function TokenDetailsActionsRow({
@@ -67,6 +122,7 @@ export function TokenDetailsActionsRow({
   swapChain,
   isBuyEnabled = true,
   isSwapEnabled = true,
+  moreActions,
 }: TokenDetailsActionsRowProps) {
   const navigate = useNavigate();
   const navigateToSendForm = useNavigateToSendForm();
@@ -129,6 +185,7 @@ export function TokenDetailsActionsRow({
         }
         testId="token-details-swap-btn"
       />
+      {moreActions && <TokenDetailsMoreActions actions={moreActions} />}
     </Flex>
   );
 }

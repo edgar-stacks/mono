@@ -246,6 +246,17 @@ export interface CallReadOnlyFunctionArgs {
   tip?: string;
 }
 
+export interface GetContractMapEntryArgs {
+  contractAddress: string;
+  contractName: string;
+  mapName: string;
+  key: ClarityValue;
+}
+
+export interface HiroContractMapEntryResponse {
+  data: string;
+}
+
 export interface HiroCursorPageResponse<T> {
   total: number;
   limit: number;

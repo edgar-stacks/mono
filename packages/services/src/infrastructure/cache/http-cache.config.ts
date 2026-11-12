@@ -29,6 +29,7 @@ export type HttpCacheKey =
   | 'hiro-stacks-get-nft-metadata'
   | 'hiro-stacks-get-principal-nft-balances'
   | 'hiro-stacks-call-read-only-function'
+  | 'hiro-stacks-get-contract-map-entry'
   | 'hiro-stacks-get-transfer-fee-rate'
   | 'hiro-stacks-get-transaction-fee-estimate'
   | 'hiro-stacks-get-api-status'
@@ -125,6 +126,7 @@ export const httpCacheConfig: Record<HttpCacheKey, HttpCacheOptions> = {
   'hiro-stacks-get-nft-metadata': { ttl: weeksInMs(8) },
   'hiro-stacks-get-principal-nft-balances': { ttl: secondsInMs(10) },
   'hiro-stacks-call-read-only-function': { ttl: secondsInMs(15) },
+  'hiro-stacks-get-contract-map-entry': { ttl: secondsInMs(15) },
   'hiro-stacks-get-transfer-fee-rate': { ttl: secondsInMs(4) },
   'hiro-stacks-get-transaction-fee-estimate': { ttl: secondsInMs(4) },
   'hiro-stacks-get-api-status': { ttl: secondsInMs(10) },

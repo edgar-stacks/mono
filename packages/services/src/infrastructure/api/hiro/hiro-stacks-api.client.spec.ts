@@ -1,3 +1,4 @@
+import { Cl, cvToHex } from '@stacks/transactions';
 import axios, { type AxiosInstance } from 'axios';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -26,6 +27,7 @@ const mempoolResponse: HiroPrincipalMempoolTransactionsResponse = {
 };
 
 const get = vi.fn();
+const post = vi.fn();
 const fetchWithCache =
   vi.fn<
     (
@@ -37,7 +39,7 @@ const fetchWithCache =
 const add = vi.fn();
 
 function makeClient() {
-  vi.spyOn(axios, 'create').mockReturnValue(createMock<AxiosInstance>({ get }));
+  vi.spyOn(axios, 'create').mockReturnValue(createMock<AxiosInstance>({ get, post }));
   const settingsService: SettingsService = {
     getSettings: () => ({ network: mainnet, quoteCurrency: 'USD', assetVisibility: {} }),
   };
@@ -281,6 +283,41 @@ describe(HiroStacksApiClient.name, () => {
           'hiro-stacks-get-transaction-by-id',
           txid,
           'post_conditions,result',
+          mainnet.chain.stacks.chainId,
+        ],
+        expect.any(Function),
+        { skipCache: undefined }
+      );
+    });
+  });
+
+  describe('getContractMapEntry', () => {
+    const contractAddress = 'SP2QEZ06AGJ3RKJPBV14SY1V5BBFNAW33D96YPGZF';
+    const key = Cl.uint(42);
+
+    it('posts the serialized key to the map entry endpoint and decodes the entry', async () => {
+      post.mockResolvedValue({ data: { data: cvToHex(Cl.none()) } });
+
+      const entry = await makeClient().getContractMapEntry({
+        contractAddress,
+        contractName: 'BNS-V2',
+        mapName: 'market',
+        key,
+      });
+
+      expect(entry).toEqual(Cl.none());
+      expect(post).toHaveBeenCalledWith(
+        `${mainnet.chain.stacks.url}/v2/map_entry/${contractAddress}/BNS-V2/market?proof=0`,
+        JSON.stringify(cvToHex(key)),
+        { signal: undefined, headers: { 'Content-Type': 'application/json' } }
+      );
+      expect(fetchWithCache).toHaveBeenCalledWith(
+        [
+          'hiro-stacks-get-contract-map-entry',
+          contractAddress,
+          'BNS-V2',
+          'market',
+          cvToHex(key),
           mainnet.chain.stacks.chainId,
         ],
         expect.any(Function),
