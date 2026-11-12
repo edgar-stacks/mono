@@ -1,5 +1,5 @@
 import { detectLanguage } from '@/i18n/detect-language';
-import { type RootState } from '@/store/store';
+import type { RootState } from '@/store/store';
 import { type Action } from '@reduxjs/toolkit';
 import { type REHYDRATE } from 'redux-persist';
 

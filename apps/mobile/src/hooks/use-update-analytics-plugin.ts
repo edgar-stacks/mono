@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 
+import { setAnalyticsNetwork } from '@/store/analytics';
 import { useSettings } from '@/store/settings/settings';
-import { setAnalyticsNetwork } from '@/utils/analytics';
 
 export function useUpdateAnalyticsPlugin() {
   const { networkPreference } = useSettings();
