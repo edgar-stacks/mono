@@ -8,17 +8,14 @@ function prefixRedirectLoader(request: Request, from: string, to: string) {
   return redirect(redirectUrl, 301);
 }
 
-export function helpCenterRedirectLoader(request: Request) {
-  return prefixRedirectLoader(request, '/help-center', '/support');
-}
-
 export function stackingRedirectLoader(request: Request) {
   return prefixRedirectLoader(request, '/stacking', '/staking');
 }
 
-const runesDeprecationPostSlug = 'leather-runes-wallet';
-const stampsDeprecationPostSlug = 'leather-stamps-src20-wallet';
-const ordinalsDeprecationPostSlug = 'deprecation-of-ordinals-inscriptions-support-in-leather';
+export const runesDeprecationPostSlug = 'leather-runes-wallet';
+export const stampsDeprecationPostSlug = 'leather-stamps-src20-wallet';
+export const ordinalsDeprecationPostSlug =
+  'deprecation-of-ordinals-inscriptions-support-in-leather';
 
 const runesContentSlugs = [
   'bitcoin-runes',
@@ -78,8 +75,8 @@ export function isDeprecatedContentSlug(slug: string) {
   return deprecatedContentRedirects.has(slug);
 }
 
-export function getDeprecationRedirect(slug: string) {
+export function getDeprecationTarget(slug: string) {
   const target = deprecatedContentRedirects.get(slug);
   if (!target) return null;
-  return redirect(`/posts/${target}`, 301);
+  return `/posts/${target}`;
 }

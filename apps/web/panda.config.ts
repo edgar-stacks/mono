@@ -34,6 +34,14 @@ export default defineConfig({
     },
     extend: {
       keyframes: {
+        marketingRise: {
+          '0%': { opacity: 0, transform: 'translateY(0.35em)' },
+          '100%': { opacity: 1, transform: 'translateY(0)' },
+        },
+        marketingFloat: {
+          '0%, 100%': { transform: 'translateY(0)' },
+          '50%': { transform: 'translateY(-8px)' },
+        },
         stakingIconAttention: {
           '0%': {
             transform: 'scale(1)',

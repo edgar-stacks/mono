@@ -1,7 +1,13 @@
-import { redirect } from 'react-router';
-
 import { type Route } from './+types/support-guide-redirect.route';
+import { sanityContentFetchers } from './content-fetchers';
+import { resolveContentSlug } from './content-slug-resolver';
+import { contentSlugResponse } from './content-slug-response';
 
-export function loader({ params }: Route.LoaderArgs) {
-  return redirect(`/support/${params.slug}`, 301);
+export async function loader({ params, request }: Route.LoaderArgs) {
+  const resolution = await resolveContentSlug(params.slug, sanityContentFetchers);
+  throw contentSlugResponse(request, resolution);
+}
+
+export default function SupportGuideRedirectRoute() {
+  return null;
 }

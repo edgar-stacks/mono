@@ -1,4 +1,4 @@
-import { Links, Meta, Scripts, ScrollRestoration, useLocation } from 'react-router';
+import { Links, Meta, Scripts, ScrollRestoration, useLocation, useMatches } from 'react-router';
 
 import { css } from 'leather-styles/css';
 import { Box, Flex, styled } from 'leather-styles/jsx';
@@ -13,11 +13,13 @@ import { defaultMetaTags } from './constants/meta-tags';
 import { InstallDialog } from './features/install-dialog/install-dialog';
 import { MockLeatherDialog } from './features/mock-dialog/mock-dialog';
 import { ToastsProvider } from './features/toasts/toasts-provider';
+import { routeHidesChrome } from './layouts/chrome/route-chrome';
 import { Footer } from './layouts/footer/footer';
 import { GlobalLoader } from './layouts/nav/global-loader';
-import { Nav } from './layouts/nav/nav';
+import { LeatherLogoHomeLink, Nav } from './layouts/nav/nav';
 import { NetworkGate } from './layouts/network-gate/network-gate';
 import { ErrorPage } from './layouts/page/error';
+import { isNotFoundErrorResponse, notFoundMeta } from './pages/error/not-found-meta';
 import { isBareCanvasPath } from './pages/playground/playground.constants';
 
 // Polyfill global Buffer
@@ -28,6 +30,11 @@ export function links() {
     { rel: 'stylesheet', href: stylesheet },
     { rel: 'stylesheet', href: leatherUiStyles },
   ] satisfies Route.LinkDescriptors;
+}
+
+export function meta({ error }: Route.MetaArgs) {
+  if (isNotFoundErrorResponse(error)) return notFoundMeta();
+  return [];
 }
 
 export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
@@ -42,7 +49,9 @@ const maxWidthCss = css({
 
 export function Layout({ children }: HasChildren) {
   const location = useLocation();
-  const bareCanvas = isBareCanvasPath(location.pathname);
+  const matches = useMatches();
+  const bareCanvas =
+    isBareCanvasPath(location.pathname) || matches.some(match => routeHidesChrome(match.handle));
 
   return (
     <html lang="en">
@@ -69,6 +78,9 @@ export function Layout({ children }: HasChildren) {
                 minHeight="100vh"
                 px={['space.04', null, 'space.07']}
               >
+                <Box display={['block', null, 'none']} pt="space.05">
+                  <LeatherLogoHomeLink />
+                </Box>
                 <styled.main
                   flex={1}
                   position="relative"

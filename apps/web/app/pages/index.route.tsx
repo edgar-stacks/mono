@@ -1,16 +1,26 @@
-import { useEffect } from 'react';
-import { type MetaDescriptor, useNavigate } from 'react-router';
+import { fetchChangelogStrip } from '~/features/marketing/changelog-strip.queries';
+import { HomePage } from '~/pages/home/home.page';
+import { marketingHeaders } from '~/pages/seo/cache-control';
+import { marketingMeta } from '~/pages/seo/marketing-meta';
+
+import { type Route } from './+types/index.route';
 
 export function meta() {
-  return [{ httpEquiv: 'refresh', content: '0;url=/staking' }] satisfies MetaDescriptor[];
+  return marketingMeta({
+    title: 'Leather',
+    path: '/',
+    image: '/images/leather-og.png',
+  });
 }
 
-export default function IndexRoute() {
-  const navigate = useNavigate();
+export function headers() {
+  return marketingHeaders();
+}
 
-  useEffect(() => {
-    void navigate('/staking', { replace: true });
-  }, [navigate]);
+export async function loader() {
+  return { changelogEntries: await fetchChangelogStrip() };
+}
 
-  return null;
+export default function IndexRoute({ loaderData }: Route.ComponentProps) {
+  return <HomePage changelogEntries={loaderData.changelogEntries} />;
 }

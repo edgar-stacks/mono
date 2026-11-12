@@ -1,3 +1,5 @@
+import { Link } from 'react-router';
+
 import {
   Box,
   type BoxProps,
@@ -12,6 +14,8 @@ import {
 import { ExternalLink } from '~/components/external-link';
 
 import { LeatherLettermarkIcon } from '@leather.io/ui';
+
+const StyledLink = styled(Link);
 
 export function FooterLayout(props: HTMLStyledProps<'footer'>) {
   return <styled.footer pb="space.05" {...props} />;
@@ -73,8 +77,36 @@ function FooterLegalText({ product, copyright, ...props }: FooterLegalTextProps)
   );
 }
 
+interface FooterLinkProps extends HTMLStyledProps<'a'> {
+  href: string;
+  withIcon?: boolean;
+}
+function FooterLink({ href, withIcon, children, ...props }: FooterLinkProps) {
+  if (!href.startsWith('/')) {
+    return (
+      <ExternalLink href={href} withIcon={withIcon} {...props}>
+        {children}
+      </ExternalLink>
+    );
+  }
+  return (
+    <StyledLink
+      to={href}
+      textStyle="label.02"
+      borderBottom="1px solid"
+      borderColor="ink.border-default"
+      _hover={{ borderColor: 'ink.action-primary-hover' }}
+      _focus={{ borderColor: 'ink.action-primary-hover' }}
+      outline={0}
+      prefetch="intent"
+    >
+      {children}
+    </StyledLink>
+  );
+}
+
 FooterLayout.Grid = FooterGrid;
 FooterLayout.Column = FooterColumn;
-FooterLayout.Link = ExternalLink;
+FooterLayout.Link = FooterLink;
 FooterLayout.LegalText = FooterLegalText;
 FooterLayout.LeatherIcon = FooterLeatherIcon;

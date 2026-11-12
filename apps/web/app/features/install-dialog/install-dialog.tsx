@@ -1,5 +1,8 @@
+import { Link } from 'react-router';
+
 import { Flex, styled } from 'leather-styles/jsx';
 import { WhenClient } from '~/components/when-client';
+import { marketingLinks } from '~/features/marketing/marketing-links';
 import { useLeatherConnect } from '~/store/addresses';
 import { openExternalLink } from '~/utils/external-links';
 
@@ -52,6 +55,41 @@ export function InstallDialog() {
               Install
             </Button>
           </Flex>
+          <Flex
+            border="default"
+            borderRadius="sm"
+            p="space.04"
+            mt="space.05"
+            justifyContent="space-between"
+            alignItems="center"
+            gap="space.03"
+          >
+            <Flex textStyle="label.02" flexDir="column">
+              <styled.span>Mobile</styled.span>
+              <styled.span color="ink.text-subdued">Your wallet, wherever you are</styled.span>
+            </Flex>
+            <Flex gap="space.02">
+              <Button
+                size="md"
+                variant="outline"
+                onClick={() => openExternalLink(marketingLinks.appStore)}
+              >
+                iOS
+              </Button>
+              <Button
+                size="md"
+                variant="outline"
+                onClick={() => openExternalLink(marketingLinks.googlePlay)}
+              >
+                Android
+              </Button>
+            </Flex>
+          </Flex>
+          <styled.p textStyle="caption.01" color="ink.text-subdued" mt="space.04" mb="space.02">
+            <Link to="/changelog" onClick={() => setShowInstallLeatherDialog(false)}>
+              View release notes
+            </Link>
+          </styled.p>
         </styled.div>
       </Sheet>
     </WhenClient>

@@ -1,6 +1,6 @@
 import { type Route } from './+types/help-center-redirect.route';
-import { helpCenterRedirectLoader } from './shared-redirect-logic';
+import { permanentRedirect } from './content-slug-response';
 
 export function loader({ request }: Route.LoaderArgs) {
-  return helpCenterRedirectLoader(request);
+  throw permanentRedirect(request, '/support');
 }
