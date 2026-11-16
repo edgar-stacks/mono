@@ -3,7 +3,7 @@ import { useColorScheme } from 'react-native';
 import { useSelector } from 'react-redux';
 
 import { type AvailableLanguageCode } from '@/i18n/languages';
-import { analytics } from '@/utils/analytics';
+import { analytics } from '@/store/analytics';
 import { whenTheme } from '@/utils/when-theme';
 import type { StacksNetwork } from '@stacks/network';
 

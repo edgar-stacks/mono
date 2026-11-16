@@ -4,7 +4,7 @@ import {
   isSupportedFungibleAssetProtocol,
   isSupportedNonFungibleAssetProtocol,
 } from '@/features/token/types';
-import { analytics } from '@/utils/analytics';
+import { analytics } from '@/store/analytics';
 
 import { makeAccountIdentifer } from '@leather.io/crypto';
 import { type AccountId, type CryptoAssetProtocol } from '@leather.io/models';

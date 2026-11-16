@@ -5,7 +5,7 @@ import {
   type AmountFieldProps as RawAmountFieldProps,
 } from '@/components/amount-field/amount-field';
 import { FieldConnectorArrow } from '@/features/send/components/field-connector-arrow';
-import { analytics } from '@/utils/analytics';
+import { analytics } from '@/store/analytics';
 
 import { Box } from '@leather.io/ui/native';
 

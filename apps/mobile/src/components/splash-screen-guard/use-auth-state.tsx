@@ -1,8 +1,8 @@
 import { useCallback, useReducer } from 'react';
 
 import { useAuthentication } from '@/hooks/use-authentication';
+import { analytics } from '@/store/analytics';
 import { useSettings } from '@/store/settings/settings';
-import { analytics } from '@/utils/analytics';
 
 type AuthStatus = 'cold-start' | 'started' | 'failed' | 'passed-on-first' | 'passed-afterwards';
 

@@ -7,9 +7,9 @@ import { useReceiveFlowContext } from '@/features/receive/receive-flow-provider'
 import { useCopyAddress } from '@/hooks/use-copy-address';
 import { TestId } from '@/shared/test-id';
 import { useAccounts } from '@/store/accounts/accounts.read';
+import { analytics } from '@/store/analytics';
 import { useBitcoinPayerAddressFromAccountIndex } from '@/store/keychains/bitcoin/bitcoin-keychains.read';
 import { useStacksSignerAddressFromAccountIndex } from '@/store/keychains/stacks/stacks-keychains.read';
-import { analytics } from '@/utils/analytics';
 import { t } from '@lingui/core/macro';
 import { isDefined } from 'remeda';
 

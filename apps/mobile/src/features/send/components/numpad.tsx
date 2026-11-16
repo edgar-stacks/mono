@@ -1,5 +1,5 @@
 import { useValidateInputDecimalPlaces } from '@/features/send/hooks/use-validate-input-decimal-places';
-import { analytics } from '@/utils/analytics';
+import { analytics } from '@/store/analytics';
 import type BigNumber from 'bignumber.js';
 import { funnel } from 'remeda';
 
