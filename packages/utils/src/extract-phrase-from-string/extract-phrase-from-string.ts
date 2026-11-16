@@ -1,5 +1,7 @@
+const invisibleSeparatorsRegex = /[\u0085\u200B\u2060\uFEFF]/g;
+
 export function extractPhraseFromString(value: string) {
-  const clean = value.trim();
+  const clean = value.replace(invisibleSeparatorsRegex, ' ').trim();
   const words = clean.match(/\S+/g);
   if (words?.length) {
     return words

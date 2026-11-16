@@ -76,4 +76,20 @@ describe(extractPhraseFromString.name, () => {
     const key = extractPhraseFromString(SECRET_KEY_COPIED_FROM_v3);
     expect(key).toEqual(SECRET_KEY_COPIED_FROM_V3_FORMATTED);
   });
+
+  test('Split words separated by next-line characters', () => {
+    expect(extractPhraseFromString('alpha\u0085bravo\u0085charlie')).toEqual('alpha bravo charlie');
+  });
+
+  test('Split words separated by zero-width spaces', () => {
+    expect(extractPhraseFromString('alpha\u200Bbravo')).toEqual('alpha bravo');
+  });
+
+  test('Split words separated by word joiners and byte order marks', () => {
+    expect(extractPhraseFromString('alpha\u2060bravo\uFEFFcharlie')).toEqual('alpha bravo charlie');
+  });
+
+  test('Split words separated by vertical tabs and form feeds', () => {
+    expect(extractPhraseFromString('alpha\u000Bbravo\u000Ccharlie')).toEqual('alpha bravo charlie');
+  });
 });
