@@ -17,10 +17,10 @@ export const MEMPOOL_BASE_URL = 'https://mempool.space';
 export const ORD_IO_URL = 'https://ord.io';
 export const GAMMA_URL = 'https://gamma.io';
 export const GAMMA_API_URL: string = `${GAMMA_URL}/api`;
-export const BNS_REGISTRATION_URL = 'https://bns.one/';
+export const BNS_REGISTRATION_URL = 'https://bns.one';
 export const LEATHER_IPFS_GATEWAY_URL = 'https://leather.quicknode-ipfs.com/ipfs/';
 export const SBTC_RECLAIM_URL = 'https://sbtc.stacks.co/activity';
-export const STACKS_BRIDGE_URL = 'https://bridge.stacks.co/';
+export const STACKS_BRIDGE_URL = 'https://bridge.stacks.co';
 
 export const HIGH_FEE_AMOUNT_STX = 5;
 export const HIGH_FEE_WARNING_LEARN_MORE_URL_BTC = 'https://bitcoinfees.earn.com/';
@@ -92,7 +92,7 @@ export const LEATHER_PORTFOLIO_URL: string = `${LEATHER_APP_URL}/portfolio`;
 export const LEATHER_SBTC_URL: string = `${LEATHER_APP_URL}/sbtc`;
 export const LEATHER_STACKING_URL: string = `${LEATHER_APP_URL}/staking`;
 
-export const BTC_US_URL = 'https://btc.us/';
+export const BTC_US_URL = 'https://btc.us';
 
 export const LEATHER_LEARN_URL = 'https://leather.io/learn';
 
@@ -183,13 +183,13 @@ export const cryptoAssetColors: Record<CryptoCurrency, string> = {
   USDh: '#E39B53',
 };
 
-export const ALEX_LINK = 'https://alexgo.io/';
-export const ZEST_LINK = 'https://www.zestprotocol.com/';
-export const ARKADIKO_LINK = 'https://app.arkadiko.finance/';
-export const GRANITE_LINK = 'https://www.granite.world/';
-export const HERMETICA_LINK = 'https://www.hermetica.fi/';
-export const BITFLOW_LINK = 'https://app.bitflow.finance/';
-export const VELAR_LINK = 'https://www.velar.co/';
+export const ALEX_LINK = 'https://alexgo.io';
+export const ZEST_LINK = 'https://www.zestprotocol.com';
+export const ARKADIKO_LINK = 'https://app.arkadiko.finance';
+export const GRANITE_LINK = 'https://www.granite.world';
+export const HERMETICA_LINK = 'https://www.hermetica.fi';
+export const BITFLOW_LINK = 'https://app.bitflow.finance';
+export const VELAR_LINK = 'https://www.velar.co';
 
 export const USDCX_ASSET_ID_MAINNET =
   'SP120SBRBQJ00MCWS7TM5R8WJNTTKD5K0HFRC2CNE.usdcx::usdcx-token';
