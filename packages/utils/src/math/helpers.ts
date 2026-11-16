@@ -1,5 +1,7 @@
 import BigNumber from 'bignumber.js';
 
+import { STX_DECIMALS } from '@leather.io/constants';
+
 import { isBigInt } from '../type-guards';
 
 export function initBigNumber(num: string | number | BigNumber | bigint) {
@@ -27,6 +29,8 @@ export function countDecimals(num: string | number | BigNumber) {
   return decimals ? decimals.length : 0;
 }
 
+const oneMicroStx = new BigNumber(1).shiftedBy(-STX_DECIMALS);
+
 export function increaseValueByOneMicroStx(value: string | number | BigNumber) {
-  return new BigNumber(value).plus(0.000001).toNumber();
+  return new BigNumber(value).plus(oneMicroStx).toNumber();
 }
