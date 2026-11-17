@@ -40,13 +40,16 @@ export function flattenObject(input: ObjectValue, prefix = ''): FlattenedObject 
   }
 
   if (Array.isArray(input)) {
+    if (prefix !== '' && input.length === 0) return { [prefix]: '[]' };
     input.forEach((item, index) => {
       const key = prefix === '' ? `[${index}]` : `${prefix}[${index}]`;
       const flattened = flattenObject(item, key);
       Object.assign(result, flattened);
     });
   } else {
-    entries(input).forEach(([key, value]) => {
+    const inputEntries = entries(input);
+    if (prefix !== '' && inputEntries.length === 0) return { [prefix]: '{}' };
+    inputEntries.forEach(([key, value]) => {
       const newKey = prefix === '' ? key : `${prefix}.${key}`;
       const flattened = flattenObject(value, newKey);
       Object.assign(result, flattened);

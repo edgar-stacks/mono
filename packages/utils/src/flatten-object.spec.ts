@@ -97,6 +97,10 @@ describe(flattenObject.name, () => {
     test('handles empty arrays', () => {
       expect(flattenObject([])).toEqual({});
     });
+
+    test('keeps empty objects inside arrays', () => {
+      expect(flattenObject({ a: [{}] })).toEqual({ 'a[0]': '{}' });
+    });
   });
 
   describe('Mixed object and array flattening', () => {
@@ -161,6 +165,14 @@ describe(flattenObject.name, () => {
         'data.items[0].properties.sizes[0]': 'small',
         'data.items[0].properties.sizes[1]': 'medium',
       };
+      expect(flattenObject(input)).toEqual(expected);
+    });
+  });
+
+  describe('Empty container handling', () => {
+    test('keeps nested empty objects and arrays', () => {
+      const input = { error: 'rejected', reason_data: {}, hints: [] };
+      const expected = { error: 'rejected', reason_data: '{}', hints: '[]' };
       expect(flattenObject(input)).toEqual(expected);
     });
   });
