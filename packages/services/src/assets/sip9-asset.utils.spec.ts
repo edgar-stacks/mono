@@ -149,6 +149,28 @@ describe('createSip9Asset', () => {
     expect(asset.content.contentUrl).toContain('image%20with%20spaces.png');
   });
 
+  it.each(['IPFS://', 'Ipfs://', ' ipfs://'])(
+    'should transform %j URLs to the same gateway URL as ipfs://',
+    scheme => {
+      const hiroIpfs = structuredClone(mockHiroMetadata);
+      hiroIpfs.cached_image = undefined;
+      hiroIpfs.image = `${scheme}bafybeigdyrzt5examplecid/1.png`;
+
+      const asset = createSip9Asset(assetIdentifier, tokenId, hiroIpfs, undefined);
+      expect(asset.content.contentUrl).toBe(
+        `${LEATHER_IPFS_GATEWAY_URL}bafybeigdyrzt5examplecid/1.png`
+      );
+    }
+  );
+
+  it('should transform ipfs://ipfs/ URLs to the Leather IPFS gateway', () => {
+    const hiroIpfs = structuredClone(mockHiroMetadata);
+    hiroIpfs.cached_image = 'ipfs://ipfs/QmHiroCid/path/to/image.png';
+
+    const asset = createSip9Asset(assetIdentifier, tokenId, hiroIpfs, undefined);
+    expect(asset.content.contentUrl).toBe(`${LEATHER_IPFS_GATEWAY_URL}QmHiroCid/path/to/image.png`);
+  });
+
   it('should transform hiro image /ipfs/ URLs to the Leather IPFS gateway', () => {
     const hiroIpfs = structuredClone(mockHiroMetadata);
     hiroIpfs.cached_image = 'https://example.com/ipfs/QmHiroCid/path/to/image.png';
