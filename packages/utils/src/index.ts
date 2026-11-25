@@ -25,6 +25,7 @@ export * from './market-data';
 export * from './currency-formatter/currency-formatter';
 export * from './flatten-object';
 export * from './special-char';
+export * from './is-hex-string';
 
 export { spamFilter } from './spam-filter/spam-filter';
 export { extractPhraseFromString } from './extract-phrase-from-string/extract-phrase-from-string';
@@ -150,10 +151,6 @@ export function getTicker(value: string) {
 
 export function propIfDefined(prop: string, value: unknown) {
   return isBoolean(value) ? { [prop]: value } : {};
-}
-
-export function isHexString(value: string) {
-  return /^[0-9a-fA-F]+$/.test(value);
 }
 
 export function toHexString(value: number) {
