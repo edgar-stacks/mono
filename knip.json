@@ -79,7 +79,7 @@
     "apps/mobile": {
       "entry": ["src/app/_layout.tsx"],
       "ignoreDependencies": [
-        "expo-modules-core",
+        "@expo/metro-config",
         "expo-status-bar",
         "expo-sharing",
         "expo-blur",
@@ -89,11 +89,9 @@
         "@leather.io/prettier-config",
         "@lingui/conf",
         "concurrently",
-        "@react-native/assets-registry",
         "buffer",
         "punycode",
         "@sentry/cli",
-        "babel-preset-expo",
         "@lingui/macro",
         "@lingui/format-po",
         "@babel/plugin-transform-class-static-block"
@@ -121,16 +119,17 @@
         "config": ["tsconfig.cloudflare.json"]
       },
       "ignoreDependencies": ["leather-styles", "@leather.io/panda-preset"],
-      "ignore": ["stubs/**", "app/layouts/nav/global-loader.styles.ts"]
+      "ignore": [
+        "stubs/**",
+        "app/layouts/nav/global-loader.styles.ts",
+        "app/pages/marketing/shared/motion.styles.ts"
+      ]
     },
     "packages/provider": {
       "entry": ["src/index.ts", "src/mobile.ts"]
     },
     "tools": {
-      "entry": [
-        "src/lt.ts",
-        "src/feature-map/feature-entry.ts"
-      ]
+      "entry": ["src/lt.ts", "src/feature-map/feature-entry.ts"]
     },
     "packages/utils": {
       "ignoreDependencies": ["@types/dompurify"]
@@ -139,8 +138,7 @@
       "entry": ["src/index.ts!", "src/native.ts!", "src/exports.web.ts!", "src/svg.native.d.ts!"],
       "metro": false,
       "ignoreDependencies": [
-        "@expo/vector-icons",
-        "@react-native/assets-registry",
+        "@babel/core",
         "@rnx-kit/metro-resolver-symlinks",
         "react-native-webview",
         "@leather.io/models",
@@ -155,6 +153,9 @@
         "metro.config.cjs",
         "src/assets-web/splash-screen.js"
       ]
+    },
+    ".": {
+      "entry": ["scripts/design/*.ts", "eslint-rules/design-system/*.spec.js"]
     }
   }
 }

@@ -14,6 +14,11 @@
     "build:web": "BUILD_TARGET=web turbo run build --filter=@leather.io/web",
     "check:all": "turbo run check:all",
     "clean": "git clean -dfX",
+    "design:align": "node --experimental-strip-types scripts/design/align.ts",
+    "design:check": "turbo run build --filter=@leather.io/tokens --output-logs=errors-only && eslint -c eslint.design.config.js --no-inline-config",
+    "design:scripts:lint": "eslint -c eslint.design-scripts.config.js scripts/design --max-warnings 0 --no-inline-config",
+    "design:scripts:typecheck": "tsc -p scripts/design/tsconfig.json",
+    "design:test": "node --experimental-strip-types --test eslint-rules/design-system/*.spec.js scripts/design/*.test.ts",
     "dev": "turbo run build:watch",
     "format": "turbo run format",
     "format:check": "turbo run format:check",
@@ -21,11 +26,10 @@
     "install:fresh": "pnpm install:clean && pnpm i",
     "install:nuke": "rm -rf pnpm-lock.yaml && pnpm install:fresh",
     "knip": "knip",
-    "lint": "turbo run lint && pnpm lint:workflows",
+    "lint": "pnpm design:scripts:lint && turbo run lint",
     "lint:deps": "pnpm dependency-cruiser --ignore-known .dependency-cruiser-known-violations.json .",
     "lint:filenames": "pnpm ls-lint",
     "lint:fix": "turbo run lint:fix",
-    "lint:workflows": "pnpm lt bot-branch-secret-guard check",
     "lt": "pnpm --filter @leather.io/tools lt",
     "pinact": "pinact run",
     "pinact:check": "pinact run --check",
@@ -36,7 +40,7 @@
     "test:coverage": "turbo run test:coverage",
     "test:e2e": "playwright test",
     "test:unit": "turbo run test:unit",
-    "typecheck": "turbo run typecheck"
+    "typecheck": "pnpm design:scripts:typecheck && turbo run typecheck"
   },
   "devDependencies": {
     "@babel/runtime": "7.26.0",
@@ -51,7 +55,7 @@
     "@testing-library/jest-dom": "6.6.3",
     "@testing-library/react": "16.3.0",
     "@trivago/prettier-plugin-sort-imports": "5.2.2",
-    "@types/jest": "29.5.14",
+    "@types/jest": "30.0.0",
     "@types/node": "24.0.8",
     "@vitest/coverage-v8": "2.1.9",
     "dependency-cruiser": "16.10.0",
@@ -103,12 +107,13 @@
       "@reown/appkit-wallet>zod": "4.6.7",
       "@sanity/codegen>zod": "4.6.7",
       "follow-redirects@>=1.0.0 <1.16.2": ">=1.16.2 <2",
-      "node-forge@>=1.0.0 <1.4.1": ">=1.4.1 <2"
+      "node-forge@>=1.0.0 <1.4.1": ">=1.4.1 <2",
+      "bitcoinjs-lib@>=6.0.0 <6.1.8": ">=6.1.8 <7"
     },
     "patchedDependencies": {
       "pofile@1.1.4": "patches/pofile@1.1.4.patch",
-      "expo-secure-store@15.0.8": "patches/expo-secure-store@15.0.8.patch",
-      "react-native-webview@13.15.0": "patches/react-native-webview@13.15.0.patch"
+      "react-native-webview@14.0.1": "patches/react-native-webview@14.0.1.patch",
+      "expo-secure-store@58.0.3": "patches/expo-secure-store@58.0.3.patch"
     },
     "onlyBuiltDependencies": [
       "better-sqlite3",

@@ -2,10 +2,11 @@ import { copyFileSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSyn
 import path from 'node:path';
 import { z } from 'zod';
 
-import { type CommandRunner, runCommand } from './exec.js';
+import { type CommandRunner, runCommand } from '../ci/exec.js';
 import { treeSnapshot } from './git.js';
 import type { FixIssuePaths } from './paths.js';
 import { type Review, readReview } from './review.js';
+import { readReviseState } from './revise-state.js';
 import { maxFollowUps, readState, readStatus, writeStatus } from './status.js';
 import { resetStopGuards } from './stop-guard.js';
 import { verifyFix } from './verify.js';
@@ -64,6 +65,7 @@ export function verifyRound(paths: FixIssuePaths, round: number, run?: CommandRu
     statusFile: paths.statusFile,
     reportFile: paths.verifyReport,
     run,
+    revise: readReviseState(paths.reviseFile),
   });
   if (result.passed) rmSync(paths.verifyReport, { force: true });
   const verified = result.passed && !result.skipped;
@@ -116,6 +118,12 @@ function decideOutcome(
   if (readState(paths.statusFile) === 'blocked') {
     const stopped = `Round ${round}: the fixer stopped as blocked`;
     return { outcome: 'blocked', summary: checks ? `${stopped}; ${checks}` : stopped };
+  }
+  if (checks === null && existsSync(paths.reviseFile)) {
+    return {
+      outcome: 'clean',
+      summary: `Round ${round}: the revise changed nothing and only answers the feedback`,
+    };
   }
   if (checks === null) {
     throw new Error(`round ${round} has neither a verify report nor a review`);
