@@ -15,6 +15,7 @@ import { CancelStacksTransactionSheet } from '@app/features/dialogs/transaction-
 import { IncreaseBtcFeeSheet } from '@app/features/dialogs/transaction-action-dialog/increase-btc-fee-dialog';
 import { IncreaseStacksTransactionFeeSheet } from '@app/features/dialogs/transaction-action-dialog/increase-stacks-fee-sheet';
 import { RouterErrorBoundary } from '@app/features/errors/app-error-boundary';
+import { useFlags } from '@app/features/feature-flags';
 import { LedgerFlowProvider } from '@app/features/ledger/flow/ledger-flow.context';
 import { TokenDetails } from '@app/features/token/token-details';
 import { AddWallet } from '@app/pages/add-wallet/add-wallet';
@@ -24,6 +25,7 @@ import { BondHistoryPage } from '@app/pages/all-balances/bond-history';
 import { FundPage } from '@app/pages/fund/fund';
 import { Home } from '@app/pages/home/home';
 import { ManageTokensPage } from '@app/pages/manage-tokens/manage-tokens';
+import { MoveToFreshAccountPage } from '@app/pages/move-to-fresh-account/move-to-fresh-account';
 import { AddNetwork as CurrentAddNetwork } from '@app/pages/network/add-network';
 import { EditNetwork as CurrentEditNetwork } from '@app/pages/network/edit-network';
 import { SelectNetwork } from '@app/pages/network/select-network';
@@ -57,6 +59,8 @@ export function AppRoutes() {
 const sentryCreateBrowserRouter = Sentry.wrapCreateBrowserRouterV7(createHashRouter);
 
 function useAppRoutes() {
+  const { accountShuffle } = useFlags();
+
   return sentryCreateBrowserRouter(
     createRoutesFromElements(
       <Route
@@ -277,6 +281,17 @@ function useAppRoutes() {
               </AccountGate>
             }
           />
+
+          {accountShuffle && (
+            <Route
+              path={RouteUrls.MoveToFreshAccount}
+              element={
+                <AccountGate>
+                  <MoveToFreshAccountPage />
+                </AccountGate>
+              }
+            />
+          )}
 
           {/* Popup Routes */}
           {rpcRequestRoutes}

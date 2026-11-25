@@ -19,6 +19,7 @@ import {
   subtractMoneyFloor,
   sumBondStx,
 } from '@app/features/bonds/bond-position.utils';
+import { useFlags } from '@app/features/feature-flags';
 import { tooltipTextMap } from '@app/pages/all-balances/all-balances.utils';
 import { useBlockchainActivityByAssetId } from '@app/query/activity/blockchain-activity.query';
 import { useCurrentBtcStakingPositions } from '@app/query/bitcoin/staking/bitcoin-staking.hooks';
@@ -26,6 +27,7 @@ import { useMarketData } from '@app/query/common/market-data/market-data.query';
 import { useStxAccountBalanceByAddresses } from '@app/query/stacks/balance/stx-balance.hooks';
 
 import type { TokenBalanceEntry } from './components/token-balances-tab';
+import type { TokenDetailsMoreAction } from './components/token-details-actions';
 import { useTokenMarketInfo } from './hooks/use-token-market-info';
 import { StacksTokenDetailsLayout } from './stacks-token-details.layout';
 import { TokenDetailsError } from './token-details-error';
@@ -49,6 +51,7 @@ export function StacksTokenDetails({ account }: StacksTokenDetailsProps) {
   const marketData = useMarketData(stxAsset);
   const activityQuery = useBlockchainActivityByAssetId(account, stxAsset);
   const positions = useCurrentBtcStakingPositions();
+  const { accountShuffle } = useFlags();
 
   const isLoading = balance.state === 'loading' || marketInfo.isLoading;
   const hasError = balance.state === 'error' || marketInfo.hasError;
@@ -128,6 +131,16 @@ export function StacksTokenDetails({ account }: StacksTokenDetailsProps) {
     });
   }
 
+  const moreActions: TokenDetailsMoreAction[] | undefined = accountShuffle
+    ? [
+        {
+          label: 'Move to a fresh account',
+          description: 'Moves your Stacks assets to a new address',
+          onSelect: () => void navigate(RouteUrls.MoveToFreshAccount),
+        },
+      ]
+    : undefined;
+
   return (
     <StacksTokenDetailsLayout
       icon={<StxAvatarIcon size="xl" />}
@@ -138,6 +151,7 @@ export function StacksTokenDetails({ account }: StacksTokenDetailsProps) {
       balances={balances}
       activity={activityQuery.data ?? []}
       isActivityLoading={activityQuery.isLoading}
+      moreActions={moreActions}
     />
   );
 }

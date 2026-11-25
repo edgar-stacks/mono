@@ -11,6 +11,7 @@ export const TokenDetailsSelectors = {
   TokenDetailsReceiveButton: 'token-details-receive-btn',
   TokenDetailsBuyButton: 'token-details-buy-btn',
   TokenDetailsSwapButton: 'token-details-swap-btn',
+  TokenDetailsMoreButton: 'token-details-more-btn',
   TokenDetailsDescription: 'token-details-description',
   TokenDetailsName: 'token-details-name',
   TokenDetailsPrice: 'token-details-price',

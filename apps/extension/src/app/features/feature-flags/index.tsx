@@ -33,6 +33,7 @@ export function createLaunchDarklyProvider() {
 
 interface FeatureFlags {
   swapSbtcBridging: boolean;
+  accountShuffle: boolean;
 }
 
 export function useFlags() {
