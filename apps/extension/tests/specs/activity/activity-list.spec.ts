@@ -113,5 +113,8 @@ test.describe('Activity list', () => {
 
     const activityList = page.getByTestId(ActivitySelectors.ActivityList);
     await expect(activityList.getByText('No activity yet')).toBeVisible();
+    await expect(
+      activityList.getByText('Transactions you send or receive will appear here.')
+    ).toBeVisible();
   });
 });
