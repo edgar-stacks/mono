@@ -2,6 +2,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterEach, describe, expect, test } from 'vitest';
 
+import type { ReviseState } from './revise-state.js';
 import {
   type FakePnpm,
   type TestRepo,
@@ -153,6 +154,129 @@ describe('verifyFix', () => {
         '`pnpm install --frozen-lockfile --prefer-offline` failed after removing node_modules',
     });
     expect(pnpm.calls).toEqual(['install --frozen-lockfile --prefer-offline']);
+  });
+
+  describe('a revise', () => {
+    const noConflicts: string[] = [];
+    const revise = {
+      head: 'a'.repeat(40),
+      merge: false,
+      conflicts: noConflicts,
+      items: ['instructions', 'thread-11'],
+      since: 'abc123',
+    };
+    const answered = {
+      ...doneStatus,
+      feedback: [
+        { id: 'instructions', addressed: true, reply: 'Wrapped the label.' },
+        { id: 'thread-11', addressed: false, reply: 'Kept the name.' },
+      ],
+    };
+
+    function verifyRevise(pnpm: FakePnpm, check: ReviseState = revise) {
+      return verifyFix({
+        root: repo.root,
+        statusFile: repo.paths.statusFile,
+        reportFile: repo.paths.verifyReport,
+        run: pnpm.run,
+        revise: check,
+        log: discardLog,
+      });
+    }
+
+    test('checks the packages the whole pull request changed, not only the revise', () => {
+      repo = createTestRepo();
+      repo.makeFix();
+      repo.writeStatus(answered);
+      const pnpm = fakePnpm(repo);
+      expect(verifyRevise(pnpm).passed).toBe(true);
+      expect(pnpm.calls).toEqual(gate.map(call => call.replace('[HEAD]', '[abc123]')));
+    });
+
+    test('fails until the status answers every feedback item, and no other', () => {
+      repo = createTestRepo();
+      repo.makeFix();
+      repo.writeStatus({
+        ...doneStatus,
+        feedback: [
+          { id: 'instructions', addressed: true, reply: 'Wrapped the label.' },
+          { id: 'thread-99', addressed: true, reply: 'Made up.' },
+        ],
+      });
+      const pnpm = fakePnpm(repo);
+      expect(verifyRevise(pnpm)).toMatchObject({
+        passed: false,
+        message: 'the status does not answer the feedback items one for one',
+      });
+      expect(readFileSync(repo.paths.verifyReport, 'utf8')).toBe(
+        'FAILED: the status does not answer the feedback items one for one\n\n```\nfeedback: no entry for thread-11\nfeedback: thread-99 is not an item of the feedback file\n```\n'
+      );
+      expect(pnpm.calls).toEqual([]);
+    });
+
+    test('passes a revise that changed nothing and only answers', () => {
+      repo = createTestRepo();
+      repo.writeStatus(answered);
+      const pnpm = fakePnpm(repo);
+      expect(verifyRevise(pnpm)).toEqual({
+        passed: true,
+        skipped: true,
+        message: 'the revise changed nothing and only answers the feedback; skipping the gate',
+      });
+      expect(pnpm.calls).toEqual([]);
+    });
+
+    test('still runs the gate on a merge of dev the fixer left untouched', () => {
+      repo = createTestRepo();
+      repo.writeStatus(answered);
+      const pnpm = fakePnpm(repo);
+      expect(verifyRevise(pnpm, { ...revise, merge: true })).toMatchObject({ passed: true });
+      expect(pnpm.calls).toHaveLength(gate.length);
+    });
+
+    test('runs the gate on a merge even when the fixer stopped as blocked without changing it', () => {
+      repo = createTestRepo();
+      repo.writeStatus({ ...answered, state: 'blocked', questions: ['Which range?'] });
+      const pnpm = fakePnpm(repo);
+      expect(verifyRevise(pnpm, { ...revise, merge: true })).toMatchObject({ passed: true });
+      expect(pnpm.calls).toHaveLength(gate.length);
+    });
+
+    test('skips the gate for a blocked fixer that left the conflict markers of a merge', () => {
+      repo = createTestRepo();
+      repo.write(
+        'apps/extension/fee-row.tsx',
+        '<<<<<<< HEAD\nours\n=======\ntheirs\n>>>>>>> dev\n'
+      );
+      repo.git(['commit', '-q', '-a', '-m', 'merge baseline']);
+      repo.writeStatus({ ...answered, state: 'blocked', questions: ['Which side wins?'] });
+      const pnpm = fakePnpm(repo);
+      expect(
+        verifyRevise(pnpm, { ...revise, merge: true, conflicts: ['apps/extension/fee-row.tsx'] })
+      ).toMatchObject({ passed: true, skipped: true });
+      expect(pnpm.calls).toEqual([]);
+    });
+
+    test('fails a finished revise while a conflict marker remains', () => {
+      repo = createTestRepo();
+      repo.write(
+        'apps/extension/fee-row.tsx',
+        '<<<<<<< HEAD\nours\n=======\ntheirs\n>>>>>>> dev\n'
+      );
+      repo.writeStatus(answered);
+      const conflicted = { ...revise, merge: true, conflicts: ['apps/extension/fee-row.tsx'] };
+      const pnpm = fakePnpm(repo);
+      expect(verifyRevise(pnpm, conflicted)).toMatchObject({
+        passed: false,
+        message: 'conflict markers from the merge of dev remain',
+        details: 'apps/extension/fee-row.tsx',
+      });
+      expect(pnpm.calls).toEqual([]);
+      repo.writeStatus({ ...answered, state: 'blocked', questions: ['Which side wins?'] });
+      expect(verifyRevise(fakePnpm(repo, { fail: 'lint' }), conflicted)).toMatchObject({
+        message: '`pnpm lint` failed',
+      });
+    });
   });
 
   test('reports the problems of an invalid status', () => {

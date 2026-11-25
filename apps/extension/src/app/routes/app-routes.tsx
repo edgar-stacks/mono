@@ -59,7 +59,7 @@ export function AppRoutes() {
 const sentryCreateBrowserRouter = Sentry.wrapCreateBrowserRouterV7(createHashRouter);
 
 function useAppRoutes() {
-  const { releaseOnramperBuy, releaseOnramperSell, accountShuffle } = useFlags();
+  const { accountShuffle } = useFlags();
 
   return sentryCreateBrowserRouter(
     createRoutesFromElements(
@@ -129,27 +129,23 @@ function useAppRoutes() {
             }
           />
 
-          {releaseOnramperBuy && (
-            <Route
-              path={RouteUrls.Fund}
-              element={
-                <AccountGate>
-                  <FundPage />
-                </AccountGate>
-              }
-            />
-          )}
+          <Route
+            path={RouteUrls.Fund}
+            element={
+              <AccountGate>
+                <FundPage />
+              </AccountGate>
+            }
+          />
 
-          {releaseOnramperSell && (
-            <Route
-              path={RouteUrls.Sell}
-              element={
-                <AccountGate>
-                  <SellPage />
-                </AccountGate>
-              }
-            />
-          )}
+          <Route
+            path={RouteUrls.Sell}
+            element={
+              <AccountGate>
+                <SellPage />
+              </AccountGate>
+            }
+          />
 
           {sendCryptoAssetFormRoutes}
 

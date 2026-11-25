@@ -1,18 +1,20 @@
 import type { Command } from 'commander';
 
 import {
-  appJwt,
-  createInstallationToken,
-  kmsSigner,
+  type TokenPermissions,
   revokeInstallationToken,
-} from '../fix-issue/app-token.js';
-import { briefIssues, dispatch } from '../fix-issue/dispatch.js';
+  writeAppTokenOutput,
+} from '../ci/app-token.js';
+import { createGhCliClient, createGitHubClient, readRequiredEnv } from '../ci/github.js';
+import { writeStepOutputs } from '../ci/outputs.js';
+import { briefIssues, dispatch, dispatchRevise } from '../fix-issue/dispatch.js';
 import { repoRoot } from '../fix-issue/git.js';
-import { createGhCliClient, createGitHubClient } from '../fix-issue/github.js';
 import { fetchIssue } from '../fix-issue/issue.js';
-import { writeStepOutputs } from '../fix-issue/outputs.js';
 import { fixIssuePaths } from '../fix-issue/paths.js';
-import { openPullRequest } from '../fix-issue/pull-request.js';
+import { openPullRequest, revisePullRequest } from '../fix-issue/pull-request.js';
+import { gateRevise } from '../fix-issue/revise-gate.js';
+import { readReviseState } from '../fix-issue/revise-state.js';
+import { startRevise } from '../fix-issue/revise.js';
 import {
   checkReview,
   endRound,
@@ -40,7 +42,17 @@ interface OpenPullRequestFlags {
   readonly base: string;
   readonly parentSha: string;
   readonly coAuthor?: string;
+  readonly pullRequest: string;
+  readonly merge: string;
+  readonly appLogin: string;
+  readonly workflowAppClientId: string;
 }
+
+const appTokenPermissions: TokenPermissions = {
+  contents: 'write',
+  pull_requests: 'write',
+  issues: 'write',
+};
 
 interface AppTokenFlags {
   readonly clientId: string;
@@ -48,9 +60,21 @@ interface AppTokenFlags {
 }
 
 interface DispatchFlags {
-  readonly runDir: string;
-  readonly issue: string;
+  readonly runDir?: string;
+  readonly issue?: string;
+  readonly pullRequest?: string;
+  readonly notesFile?: string;
+  readonly merge?: boolean;
   readonly repo: string;
+}
+
+interface PrepareReviseFlags {
+  readonly pullRequest: string;
+  readonly devSha: string;
+  readonly base: string;
+  readonly merge: string;
+  readonly requestedBy: string;
+  readonly workflowAppClientId?: string;
 }
 
 interface StatusFlags {
@@ -69,19 +93,33 @@ function paths() {
   return fixIssuePaths(repoRoot(process.cwd()));
 }
 
-function requireEnv(name: string): string {
-  const value = process.env[name];
-  if (!value) throw new Error(`${name} is not set`);
-  return value;
-}
-
-function parseIssue(value: string): number {
-  if (!/^[1-9]\d*$/.test(value)) throw new Error(`'${value}' is not an issue number`);
+function parseNumber(value: string, what: string): number {
+  if (!/^[1-9]\d*$/.test(value)) throw new Error(`'${value}' is not ${what}`);
   return Number(value);
 }
 
+function parseIssue(value: string): number {
+  return parseNumber(value, 'an issue number');
+}
+
+function parsePullRequest(value: string): number {
+  return parseNumber(value, 'a pull request number');
+}
+
+function required(value: string | undefined, flag: string): string {
+  if (!value) throw new Error(`${flag} is required`);
+  return value;
+}
+
+function notes(): string | undefined {
+  return process.env.FIX_ISSUE_NOTES;
+}
+
 function github() {
-  return createGitHubClient({ token: requireEnv('GH_TOKEN'), apiUrl: process.env.GITHUB_API_URL });
+  return createGitHubClient({
+    token: readRequiredEnv('GH_TOKEN'),
+    apiUrl: process.env.GITHUB_API_URL,
+  });
 }
 
 async function guard(step: string, action: () => Promise<void> | void): Promise<void> {
@@ -114,7 +152,7 @@ export function registerFixIssueCommands(program: Command): void {
           const target = paths();
           const fetched = await fetchIssue({
             client: github(),
-            repo: requireEnv('GITHUB_REPOSITORY'),
+            repo: readRequiredEnv('GITHUB_REPOSITORY'),
             issue: parseIssue(issue),
             outFile: target.issueFile,
             workflowAppClientId,
@@ -128,14 +166,35 @@ export function registerFixIssueCommands(program: Command): void {
   fixIssue
     .command('dispatch')
     .description(
-      'Dispatch repo:fix-issue on dev for one brief of a run directory, through the gh login'
+      'Dispatch repo:fix-issue on dev through the gh login: for one brief of a run directory, or with --pull-request to revise an open bot pull request'
     )
-    .requiredOption('--run-dir <dir>', 'Run directory holding briefs/bot/fix-issue-<n>.md')
-    .requiredOption('--issue <number>', 'Issue number; for a group, the first issue of the brief')
+    .option('--run-dir <dir>', 'Run directory holding briefs/bot/fix-issue-<n>.md')
+    .option('--issue <number>', 'Issue number; for a group, the first issue of the brief')
+    .option('--pull-request <number>', 'Bot pull request to revise instead of fixing an issue')
+    .option('--notes-file <file>', 'With --pull-request: what the revise should change')
+    .option('--merge', 'With --pull-request: merge dev into the branch first')
     .option('--repo <owner/name>', 'Repository to dispatch in', defaultRepo)
-    .action(({ runDir, issue, repo }: DispatchFlags) =>
+    .action(({ runDir, issue, pullRequest, notesFile, merge, repo }: DispatchFlags) =>
       guard('fix-issue-dispatch', () => {
-        console.log(dispatch({ runDir, issue: parseIssue(issue), repo }));
+        if (pullRequest !== undefined) {
+          console.log(
+            dispatchRevise({
+              pullRequest: parsePullRequest(pullRequest),
+              notesFile,
+              merge: merge === true,
+              repo,
+              cwd: process.cwd(),
+            })
+          );
+          return;
+        }
+        console.log(
+          dispatch({
+            runDir: required(runDir, '--run-dir'),
+            issue: parseIssue(required(issue, '--issue')),
+            repo,
+          })
+        );
       })
     );
 
@@ -167,6 +226,7 @@ export function registerFixIssueCommands(program: Command): void {
           root: target.root,
           statusFile: target.statusFile,
           reportFile: report ? target.verifyReport : undefined,
+          revise: readReviseState(target.reviseFile),
         });
         if (!result.passed) process.exitCode = 1;
       })
@@ -266,21 +326,14 @@ export function registerFixIssueCommands(program: Command): void {
     .requiredOption('--client-id <id>', 'Client ID of the fix-issue App')
     .requiredOption('--kms-key-id <id>', 'KMS key ID, ARN or alias holding the App private key')
     .action(({ clientId, kmsKeyId }: AppTokenFlags) =>
-      guard('app-token', async () => {
-        const repo = requireEnv('GITHUB_REPOSITORY');
-        const apiUrl = process.env.GITHUB_API_URL;
-        const jwt = appJwt(clientId, kmsSigner(kmsKeyId), Date.now());
-        const token = await createInstallationToken({
-          appClient: createGitHubClient({ token: jwt, apiUrl }),
-          tokenClient(installationToken) {
-            return createGitHubClient({ token: installationToken, apiUrl });
-          },
-          repo,
-        });
-        console.log(`::add-mask::${token}`);
-        writeStepOutputs({ token });
-        console.log('app-token: created an installation token that expires within an hour');
-      })
+      guard('app-token', () =>
+        writeAppTokenOutput({
+          clientId,
+          kmsKeyId,
+          permissions: appTokenPermissions,
+          withAppLogin: true,
+        })
+      )
     );
   appToken
     .command('revoke')
@@ -294,28 +347,87 @@ export function registerFixIssueCommands(program: Command): void {
 
   fixIssue
     .command('open-pull-request')
-    .description('Commit the patch to the branch and open or update its pull request')
-    .requiredOption('--issue <number>', 'Issue number')
-    .requiredOption('--branch <branch>', 'Pull request branch')
+    .description(
+      'Commit the patch and open the pull request of a first run, or with --pull-request commit it on top of that pull request and answer its reviewers'
+    )
     .requiredOption('--base <branch>', 'Base branch')
-    .requiredOption('--parent-sha <sha>', 'Commit the patch was made against')
+    .requiredOption('--parent-sha <sha>', 'Tip of the base branch the run started from')
+    .option('--issue <number>', 'Issue number of a first run', '')
+    .option('--branch <branch>', 'Pull request branch of a first run', '')
     .option('--co-author <login>', 'GitHub login to credit with a Co-authored-by trailer')
-    .action(({ issue, branch, base, parentSha, coAuthor }: OpenPullRequestFlags) =>
+    .option('--pull-request <number>', 'Pull request a revise run changes', '')
+    .option('--merge <boolean>', 'true when the revise was asked to merge the base branch', 'false')
+    .option('--app-login <login>', 'Login of the fix-issue App bot, for a revise', '')
+    .option('--workflow-app-client-id <id>', 'Client ID of the fix-issue App, for a revise', '')
+    .action((flags: OpenPullRequestFlags) =>
       guard('open-pull-request', async () => {
-        const url = await openPullRequest({
+        const shared = {
           client: github(),
           paths: paths(),
-          repo: requireEnv('GITHUB_REPOSITORY'),
-          issue: parseIssue(issue),
-          branch,
-          baseBranch: base,
-          parentSha,
-          coAuthor,
+          repo: readRequiredEnv('GITHUB_REPOSITORY'),
+          baseBranch: flags.base,
+          parentSha: flags.parentSha,
+          coAuthor: flags.coAuthor,
+          brief: notes(),
           runId: process.env.GITHUB_RUN_ID,
           runAttempt: process.env.GITHUB_RUN_ATTEMPT,
           serverUrl: process.env.GITHUB_SERVER_URL,
-        });
+        };
+        const url =
+          flags.pullRequest === ''
+            ? await openPullRequest({
+                ...shared,
+                issue: parseIssue(flags.issue),
+                branch: required(flags.branch, '--branch'),
+              })
+            : await revisePullRequest({
+                ...shared,
+                pullRequest: parsePullRequest(flags.pullRequest),
+                mergeRequested: flags.merge === 'true',
+                appLogin: required(flags.appLogin, '--app-login'),
+                workflowAppClientId: required(
+                  flags.workflowAppClientId,
+                  '--workflow-app-client-id'
+                ),
+              });
         console.log(url);
+      })
+    );
+
+  fixIssue
+    .command('revise')
+    .description('Steps only a run that revises an open bot pull request takes')
+    .command('prepare')
+    .description(
+      'Check that the pull request may be revised, gather the feedback, the issue and the brief into tmp/fix-issue/, then check out its head and merge dev when that is needed'
+    )
+    .requiredOption('--pull-request <number>', 'Pull request to revise')
+    .requiredOption('--dev-sha <sha>', 'Tip of the base branch the run started from')
+    .requiredOption('--base <branch>', 'Base branch')
+    .requiredOption('--requested-by <login>', 'Who dispatched the revise')
+    .option('--merge <boolean>', 'true when the dispatch asked to merge the base branch', 'false')
+    .option('--workflow-app-client-id <id>', 'Client ID of the fix-issue App')
+    .action((flags: PrepareReviseFlags) =>
+      guard('revise-prepare', async () => {
+        const target = paths();
+        const pullRequest = parsePullRequest(flags.pullRequest);
+        const gated = await gateRevise({
+          client: github(),
+          repo: readRequiredEnv('GITHUB_REPOSITORY'),
+          paths: target,
+          pullRequest,
+          devSha: flags.devSha,
+          baseBranch: flags.base,
+          mergeRequested: flags.merge === 'true',
+          instructions: notes() ?? '',
+          requestedBy: flags.requestedBy,
+          workflowAppClientId: flags.workflowAppClientId,
+        });
+        const state = startRevise(target, gated, flags.devSha);
+        writeStepOutputs({ merged: state.merge, conflicted: state.conflicts.length > 0 });
+        console.log(
+          `revise-prepare: revise ${gated.ordinal} of #${pullRequest} at ${state.head} with ${state.items.length} feedback items${state.merge ? `, on a merge of ${flags.devSha} with ${state.conflicts.length} conflicting files` : ''}`
+        );
       })
     );
 }
