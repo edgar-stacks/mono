@@ -152,10 +152,6 @@ export function propIfDefined(prop: string, value: unknown) {
   return isBoolean(value) ? { [prop]: value } : {};
 }
 
-export function isHexString(value: string) {
-  return /^[0-9a-fA-F]+$/.test(value);
-}
-
 export function toHexString(value: number) {
   return value.toString(16);
 }
@@ -213,3 +209,4 @@ export function isNumberOrNumberList(value: unknown) {
 
 export { sanitizeContent } from './sanitize-content';
 export { toColumnMajorRows } from './to-column-major-rows';
+export { isHexString } from './is-hex-string';
