@@ -34,4 +34,8 @@ describe(isHexString.name, () => {
   test('rejects hex with surrounding whitespace', () => {
     expect(isHexString(' 1f ')).toBe(false);
   });
+
+  test('rejects hex followed by a newline', () => {
+    expect(isHexString('1f\n')).toBe(false);
+  });
 });
