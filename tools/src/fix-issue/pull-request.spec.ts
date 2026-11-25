@@ -2,7 +2,7 @@ import { existsSync, writeFileSync } from 'node:fs';
 import { afterEach, describe, expect, test } from 'vitest';
 import { z } from 'zod';
 
-import { runOrThrow } from './exec.js';
+import { runOrThrow } from '../ci/exec.js';
 import { gitBlobSha } from './git.js';
 import { openPullRequest, renderBody, renderScreenshotTable } from './pull-request.js';
 import type { FixStatus } from './status.js';
@@ -361,15 +361,22 @@ describe('openPullRequest', () => {
     });
   });
 
-  test('force-updates the branch and readies the draft pull request', async () => {
-    setup(doneStatus);
-    const { client, result } = open((method, path) => {
+  function withBranchHead(parents: readonly string[], draft = true): GitHubRoute {
+    return (method, path) => {
       if (path.includes('/git/matching-refs/heads/bot/fix-issue-12-777')) {
         return [{ ref: 'refs/heads/bot/fix-issue-12-777', object: { sha: 'old-sha' } }];
       }
-      if (method === 'GET' && path.includes('/pulls?')) return existingPull(true);
+      if (method === 'GET' && path.endsWith('/git/commits/old-sha')) {
+        return { tree: { sha: 'old-tree-sha' }, parents: parents.map(sha => ({ sha })) };
+      }
+      if (method === 'GET' && path.includes('/pulls?')) return existingPull(draft);
       return undefined;
-    });
+    };
+  }
+
+  test('force-updates the branch and readies the draft pull request', async () => {
+    setup(doneStatus);
+    const { client, result } = open(withBranchHead([repo.head]));
     await expect(result).resolves.toBe('https://github.com/leather-io/mono/pull/7');
     expect(callsTo(client, 'PATCH', '/git/refs/heads/bot/fix-issue-12-777')[0]?.body).toEqual({
       sha: 'new-commit-sha',
@@ -382,6 +389,85 @@ describe('openPullRequest', () => {
     const mutation = client.calls.find(call => call.method === 'GRAPHQL');
     expect(mutation?.path).toMatch(/markPullRequestReadyForReview/);
     expect(mutation?.body).toEqual({ id: 'PR_node' });
+  });
+
+  test.each([
+    ['a revise commit on top of its own', ['bot-commit-sha']],
+    ['a merge of dev', ['bot-commit-sha', 'dev-sha']],
+  ])('refuses to force-update a branch that holds %s', async (_name, parents) => {
+    setup(doneStatus);
+    const { client, result } = open(withBranchHead(parents));
+    await expect(result).rejects.toThrow(
+      "refusing to overwrite bot/fix-issue-12-777: it holds commits beyond this run's own"
+    );
+    expect(callsTo(client, 'POST', '/git/commits')).toHaveLength(0);
+    expect(callsTo(client, 'PATCH', '/git/refs/heads/bot/fix-issue-12-777')).toHaveLength(0);
+  });
+
+  describe('brief', () => {
+    const brief = '# #12: Fee row wraps\n\n## Decisions\n\n- Settled: wrap the label';
+    const stored = [
+      '<!-- fix-issue:brief -->',
+      '<details>',
+      '<summary>The brief this pull request was written from</summary>',
+      '',
+      brief,
+      '',
+      '</details>',
+      '<!-- /fix-issue:brief -->',
+      '',
+    ].join('\n');
+
+    function openWith(route: GitHubRoute | undefined, text: string | undefined) {
+      const client = fakeGitHub(route);
+      const result = openPullRequest({
+        client,
+        paths: repo.paths,
+        repo: repoName,
+        issue: 12,
+        branch: 'bot/fix-issue-12-777',
+        baseBranch: 'dev',
+        parentSha: repo.head,
+        brief: text,
+        log: discardLog,
+      });
+      return { client, result };
+    }
+
+    test('stores the brief as a comment on a new pull request', async () => {
+      setup(doneStatus);
+      const { client, result } = openWith(undefined, `${brief}\n`);
+      await result;
+      expect(callsTo(client, 'POST', '/issues/101/comments')[0]?.body).toEqual({ body: stored });
+    });
+
+    test('stores nothing when the dispatch carried no brief', async () => {
+      setup(doneStatus);
+      const { client, result } = openWith(undefined, ' \n');
+      await result;
+      expect(callsTo(client, 'POST', '/issues/101/comments')).toHaveLength(0);
+    });
+
+    test('stores the brief once when the job runs again', async () => {
+      setup(doneStatus);
+      const { client, result } = openWith((method, path) => {
+        if (method === 'GET' && path.includes('/issues/7/comments')) return [{ body: stored }];
+        return withBranchHead([repo.head], false)(method, path, undefined);
+      }, brief);
+      await expect(result).resolves.toBe('https://github.com/leather-io/mono/pull/7');
+      expect(callsTo(client, 'POST', '/issues/7/comments')).toHaveLength(0);
+    });
+
+    test('still opens the pull request when the brief cannot be stored', async () => {
+      setup(doneStatus);
+      const { result } = openWith((method, path) => {
+        if (method === 'POST' && path.endsWith('/issues/101/comments')) {
+          throw new Error('comment failed');
+        }
+        return undefined;
+      }, brief);
+      await expect(result).resolves.toBe('https://github.com/leather-io/mono/pull/101');
+    });
   });
 
   test('ignores a pull request with the same branch name from another repository', async () => {
@@ -456,6 +542,36 @@ describe('openPullRequest', () => {
     await expect(result).rejects.toThrow(
       /refusing to apply the patch[\s\S]*\.github\/workflows\/evil\.yml/
     );
+    expect(client.calls).toEqual([]);
+  });
+
+  test('refuses a patch that copies a file from outside the repository', async () => {
+    setup(doneStatus);
+    writeFileSync(
+      repo.paths.patchFile,
+      [
+        'diff --git a/../status.json b/apps/extension/leak.txt',
+        'similarity index 100%',
+        'copy from ../status.json',
+        'copy to apps/extension/leak.txt',
+        '',
+      ].join('\n')
+    );
+    const { client, result } = open();
+    await expect(result).rejects.toThrow(/\.\.\/status\.json: does not exist in index/);
+    expect(client.calls).toEqual([]);
+  });
+
+  test('refuses to commit when the applied tree holds a change outside the allowed paths', async () => {
+    setup(doneStatus);
+    repo.write(
+      'tmp/hooks/post-checkout',
+      '#!/bin/sh\nmkdir -p .github/workflows\necho "on: push" > .github/workflows/evil.yml\n',
+      0o755
+    );
+    repo.git(['config', 'core.hooksPath', `${repo.root}/tmp/hooks`]);
+    const { client, result } = open();
+    await expect(result).rejects.toThrow(/refusing to commit[\s\S]*\.github\/workflows\/evil\.yml/);
     expect(client.calls).toEqual([]);
   });
 
