@@ -37,6 +37,7 @@ import { AvailableBalanceRow } from '../components/available-balance-row';
 import { Pox5SubmitError } from '../components/pox5-submit-error';
 import { PreparePhaseCallout } from '../components/prepare-phase-callout';
 import { StakingAcknowledgment } from '../components/staking-acknowledgment';
+import { StakingConnectCard } from '../components/staking-connect-card';
 import { usePox5CycleClock } from '../hooks/use-pox5-cycle-clock';
 import { usePox5Position } from '../hooks/use-pox5-position';
 import { usePox5TxTracker } from '../hooks/use-pox5-tx-tracker';
@@ -102,7 +103,7 @@ export function UpdateStaking({ poolSlug }: UpdateStakingProps) {
     );
   }
 
-  if (!stacksAccount) return 'You need to connect Leather';
+  if (!stacksAccount) return <StakingConnectCard />;
 
   return <UpdateStakingLayout poolSlug={poolSlug} address={stacksAccount.address} />;
 }
