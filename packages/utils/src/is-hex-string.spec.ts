@@ -44,4 +44,8 @@ describe(isHexString.name, () => {
   test('rejects surrounding whitespace', () => {
     expect(isHexString(' 1f2a ')).toBe(false);
   });
+
+  test('rejects a space inside the string', () => {
+    expect(isHexString('ab cd')).toBe(false);
+  });
 });
