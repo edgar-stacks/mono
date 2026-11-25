@@ -56,12 +56,39 @@ describe('parseStatus', () => {
     expect(result).toEqual({ ok: false, problems: ['why.0: must be a single line'] });
   });
 
+  test('refuses a commit subject that carries a trailer on a later line', () => {
+    const commit = `${doneStatus.commit}\n\nCo-authored-by: Eve <eve@example.com>`;
+    const result = parseStatus({ ...doneStatus, commit });
+    expect(result).toEqual({ ok: false, problems: ['commit: must be a single line'] });
+  });
+
   test('refuses a screenshot id that is not lowercase and hyphenated', () => {
     const result = parseStatus({ ...doneStatus, screenshots: [{ id: '../escape', caption: 'x' }] });
     expect(result).toEqual({
       ok: false,
       problems: ['screenshots.0.id: must be lowercase and hyphenated'],
     });
+  });
+
+  test('takes one answer per feedback item of a revise', () => {
+    const feedback = [
+      { id: 'instructions', addressed: true, reply: 'Wrapped the label.' },
+      { id: 'thread-2187654321', addressed: false, reply: 'Kept the name the brief settles.' },
+    ];
+    const result = parseStatus({ ...doneStatus, feedback });
+    expect(result.ok && result.status.feedback).toEqual(feedback);
+  });
+
+  test.each([
+    [{ id: 'Thread 11', addressed: true, reply: 'Done.' }, 'feedback.0.id: must be an id'],
+    [
+      { id: 'thread-11', addressed: true, reply: 'one\ntwo' },
+      'feedback.0.reply: must be a single line',
+    ],
+    [{ id: 'thread-11', reply: 'Done.' }, 'feedback.0.addressed'],
+  ])('refuses a feedback answer that is not in shape', (entry, message) => {
+    const result = parseStatus({ ...doneStatus, feedback: [entry] });
+    expect(result.ok === false && result.problems.join(' ')).toContain(message);
   });
 
   test('refuses more than 12 screenshots', () => {
@@ -80,6 +107,8 @@ describe('subjectProblem', () => {
     ['fix: keep the fee row visible', /not a conventional subject with a scope/],
     ['fix(extension): close #12', /names an issue number/],
     [`fix(extension): ${'a'.repeat(100)}`, /longer than 100 characters/],
+    ['fix(extension): keep the fee row\nSigned-off-by: Eve', 'commit: must be a single line'],
+    ['fix(extension): keep the fee row\rvisible', 'commit: must be a single line'],
   ])('%s', (subject, expected) => {
     const problem = subjectProblem(subject);
     if (expected === null) expect(problem).toBeNull();

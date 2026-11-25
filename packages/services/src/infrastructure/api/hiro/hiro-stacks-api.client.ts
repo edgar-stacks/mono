@@ -1,10 +1,13 @@
-import { GetRawTransactionResult } from '@stacks/stacks-blockchain-api-types';
 import { ClarityAbi, ClarityValue, cvToHex, hexToCV } from '@stacks/transactions';
 import axios, { AxiosError, AxiosInstance } from 'axios';
 import { inject, injectable } from 'inversify';
 
 import { DEFAULT_LIST_LIMIT } from '@leather.io/constants';
-import type { StacksAccountNonces, StacksTransaction } from '@leather.io/models';
+import type {
+  StacksAccountNonces,
+  StacksRawTransaction,
+  StacksTransaction,
+} from '@leather.io/models';
 import { generateRandomStacksAddress } from '@leather.io/stacks';
 
 import { Types } from '../../../inversify.types';
@@ -17,9 +20,6 @@ import { HiroMultiPageRequest, fetchHiroCursorPages, fetchHiroPages } from './hi
 import { hiroApiRequestsPriorityLevels } from './hiro-request-priorities';
 import {
   CallReadOnlyFunctionArgs,
-  HiroAddressBalanceResponse,
-  HiroAddressFtBalancesResponse,
-  HiroAddressStxBalanceResponse,
   HiroAddressTransaction,
   HiroAddressTransactionsResponse,
   HiroBalanceChangesResponse,
@@ -27,10 +27,13 @@ import {
   HiroMetadata,
   HiroPageRequest,
   HiroPoxInfoResponse,
+  HiroPrincipalFtBalance,
+  HiroPrincipalFtBalancesResponse,
   HiroPrincipalMempoolTransactionsResponse,
   HiroPrincipalNftBalance,
   HiroPrincipalNftBalancesResponse,
   HiroPrincipalStakingBondsResponse,
+  HiroPrincipalStxBalanceResponse,
   HiroPrincipalTransactionsResponse,
   HiroReadOnlyFunctionResponse,
   HiroServerStatusResponse,
@@ -54,6 +57,8 @@ interface GetTransactionByIdOptions extends ApiRequestOptions {
 
 const balanceChangesResultLimit = 50;
 const principalNftBalancesPageLimit = 200;
+const principalFtBalancesPageLimit = 200;
+const principalFtBalancesMaxPages = 5;
 const stakingBondsListLimit = 10;
 
 @injectable()
@@ -74,49 +79,16 @@ export class HiroStacksApiClient {
     });
   }
 
-  public async getAddressBalances(
-    address: string,
+  public async getPrincipalStxBalance(
+    principal: string,
     { signal, skipCache }: ApiRequestOptions = {}
-  ): Promise<HiroAddressBalanceResponse> {
+  ): Promise<HiroPrincipalStxBalanceResponse> {
     const fetchFn = async () => {
       const res = await this.limiter.add(
         RateLimiterType.HiroStacks,
         () =>
-          this._axios.get<HiroAddressBalanceResponse>(
-            `${selectStacksApiUrl(this.settings.getSettings())}/extended/v1/address/${address}/balances`,
-            {
-              signal,
-            }
-          ),
-        {
-          priority: hiroApiRequestsPriorityLevels.getAccountBalance,
-          signal,
-          throwOnTimeout: true,
-        }
-      );
-      return res.data;
-    };
-    return await this.cache.fetchWithCache(
-      [
-        'hiro-stacks-get-address-balances',
-        address,
-        selectStacksChainId(this.settings.getSettings()),
-      ],
-      fetchFn,
-      { skipCache }
-    );
-  }
-
-  public async getAddressStxBalance(
-    address: string,
-    { signal, skipCache }: ApiRequestOptions = {}
-  ): Promise<HiroAddressStxBalanceResponse> {
-    const fetchFn = async () => {
-      const res = await this.limiter.add(
-        RateLimiterType.HiroStacks,
-        () =>
-          this._axios.get<HiroAddressStxBalanceResponse>(
-            `${selectStacksApiUrl(this.settings.getSettings())}/extended/v2/addresses/${address}/balances/stx`,
+          this._axios.get<HiroPrincipalStxBalanceResponse>(
+            `${selectStacksApiUrl(this.settings.getSettings())}/extended/v3/principals/${principal}/balances/stx`,
             { signal }
           ),
         {
@@ -129,8 +101,8 @@ export class HiroStacksApiClient {
     };
     return await this.cache.fetchWithCache(
       [
-        'hiro-stacks-get-address-stx-balance',
-        address,
+        'hiro-stacks-get-principal-stx-balance',
+        principal,
         selectStacksChainId(this.settings.getSettings()),
       ],
       fetchFn,
@@ -214,16 +186,19 @@ export class HiroStacksApiClient {
     );
   }
 
-  public async getAddressFtBalances(
-    address: string,
+  private async getPrincipalFtBalancesPage(
+    principal: string,
+    cursor: string | null,
     { signal, skipCache }: ApiRequestOptions = {}
-  ): Promise<HiroAddressFtBalancesResponse> {
+  ): Promise<HiroPrincipalFtBalancesResponse> {
     const fetchFn = async () => {
+      const params = new URLSearchParams({ limit: String(principalFtBalancesPageLimit) });
+      if (cursor) params.set('cursor', cursor);
       const res = await this.limiter.add(
         RateLimiterType.HiroStacks,
         () =>
-          this._axios.get<HiroAddressFtBalancesResponse>(
-            `${selectStacksApiUrl(this.settings.getSettings())}/extended/v2/addresses/${address}/balances/ft`,
+          this._axios.get<HiroPrincipalFtBalancesResponse>(
+            `${selectStacksApiUrl(this.settings.getSettings())}/extended/v3/principals/${principal}/balances/ft?${params.toString()}`,
             { signal }
           ),
         {
@@ -236,12 +211,24 @@ export class HiroStacksApiClient {
     };
     return await this.cache.fetchWithCache(
       [
-        'hiro-stacks-get-address-ft-balances',
-        address,
+        'hiro-stacks-get-principal-ft-balances',
+        principal,
+        cursor ?? 'start',
+        principalFtBalancesPageLimit,
         selectStacksChainId(this.settings.getSettings()),
       ],
       fetchFn,
       { skipCache }
+    );
+  }
+
+  public async getPrincipalFtBalances(
+    principal: string,
+    { signal, skipCache }: ApiRequestOptions = {}
+  ): Promise<HiroPrincipalFtBalance[]> {
+    return fetchHiroCursorPages(
+      cursor => this.getPrincipalFtBalancesPage(principal, cursor, { signal, skipCache }),
+      { maxPages: principalFtBalancesMaxPages }
     );
   }
 
@@ -766,13 +753,13 @@ export class HiroStacksApiClient {
   public async getRawTransactionById(
     txid: string,
     { signal, skipCache }: ApiRequestOptions = {}
-  ): Promise<GetRawTransactionResult> {
+  ): Promise<StacksRawTransaction> {
     const fetchFn = async () => {
       const res = await this.limiter.add(
         RateLimiterType.HiroStacks,
         () =>
-          this._axios.get<GetRawTransactionResult>(
-            `${selectStacksApiUrl(this.settings.getSettings())}/extended/v1/tx/${txid}/raw`,
+          this._axios.get<StacksRawTransaction>(
+            `${selectStacksApiUrl(this.settings.getSettings())}/extended/v3/transactions/${txid}/raw`,
             { signal }
           ),
         {

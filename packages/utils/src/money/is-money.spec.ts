@@ -17,4 +17,8 @@ describe(isMoneyGreaterThanZero.name, () => {
   test('returns true for a positive amount', () => {
     expect(isMoneyGreaterThanZero(createMoney(0.00000001, 'STX'))).toBe(true);
   });
+
+  test('returns true for a large positive amount', () => {
+    expect(isMoneyGreaterThanZero(createMoney(1_000_000, 'STX'))).toBe(true);
+  });
 });

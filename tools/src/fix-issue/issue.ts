@@ -2,7 +2,7 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { z } from 'zod';
 
-import { type GitHubClient, GitHubError, paginate } from './github.js';
+import { type GitHubClient, GitHubError, paginate } from '../ci/github.js';
 
 const userSchema = z.object({ login: z.string(), type: z.string().optional() }).nullable();
 
@@ -17,7 +17,7 @@ const issueSchema = z.object({
   pull_request: z.unknown().optional(),
 });
 
-const commentSchema = z.object({
+export const commentSchema = z.object({
   body: z.string().nullable(),
   created_at: z.string(),
   user: userSchema,
@@ -68,7 +68,7 @@ async function hasWriteAccess(client: GitHubClient, repo: string, user: string):
   }
 }
 
-async function trustedAuthors(
+export async function trustedAuthors(
   client: GitHubClient,
   repo: string,
   users: readonly (string | null)[]
@@ -84,7 +84,7 @@ function isTrusted(trusted: ReadonlySet<string>, user: Issue['user']): boolean {
   return user !== null && trusted.has(user.login);
 }
 
-function isWorkflowAppComment(comment: Comment, clientId: string | undefined): boolean {
+export function isWorkflowAppComment(comment: Comment, clientId: string | undefined): boolean {
   return (
     clientId !== undefined &&
     clientId !== '' &&
