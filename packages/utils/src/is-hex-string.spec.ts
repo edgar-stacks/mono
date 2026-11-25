@@ -9,6 +9,10 @@ describe(isHexString.name, () => {
     expect(isHexString('1F2A')).toBe(true);
   });
 
+  test('accepts all-uppercase hex letters', () => {
+    expect(isHexString('ABCDEF')).toBe(true);
+  });
+
   test('accepts mixed case hex', () => {
     expect(isHexString('1F2a')).toBe(true);
   });
