@@ -3,7 +3,7 @@ import { describe, expect, test } from 'vitest';
 import { isHexString } from './is-hex-string';
 
 describe('isHexString', () => {
-  test.each(['1f2a', '1F2a', '1F2A'])('returns true for hex %s', value => {
+  test.each(['1f2a', '1F2a', '1F2A', 'a'])('returns true for hex %s', value => {
     expect(isHexString(value)).toBe(true);
   });
 
