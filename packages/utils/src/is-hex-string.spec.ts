@@ -3,12 +3,8 @@ import { describe, expect, test } from 'vitest';
 import { isHexString } from './is-hex-string';
 
 describe('isHexString', () => {
-  test('returns true for plain lowercase hex', () => {
-    expect(isHexString('1f2a')).toBe(true);
-  });
-
-  test('returns true for mixed case hex', () => {
-    expect(isHexString('1F2a')).toBe(true);
+  test.each(['1f2a', '1F2a', '1F2A'])('returns true for hex %s', value => {
+    expect(isHexString(value)).toBe(true);
   });
 
   test('returns false for 0x-prefixed hex', () => {
@@ -21,5 +17,13 @@ describe('isHexString', () => {
 
   test('returns false for non-hex characters', () => {
     expect(isHexString('xyz')).toBe(false);
+  });
+
+  test('returns false for hex with one non-hex character', () => {
+    expect(isHexString('1g')).toBe(false);
+  });
+
+  test('returns false for hex followed by a newline', () => {
+    expect(isHexString('1f\n')).toBe(false);
   });
 });
