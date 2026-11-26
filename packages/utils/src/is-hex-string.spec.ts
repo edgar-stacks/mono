@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest';
 
-import { isHexString } from './index';
+import { isHexString } from './is-hex-string';
 
 describe('isHexString', () => {
   test('returns true for plain lowercase hex', () => {
