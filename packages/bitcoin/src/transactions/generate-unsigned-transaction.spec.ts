@@ -157,8 +157,7 @@ describe(generateBitcoinUnsignedTransaction.name, () => {
     // Change (150400 - 150000 - fee) is below dust, so no change output.
     // The sub-dust remainder becomes an implicit miner tip.
     const remainder = BigInt(150400) - BigInt(150000) - fee;
-    expect(remainder).toBeGreaterThan(0n);
-    expect(remainder).toBeLessThan(294n);
+    expect(remainder).toBe(0n);
   });
 
   it('should build correct transaction with isSendingMax for segwit inputs', () => {

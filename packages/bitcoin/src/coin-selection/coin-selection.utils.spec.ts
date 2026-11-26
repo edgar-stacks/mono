@@ -1,6 +1,6 @@
 import { createMoney } from '@leather.io/utils';
 
-import { recipientAddress } from '../mocks/mocks';
+import { invalidAddress, recipientAddress, taprootAddress } from '../mocks/mocks';
 import {
   generateMockTaprootTransactions,
   generateMockTransactions,
@@ -10,6 +10,7 @@ import {
 import {
   countInputsByScriptType,
   filterUneconomicalUtxos,
+  getDustThresholdByAddress,
   getSizeInfo,
   getSpendableAmount,
 } from './coin-selection.utils';
@@ -71,6 +72,26 @@ describe(filterUneconomicalUtxos.name, () => {
       feeRate: fee,
     });
     expect(filteredUtxos.length).toEqual(2);
+  });
+
+  test('that sibling outputs of one transaction are judged separately', () => {
+    const [economical, uneconomical] = generateMockTransactions([50_000, 400]);
+    const siblings = [economical, { ...uneconomical, txid: economical.txid, vout: 1 }];
+    const filteredUtxos = filterUneconomicalUtxos({
+      utxos: siblings,
+      feeRate: 10,
+      recipients,
+    });
+    expect(filteredUtxos).toEqual([economical]);
+  });
+
+  test('that taproot utxos below the taproot dust limit are dropped', () => {
+    const filteredUtxos = filterUneconomicalUtxos({
+      utxos: generateMockTaprootTransactions([300, 50_000]),
+      feeRate: 0,
+      recipients,
+    });
+    expect(filteredUtxos.map(utxo => utxo.value)).toEqual([50_000]);
   });
 
   describe('with taproot utxos', () => {
@@ -152,6 +173,20 @@ describe(filterUneconomicalUtxos.name, () => {
       expect(result.length).toEqual(1);
       expect(result[0].value).toEqual(50000000);
     });
+  });
+});
+
+describe(getDustThresholdByAddress.name, () => {
+  test('that taproot addresses use the taproot dust limit', () => {
+    expect(getDustThresholdByAddress(taprootAddress)).toEqual(330);
+  });
+
+  test('that native segwit addresses use the p2wpkh dust limit', () => {
+    expect(getDustThresholdByAddress(recipientAddress)).toEqual(294);
+  });
+
+  test('that unparseable addresses fall back to the p2wpkh dust limit', () => {
+    expect(getDustThresholdByAddress(invalidAddress)).toEqual(294);
   });
 });
 
