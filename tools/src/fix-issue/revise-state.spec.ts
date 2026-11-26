@@ -6,7 +6,6 @@ import {
   issueOfBranch,
   readReviseState,
   reviseMarker,
-  writeReviseState,
 } from './revise-state.js';
 import { type TestRepo, createTestRepo } from './test/test-repo.js';
 
@@ -14,7 +13,6 @@ const state: ReviseState = {
   head: 'a'.repeat(40),
   merge: true,
   conflicts: ['apps/extension/fee-row.tsx'],
-  items: ['instructions', 'thread-55'],
   since: 'b'.repeat(40),
 };
 
@@ -25,14 +23,8 @@ describe('revise state', () => {
   });
   afterEach(() => repo.cleanup());
 
-  test('reads back what was written, and nothing when no revise is running', () => {
-    expect(readReviseState(repo.paths.reviseFile)).toBeNull();
-    writeReviseState(repo.paths.reviseFile, state);
-    expect(readReviseState(repo.paths.reviseFile)).toEqual(state);
-  });
-
   test('refuses a file that is not a revise state', () => {
-    repo.write('tmp/fix-issue/revise.json', JSON.stringify({ ...state, items: [{ id: 'x' }] }));
+    repo.write('tmp/fix-issue/revise.json', JSON.stringify({ ...state, conflicts: [{ id: 'x' }] }));
     expect(() => readReviseState(repo.paths.reviseFile)).toThrow();
   });
 });
