@@ -30,35 +30,35 @@ How rounds end, and what `round finish` and `strip-forbidden` do after them, is 
 dispatch (pull_request, notes?, merge?)
   │
   ▼  job fix-issue: read-only token, runs the pull request's code and the fixer
-revise prepare (checks the pull request, gathers feedback, checks out its head, merges dev if needed)
+revise prepare (checks the pull request, writes the notes to feedback.md, checks out its head, merges dev if needed)
   ─▶ round 1 ─▶ round 2? ─▶ round 3? ─▶ round finish ─▶ strip-forbidden ─▶ patch
   │
   ▼  job open-pull-request: write token, runs only dev's code
 open-pull-request --pull-request ─▶ signed commit on top of the branch head, co-authored by the dispatcher
-  ─▶ thread replies, new description, a comment that records the revise
+  ─▶ new description, a comment that records the revise and its answers
 ```
 
 [Revising a pull request](#revising-a-pull-request) has the rules.
 
 ## Files in `tmp/fix-issue/`
 
-| File                                  | Written by                                       | Read by                                                  |
-| ------------------------------------- | ------------------------------------------------ | -------------------------------------------------------- |
-| `issue.md`                            | `fetch-issue`                                    | fixer, reviewer                                          |
-| `notes.md`                            | workflow (the brief)                             | fixer, reviewer                                          |
-| `status.json`                         | fixer, then `round finish` and `strip-forbidden` | every step; schema in `status.ts`                        |
-| `verify.md`                           | `round verify` on failure                        | `round end`, next fixer                                  |
-| `review-snapshot.txt`                 | `round verify`                                   | `round check-review`                                     |
-| `review.json`                         | reviewer                                         | `round check-review`, `round end`; schema in `review.ts` |
-| `rounds/<n>/`                         | `round end`                                      | next fixer and reviewer, `round finish`                  |
-| `run.json`                            | `round end`                                      | `round end`, `round finish`                              |
-| `screenshot-specs/*.spec.ts`          | fixer                                            | `screenshots capture`                                    |
-| `screenshots/{before,after}/<id>.png` | `screenshots capture`                            | `open-pull-request`                                      |
-| `fix.patch`                           | workflow (`git diff`)                            | `open-pull-request`                                      |
-| `feedback.md`                         | `revise prepare`                                 | fixer, reviewer                                          |
-| `pull-request.md`                     | `revise prepare`                                 | fixer                                                    |
-| `pull-request.diff`                   | `revise prepare`                                 | fixer, reviewer                                          |
-| `revise.json`                         | `revise prepare`                                 | `round verify`, `round end`, `open-pull-request`         |
+| File                                  | Written by                                       | Read by                                                    |
+| ------------------------------------- | ------------------------------------------------ | ---------------------------------------------------------- |
+| `issue.md`                            | `fetch-issue`, or `revise prepare`               | fixer, reviewer                                            |
+| `notes.md`                            | workflow (the brief), or `revise prepare`        | fixer, reviewer                                            |
+| `status.json`                         | fixer, then `round finish` and `strip-forbidden` | every step; schema in `status.ts`                          |
+| `verify.md`                           | `round verify` on failure                        | `round end`, next fixer                                    |
+| `review-snapshot.txt`                 | `round verify`                                   | `round check-review`                                       |
+| `review.json`                         | reviewer                                         | `round check-review`, `round end`; schema in `review.ts`   |
+| `rounds/<n>/`                         | `round end`                                      | next fixer and reviewer, `round finish`                    |
+| `run.json`                            | `round end`                                      | `round end`, `round finish`                                |
+| `screenshot-specs/*.spec.ts`          | fixer                                            | `screenshots capture`                                      |
+| `screenshots/{before,after}/<id>.png` | `screenshots capture`                            | `open-pull-request`                                        |
+| `fix.patch`                           | workflow (`git diff`)                            | `open-pull-request`                                        |
+| `feedback.md`                         | `revise prepare`                                 | fixer, reviewer                                            |
+| `pull-request.md`                     | `revise prepare`                                 | fixer                                                      |
+| `pull-request.diff`                   | `revise prepare`                                 | fixer, reviewer                                            |
+| `revise.json`                         | `revise prepare`                                 | `verify`, `round verify`, `round end`, `open-pull-request` |
 
 ## Modules
 
@@ -74,11 +74,9 @@ open-pull-request --pull-request ─▶ signed commit on top of the branch head,
 | `issue.ts`               | fetch and render the issue                                                                               |
 | `pull-request.ts`        | patch in a separate worktree, signed commit, screenshots, pull request or questions comment, superseding |
 | `brief.ts`               | the brief as a comment on the pull request, and reading it back                                          |
-| `revise-gate.ts`         | whether a pull request may be revised, and what the revise has to address                                |
-| `feedback.ts`            | unresolved review threads and review summaries by people with write access, rendered as `feedback.md`    |
+| `revise-gate.ts`         | whether a pull request may be revised, `feedback.md`, the checkout of its head, the merge, the diff      |
 | `merge.ts`               | when a revise merges dev, the merge itself (the same in both jobs), leftover conflict markers            |
-| `revise.ts`              | moving the fixer job from dev to the pull request head: the checkout, the merge, the diff                |
-| `revise-pull-request.ts` | what `open-pull-request` adds for a revise: its target, thread replies, the comment that records it      |
+| `revise-pull-request.ts` | what `open-pull-request` adds for a revise: its target and the comment that records it                   |
 | `revise-state.ts`        | `revise.json`, the branch name pattern, the marker that counts revises                                   |
 | `stop-guard.ts`          | the Stop hook that keeps an agent working until its output file is valid                                 |
 | `dispatch.ts`            | dispatching one brief of a run directory, or the revise of a pull request                                |
@@ -226,16 +224,20 @@ To have a bot pull request changed, dispatch the same workflow with `pull_reques
 `pnpm lt fix-issue dispatch --pull-request <n> [--notes-file <file>] [--merge]`). Only people with
 write access can dispatch, and the dispatcher is recorded as on a first run.
 
-| Dispatch                         | What the revise addresses                                                  |
-| -------------------------------- | -------------------------------------------------------------------------- |
-| `pull_request` alone             | every unresolved review thread and every review summary on the head commit |
-| with `notes`                     | the notes, plus those threads and summaries                                |
-| with `merge`                     | merges `dev` into the branch and fixes what that breaks, nothing else      |
-| with `merge` and `notes`         | the merge, the notes, the threads and the summaries                        |
-| any of them, on a conflicting PR | merges `dev` first; without notes it then only resolves the conflicts      |
+| Dispatch                         | What the revise addresses                                             |
+| -------------------------------- | --------------------------------------------------------------------- |
+| `pull_request` with `notes`      | the notes                                                             |
+| with `merge`                     | merges `dev` into the branch and fixes what that breaks, nothing else |
+| with `merge` and `notes`         | the merge and the notes                                               |
+| any of them, on a conflicting PR | merges `dev` first; without notes it then only resolves the conflicts |
+
+The notes are the only feedback a revise gets. It reads no review thread and no review summary from
+GitHub, so whoever dispatches puts the review they want addressed into the notes, with the file and
+line of each comment. A dispatch with neither notes nor a merge to do is refused.
 
 The run is named `fix-issue: revise #<pull request>`, and one revise runs at a time per pull
-request: a second dispatch waits for the first instead of cancelling it.
+request: a second dispatch waits for the first instead of cancelling it, and a third replaces the
+one that is waiting.
 
 Job `fix-issue` starts on `dev` as always. Before any code of the pull request runs,
 `revise prepare` fails the run, with the reason, unless all of this holds:
@@ -245,26 +247,24 @@ Job `fix-issue` starts on `dev` as always. Before any code of the pull request r
   again, with the App's own identity, that the bot is the fix-issue App before it writes);
 - fewer than five revises have run on it: each one leaves a summary comment with a
   `<!-- fix-issue:revise n -->` marker, and only the App's own comments count;
-- there is something to revise: notes, an unresolved thread, a review summary or a conflict;
+- there is something to revise: notes, or a merge of `dev` that was asked for or that a conflict
+  forces, while `dev` is not already part of the branch;
 - `dev` does not conflict with the branch in a file outside the allowed paths, which a person has
   to merge.
 
-It then writes what the fixer works from: `issue.md` as in a first run, `notes.md` from the brief
+It then decides whether to merge `dev` (below) and writes what the fixer works from: `issue.md` as in a first run, `notes.md` from the brief
 comment (empty when the pull request has none), `pull-request.md` with the title and the
-description, and `feedback.md`. Feedback is one item per section, each with an id: `instructions`
-(the notes of the dispatch), `merge`, `thread-<id>` per unresolved review thread with its path, line
-and comments, and `review-<id>` per review summary. The same write-access filter as `issue.md`
-applies to every thread comment and every review: text by anyone else, bots included, is left out
-and counted. Only review summaries written on the current head commit are taken, so one that an
-earlier revise answered with a commit is not handed over twice.
+description, and `feedback.md`, which holds the notes of the dispatch and a section about the
+merge of `dev` when there is one. The notes come from someone with write access, since only they
+can dispatch; nothing else on the pull request reaches the fixer.
 
-Last, it checks out the pull request head and decides whether to merge `dev` (the commit the run
-started from; a merge, never a rebase):
+Last, it checks out the pull request head and merges `dev` when it decided to (the commit the run
+started from; a merge, never a rebase). It merges:
 
 - when the dispatch asked for it or `dev` conflicts with the branch;
 - on its own when `tools/` or `.github/prompts/` changed on `dev` since the branch was cut, so the
-  steps and prompts in the working tree are the ones this workflow expects. That merge does not
-  narrow the revise: the threads and summaries are still addressed.
+  steps and prompts in the working tree are the ones this workflow expects. That alone is no
+  reason to revise: without notes the dispatch is still refused.
 
 A merge is committed locally, conflict markers included, as the baseline: `HEAD` is that merge and
 the fixer's work is the diff against it. The baseline is never pushed. A conflict that leaves no
@@ -278,10 +278,11 @@ conflicting `pnpm-lock.yaml`) and builds once it has resolved them.
 The rounds are the same, with these differences, all keyed on `revise.json` and `feedback.md`:
 
 - `.github/prompts/fix-issue.md` sends the fixer to `.github/prompts/fix-issue-revise.md`. The
-  fixer addresses each item and answers it under `feedback` in the status (`id`, `addressed`, a
-  one-line `reply`). The brief's `Settled:` lines still bind: feedback that contradicts one is not
+  fixer addresses each item and answers it with one line under `answers` in the status. The
+  brief's `Settled:` lines still bind: feedback that contradicts one is not
   applied and becomes a question.
-- `round verify` fails a round whose status does not answer the items one for one, or that calls
+- `round verify` fails a round whose status has no answers (unless it is blocked or hands changes
+  off with nothing changed), or that calls
   itself done while a conflict marker remains, and runs the gate over every package the pull
   request changed against `dev`, not only what the revise touched. A revise that changes nothing
   and only answers is valid and skips the gate and the review; a merge is always checked, even when
@@ -297,18 +298,15 @@ merge itself with the same rule and repeats it in its own worktree, so the basel
 and the branch, not from the fixer's job, then applies the patch with the same allowed-paths checks.
 The signed commit has the branch head as its parent, and `dev` as a second parent after a merge, and
 the branch is moved without force. While a conflict marker remains nothing is committed, the
-question goes on the pull request and it becomes a draft. After the commit it:
+question goes on the pull request and it becomes a draft. Then, whether or not it committed, it:
 
-- replies on each unresolved review thread the fixer answered, when the thread has a comment by
-  someone with write access, and resolves the ones marked addressed (GraphQL);
 - rewrites the description from the status, which describes the whole pull request as it now
   stands, and makes the pull request a draft when the status is blocked or hands changes off, or
   ready again when nothing blocks it;
 - posts one comment that records the revise on the pull request: which revise of five it was, who
-  dispatched it and with which notes, the run, the commit, the answers to the items that have no
-  thread, the questions, and how many unresolved threads were left out;
-- requests review again from the authors of the threads and summaries it answered, when a commit
-  landed and the pull request is not a draft.
+  dispatched it and with which notes, the run, the commit, the fixer's answers and the questions.
+
+It never replies on a review thread, resolves one or requests a review; people do that.
 
 Nothing shows on the pull request while a revise runs, and a failed run leaves it as it was, with
 no comment; the run itself is the record then.
@@ -337,7 +335,7 @@ A revise is the same job with one difference: after `revise prepare` it runs a b
 `dev`. What is on a bot branch was written by an earlier fixer and passed through the pull request
 job's path checks, or was pushed by someone with write access, and it runs only when someone with
 write access dispatches the revise, with the same two tokens and no others. Everything before the
-checkout, the checks on the pull request and the gathering of feedback, runs `dev`'s code; from
+checkout, the checks on the pull request and the writing of `feedback.md`, runs `dev`'s code; from
 then on the steps use the branch's `tools/`, which the merge rule above keeps in line with `dev`,
 and like every check in that job this is for correctness, not a boundary. What that leaves: someone
 who stole a live App token could push to a bot branch and wait for a maintainer to dispatch a
@@ -352,8 +350,8 @@ limits as a whole: this job runs `lt`, which loads every module of the package, 
 changed any of them would, once merged, run next to that token and could loosen these checks. It has
 no access to the Actions cache either (`cache-mode: none`, turbo and pnpm caches off), so nothing
 another job saved runs next to that token. For a revise it takes what it acts on from the dispatch
-(the pull request, whether to merge, the notes) and from GitHub (the head commit, the open threads,
-how many revises ran), and from the fixer's job only the patch, the status, the round records and
+(the pull request, whether to merge, the notes) and from GitHub (the head commit, how many revises
+ran), and from the fixer's job only the patch, the status, the round records and
 the commit the fixer says it started from, which must match the head. It never forces the branch. Every GitHub write there uses an installation token of
 the `fix-issue` GitHub App, not the run's
 `GITHUB_TOKEN`. GitHub starts no workflows for events made with `GITHUB_TOKEN`; the App's push and
